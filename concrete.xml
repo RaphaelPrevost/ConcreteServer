@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE concrete PUBLIC "-//BURO.ASIA//CONCRETE//CONFIG" "concrete.dtd">
+<concrete configuration="production">
+
+    <options profile="any">
+        <!-- it is advised to set the number of threads to
+             the number of physical cores available, and
+             increase it if the services perform blocking
+             operations -->
+        <threads number="2" />
+    </options>
+
+    <databases profile="any">
+        <database name="dialmsn" driver="mysql" id="dialflirt">
+            <location host="" port="" />
+            <credentials login="dialflirt" password="phiZae8i" />
+            <connections number="25" />
+        </database>
+    </databases>
+
+    <plugins path="plugins" profile="production">
+        <!--plugin image="dialmsn.so" id="dialflirt">
+            <listen port="8486" type="tcp" />
+            <option name="dialmsn_http_host" value="v3.dialflirt.com" />
+            <option name="dialmsn_logging" value="enabled" />
+            <option name="dialmsn_bot" value="disabled" />
+            <option name="dialmsn_sex_quotas" value="disabled" />
+            <option name="dialmsn_subscribers_only" value="enabled" />
+            <option name="eurolive_hostess_service" value="disabled" />
+            <option name="eurolive_feed"
+             value="http://www.eurolive.com?module=public_eurolive_flux_complete&amp;synergie=hetero&amp;ip=80.89.121.95&amp;key=772167778180&amp;limit=1-32&amp;cat=2&amp;lg=fr&amp;filter=online" />
+        </plugin-->
+
+        <plugin image="stream.so" id="stream">
+            <option name="personality" value="worker" />
+            <option name="worker_streams" value="2" />
+            <option name="master_host" value="127.0.0.1" />
+            <option name="master_port" value="2001" />
+            <!--option name="filter_hook" value="plugin:function" /-->
+            <!--option name="destination" value="plugin" />
+            <option name="plugin_name" value="xxxx" /-->
+            <option name="destination" value="server" />
+            <option name="server_host" value="127.0.0.1" />
+            <option name="server_port" value="9099" />
+            <option name="master_host[1]" value="127.0.0.1" />
+            <option name="master_port[1]" value="3001" />
+            <!--option name="filter_hook" value="plugin:function" /-->
+            <!--option name="destination" value="plugin" />
+            <option name="plugin_name" value="xxxx" /-->
+            <option name="destination[1]" value="server" />
+            <option name="server_host[1]" value="127.0.0.1" />
+            <option name="server_port[1]" value="9100" />
+        </plugin>
+
+        <!--plugin image="example.so" id="example">
+            <ssl cert="ssl/client.pem" key="ssl/client.pem" ca="ssl/root.pem" password="password" />
+            <listen port="1111" type="ssl" />
+        </plugin-->
+    </plugins>
+
+    <plugins path="plugins" profile="debug">
+        <plugin image="stream.so" id="stream">
+            <option name="personality" value="master" />
+            <!--option name="personality" value="hybrid" /-->
+            <option name="master_streams" value="2" />
+            <option name="ingress_end" value="2000" />
+            <option name="workers_end" value="2001" />
+            <option name="ingress_end[1]" value="3000" />
+            <option name="workers_end[1]" value="3001" />
+        </plugin>
+    </plugins>
+
+    <!-- an auth method always receives USER, PASS, BLOB -->
+    <authentication profile="any">
+        <method name="db" driver="database">
+            <option name="database" value="dialflirt" />
+            <option name="sqlquery" value="SELECT pass FROM users WHERE user=$USER" />
+            <option name="expected" value="$PASS" />
+        </method>
+
+        <method name="custom" driver="plugin">
+            <option name="plugin" value="dialflirt" />
+            <option name="symbol" value="_auth" />
+        </method>
+    </authentication>
+
+    <users profile="any">
+        <user name="lapin" password="malin" />
+        <user name="prout" password="caca" />
+    </users>
+
+    <ruleset profile="any" policy="deny">
+        <resource match="/home/([^/]*?)">
+            <policy default="deny">
+                <exception auth="db" user="$1">
+                    <!-- bob is a regular user but he stinks -->
+                    <but user="bob" />
+                </exception>
+                <exception auth="system" user="root" />
+            </policy>
+        </resource>
+    </ruleset>
+
+    <ruleset profile="debug" policy="allow">
+        <resource match="admin_shell">
+            <policy default="deny"><exception auth="unix" /></policy>
+        </resource>
+
+        <resource match="/virtual/dialflirt">
+            <policy default="deny">
+                <exception auth="custom" user="jacky" />
+                <exception auth="config">
+                    <but user="prout" />
+                </exception>
+            </policy>
+        </resource>
+    </ruleset>
+
+</concrete>

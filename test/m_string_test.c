@@ -1,0 +1,575 @@
+#include "../lib/m_string.h"
+
+#define DUMMY_LEN 256
+
+/* -------------------------------------------------------------------------- */
+
+int test_string(void)
+{
+    const char *str = "这个服务器有没有问题";
+    #ifdef HAS_ICONV
+    const char *gb18030 = "\xd5\xe2\xb8\xf6\xb7\xfe\xce\xf1\xc6\xf7"
+                          "\xd3\xd0\xc3\xbb\xd3\xd0\xce\xca\xcc\xe2";
+    #endif
+    const char *cs = "Random string1234";
+    m_string *a = NULL, *w = NULL, *z = NULL;
+    unsigned int i = 0, j = 0;
+    off_t pos = 0;
+    char buffer[256];
+    size_t item_size = 0;
+
+    setlocale(LC_CTYPE, "zh_CN.UTF8");
+
+    if (! (z = string_alloc(NULL, DUMMY_LEN)) || string_len(z) != DUMMY_LEN) {
+        printf("(!) Allocating a "STR(DUMMY_LEN)" bytes buffer: FAILURE\n");
+        return 0;
+    } else
+        printf("(*) Allocating a "STR(DUMMY_LEN)" bytes buffer: SUCCESS\n");
+
+    printf("(*) Double the allocated space:\n");
+    string_dim(z, DUMMY_LEN * 2);
+    printf("(-) SIZE: %zu\n", string_len(z));
+    printf("(-) SPACE: %zu\n", string_spc(z));
+
+    /* string_free(simple string) */
+    printf("(*) Destroying a simple m_string:");
+    z = string_free(z);
+    printf(" SUCCESS\n");
+
+    #ifdef HAS_ICONV
+    z = string_alloc(gb18030, 20);
+    i = string_convs(gb18030, 20, "GB18030", NULL, 0, "UTF-8");
+    printf("(-) Buffer length required for conversion: %i\n", i);
+    string_conv(z, "GB18030", "");
+    printf("(-) Unicode buffer: %.*s\n", (int) SIZE(z), CSTR(z));
+    string_free(z);
+    #endif
+
+    /* catch integer overflow */
+    if (string_alloc(NULL, 4294967293)) {
+        printf("(!) Catching integer overflow in string_alloc(): FAILURE\n");
+        return -1;
+    } else printf("(*) Catching integer overflow in string_alloc(): SUCCESS\n");
+
+    #ifdef _ENABLE_HTTP
+    if (string_rawurlencode("http://integeroverflow.net", 1431655765, 0x0)) {
+        printf("(!) Catching integer overflow in string_rawurlencode(): FAILURE\n");
+        return -1;
+    } else printf("(*) Catching integer overflow in string_rawurlencode(): SUCCESS\n");
+    #endif
+
+    /* string_allocw(wide, len) */
+    if (! (w = string_alloc(str, strlen(str))) ) {
+        printf("(!) Allocating a wide string \"%s\": FAILURE\n", str);
+        return -1;
+    } else printf("(*) Allocating a wide string \"%s\": SUCCESS\n", CSTR(w));
+
+    /* string_alloc(ansi, len) */
+    if (! (a = string_alloc(cs, strlen(cs))) ) {
+        w = string_free(w);
+        printf("(!) Allocating an ANSI string \"%s\": FAILURE\n", cs);
+        return -1;
+    } else
+        printf("(*) Allocating an ANSI string \"%s\": SUCCESS\n", CSTR(a));
+
+    #ifdef _ENABLE_PCRE
+    printf("(*) Looking for \"Random string(.*)\"\n");
+    string_parse(a, "Random string(.*)", strlen("Random string(.*)"));
+    for (i = 0; i < PARTS(a); i ++) {
+        printf("(-) token[%i] = %.*s (size=%i)\n",
+                i, TLEN(a, i), TSTR(a, i), TLEN(a, i));
+        printf("(-) token[%i].parts = %i\n", i, PARTS(TOKEN(a, i)));
+        for (j = 0; j < PARTS(TOKEN(a, i)); j ++) {
+            printf("(-) token[%i] = %.*s (size=%i)\n",
+                j, TLEN(TOKEN(a, i), j), TSTR(TOKEN(a, i), j), TLEN(TOKEN(a, i), j));
+        }
+    }
+    printf("(*) Looking for \"Random string(.)\"\n");
+    string_parse(a, "Random string(.)", strlen("Random string(.)"));
+    for (i = 0; i < PARTS(a); i ++) {
+        printf("(-) token[%i] = %.*s (size=%i)\n",
+                i, TLEN(a, i), TSTR(a, i), TLEN(a, i));
+        printf("(-) token[%i].parts = %i\n", i, PARTS(TOKEN(a, i)));
+        for (j = 0; j < PARTS(TOKEN(a, i)); j ++) {
+            printf("(-) token[%i] = %.*s (size=%i)\n",
+                j, TLEN(TOKEN(a, i), j), TSTR(TOKEN(a, i), j), TLEN(TOKEN(a, i), j));
+        }
+    }
+    printf("(*) Looking for \"(Random)\"\n");
+    string_parse(a, "(Random)", strlen("(Random)"));
+    for (i = 0; i < PARTS(a); i ++) {
+        printf("(-) token[%i] = %.*s (size=%i)\n",
+                i, TLEN(a, i), TSTR(a, i), TLEN(a, i));
+        printf("(-) token[%i].parts = %i\n", i, PARTS(TOKEN(a, i)));
+        for (j = 0; j < PARTS(TOKEN(a, i)); j ++) {
+            printf("(-) token[%i] = %.*s (size=%i)\n",
+                j, TLEN(TOKEN(a, i), j), TSTR(TOKEN(a, i), j), TLEN(TOKEN(a, i), j));
+        }
+    }
+    printf("(*) Looking for \"test_no_match\"\n");
+    string_parse(a, "test_no_match", strlen("test_no_match"));
+    for (i = 0; i < PARTS(a); i ++) {
+        printf("(-) token[%i] = %.*s (size=%i)\n",
+                i, TLEN(a, i), TSTR(a, i), TLEN(a, i));
+        printf("(-) token[%i].parts = %i\n", i, PARTS(TOKEN(a, i)));
+        for (j = 0; j < PARTS(TOKEN(a, i)); j ++) {
+            printf("(-) token[%i] = %.*s (size=%i)\n",
+                j, TLEN(TOKEN(a, i), j), TSTR(TOKEN(a, i), j), TLEN(TOKEN(a, i), j));
+        }
+    }
+    printf("(*) Looking for \"a\"\n");
+    string_parse(a, "a", strlen("a"));
+    for (i = 0; i < PARTS(a); i ++) {
+        printf("(-) token[%i] = %.*s (size=%i)\n",
+                i, TLEN(a, i), TSTR(a, i), TLEN(a, i));
+        printf("(-) token[%i].parts = %i\n", i, PARTS(TOKEN(a, i)));
+        for (j = 0; j < PARTS(TOKEN(a, i)); j ++) {
+            printf("(-) token[%i] = %.*s (size=%i)\n",
+                j, TLEN(TOKEN(a, i), j), TSTR(TOKEN(a, i), j), TLEN(TOKEN(a, i), j));
+        }
+    }
+    #endif
+
+    /* looking for "je" */
+    if ( (pos = string_finds(a, 0, "st", strlen("st"))) == -1) {
+        printf("i = %i\n", i);
+        printf("(!) Searching for \"st\" in \"%s\": FAILURE\n", CSTR(a));
+        w = string_free(w);
+        a = string_free(a);
+        return -1;
+    } else
+        printf("(*) Searching for \"st\" => \"%s\": SUCCESS\n", CSTR(a) + pos);
+
+    /* converting to wide */
+    if (string_wchar(w) == -1) {
+        printf("(!) Mbyte to wide string conversion \"%s\": "
+                "FAILURE\n", CSTR(w));
+        w = string_free(w);
+        a = string_free(a);
+        return -1;
+    } else
+        printf("(*) Mbyte to wide string conversion \"%ls\": "
+                "SUCCESS\n", (wchar_t *) CSTR(w));
+
+    /* converting back to multibyte */
+    if (string_mbyte(w) == -1) {
+        printf("(!) Wide to mbyte string conversion \"%s\": "
+                "FAILURE\n", CSTR(w));
+        w = string_free(w);
+        a = string_free(a);
+        return -1;
+    } else
+        printf("(*) Wide to mbyte string conversion \"%s\": "
+                "SUCCESS\n", CSTR(w));
+
+    /* appending */
+    if (string_cat(w, a) == NULL) {
+        printf("(!) Appending \"%s\" to \"%s\": "
+                "FAILURE\n", CSTR(a), CSTR(w));
+        w = string_free(w);
+        a = string_free(a);
+        return -1;
+    } else printf("(*) Appending \"%s\": SUCCESS\n", CSTR(w));
+
+    /* looking for Random ! */
+    pos = string_finds(w, 0, "Random", strlen("Random"));
+    if (pos == -1) {
+        printf("i = %i\n", i);
+        printf("(!) Searching for \"Random\" in \"%s\": FAILURE\n", CSTR(w));
+        w = string_free(w);
+        a = string_free(a);
+        return -1;
+    } else
+        printf("(*) Searching for \"Random\" => \"%s\": "
+                "SUCCESS\n", CSTR(w) + pos);
+
+    /* looking for "问题" */
+    if ( (pos = string_finds(w, 0, "问题", strlen("问题"))) == -1) {
+        printf("(!) Searching for \"问题\" in \"%s\": FAILURE\n", CSTR(w));
+        w = string_free(w);
+        a = string_free(a);
+        return -1;
+    } else
+        printf("(*) Searching for \"问题\" => \"%s\": "
+                "SUCCESS\n", CSTR(w) + pos);
+
+    w = string_free(w);
+    a = string_free(a);
+
+    w = string_alloc("13-10-15:Forever", strlen("13-10-15:Forever"));
+
+    /* split on ":" */
+    if (string_splits(w, ":", strlen(":")) == -1) {
+        printf("(!) Splitting on \":\" in \"%s\": FAILURE\n", CSTR(w));
+        w = string_free(w);
+        return -1;
+    } else printf("(*) Splitting on \":\" in \"%s\": SUCCESS\n", CSTR(w));
+
+    for (i = 0; i < PARTS(w); i ++)
+        printf("(-) token[%i] = %.*s (size=%zu)\n",
+                i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
+
+    /* split first token on "-" */
+    if (PARTS(w) == 2) {
+        if (string_splits(TOKEN(w, 0), "-", strlen("-")) == -1) {
+            printf("(!) Splitting on \"-\" in \"%.*s\": FAILURE\n",
+                   (int) TLEN(w, 0), TSTR(w, 0));
+            w = string_free(w);
+            return -1;
+        } else printf("(*) Splitting on \"-\" in \"%.*s\": SUCCESS\n",
+                      (int) TLEN(w, 0), TSTR(w, 0));
+
+        for (i = 0; i < PARTS(TOKEN(w, 0)); i ++)
+            printf("(-) token[%i] = %.*s (size=%zu)\n",
+                    i, (int) TLEN(TOKEN(w, 0), i), TSTR(TOKEN(w, 0), i),
+                    TLEN(TOKEN(w, 0), i));
+
+        if (PARTS(TOKEN(w, 0)) == 3) {
+            if (! string_pres(TOKEN(TOKEN(w, 0), 2), "20", strlen("20"))) {
+                printf("(!) Prepending to a token: FAILURE\n");
+                w = string_free(w);
+                return -1;
+            } else printf("(*) Prepending to a token "
+                           "(\"%.*s\" in \"%.*s\"): SUCCESS\n",
+                           (int) TLEN(TOKEN(w, 0), 2), TSTR(TOKEN(w, 0), 2),
+                           (int) TLEN(w, 0), TSTR(w, 0));
+        }
+    }
+
+    if (string_merges(TOKEN(w, 0), "/", strlen("/")) == -1) {
+        printf("(!) Merging token \"%.*s\" on \"/\": FAILURE\n",
+               (int) TLEN(w, 0), TSTR(w, 0));
+        w = string_free(w);
+        return -1;
+    } else printf("(*) Merging token on \"/\" (\"%.*s\"): SUCCESS\n",
+                  (int) TLEN(w, 0), TSTR(w, 0));
+
+    for (i = 0; i < PARTS(w); i ++)
+        printf("(-) token[%i] = %.*s (size=%zu)\n",
+               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
+
+    printf("(-) Resulting string: \"%.*s\"\n", (int) SIZE(w), CSTR(w));
+
+    if (string_merges(w, " -> ", strlen(" -> ")) == -1) {
+        printf("(!) Merging string \"%.*s\" on \" -> \": FAILURE\n",
+               (int) SIZE(w), CSTR(w));
+        w = string_free(w);
+        return -1;
+    } else printf("(*) Merging string on \" -> \" (\"%.*s\"): SUCCESS\n",
+                  (int) SIZE(w), CSTR(w));
+
+    for (i = 0; i < PARTS(w); i ++)
+        printf("(-) token[%i] = %.*s (size=%zu)\n",
+               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
+    for (i = 0; i < PARTS(TOKEN(w, 0)); i ++)
+        printf("(-) token[0]->token[%i] = %.*s (size=%zu)\n",
+               i, (int) TLEN(TOKEN(w, 0), i), TSTR(TOKEN(w, 0), i),
+               TLEN(TOKEN(w, 0), i));
+
+    if (string_dim(TOKEN(w, 0), strlen("13/10")) == -1) {
+        printf("(!) Shrinking token: FAILURE\n");
+        w = string_free(w);
+        return -1;
+    } else if (SIZE(w) != strlen("13/10 -> Forever")) {
+        printf("(!) Shrinking token (Size differs: %zu): FAILURE\n", SIZE(w));
+        w = string_free(w);
+        return -1;
+    } else printf("(*) Shrinking token (%s): SUCCESS\n", CSTR(w));
+
+    for (i = 0; i < PARTS(w); i ++)
+        printf("(-) token[%i] = %.*s (size=%zu)\n",
+               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
+    for (i = 0; i < PARTS(TOKEN(w, 0)); i ++)
+        printf("(-) token[0]->token[%i] = %.*s (size=%zu)\n",
+               i, (int) TLEN(TOKEN(w, 0), i), TSTR(TOKEN(w, 0), i),
+               TLEN(TOKEN(w, 0), i));
+
+    if (string_suppr(w, TLEN(w, 0), strlen(" -> ")) == -1) {
+        printf("(!) Suppressing substring: FAILURE\n");
+        w = string_free(w);
+        return -1;
+    } else printf("(*) Suppressing substring (%.*s): SUCCESS\n",
+                  (int) SIZE(w), CSTR(w));
+
+    for (i = 0; i < PARTS(w); i ++)
+        printf("(-) token[%i] = %.*s (size=%zu)\n",
+               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
+    for (i = 0; i < PARTS(TOKEN(w, 0)); i ++)
+        printf("(-) token[0]->token[%i] = %.*s (size=%zu)\n",
+               i, (int) TLEN(TOKEN(w, 0), i), TSTR(TOKEN(w, 0), i),
+               TLEN(TOKEN(w, 0), i));
+
+    /* try resplitting */
+    if (string_splits(w, "/", strlen("/")) == -1) {
+        printf("(!) Replitting on \"/\" in \"%s\": FAILURE\n", CSTR(w));
+        w = string_free(w);
+        return -1;
+    } else printf("(*) Replitting on \"/\" in \"%s\": SUCCESS\n", CSTR(w));
+
+    for (i = 0; i < PARTS(w); i ++)
+        printf("(-) token[%i] = %.*s (size=%zu)\n",
+               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
+
+    #ifdef _ENABLE_HTTP
+    /* insert special chars in a token and urlencode it */
+    if (! string_pres(TOKEN(w, 0), "http://www.test.com/?parm=",
+                      strlen("http://www.test.com/?parm="))) {
+        printf("(!) Prepending to a token: FAILURE\n");
+        w = string_free(w);
+        return -1;
+    } else printf("(*) Prepending to a token (\"%.*s\"): SUCCESS\n",
+                  (int) TLEN(w, 0), TSTR(w, 0));
+
+    if (string_urlencode(TOKEN(w, 0), 0x0) == -1) {
+        printf("(!) Urlencode: FAILURE\n");
+        w = string_free(w);
+        return -1;
+    } else printf("(*) Urlencode %s: SUCCESS\n", TSTR(w, 0));
+
+    item_size = m_snprintf(buffer, sizeof(buffer),
+                           "http://www.test.com/?parm=%.*url",
+                           5, ".#{0}");
+    printf("(*) Urlencode %s: SUCCESS\n", buffer);
+
+    for (i = 0; i < PARTS(w); i ++)
+        printf("(-) token[%i] = %.*s (size=%zu)\n",
+               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
+    #endif
+
+    z = string_sha1(TOKEN(w, 1));
+
+    if (string_cmps(z, "2fe5db4a1ddad9423d4e174bb78eb6a8c80ea6db",
+                    strlen("2fe5db4a1ddad9423d4e174bb78eb6a8c80ea6db"))) {
+        printf("(!) SHA1(%.*s [%zu]) == %s: FAILURE\n",
+               (int) TLEN(w, 1), TSTR(w, 1), TLEN(w, 1), CSTR(z));
+        w = string_free(w);
+        z = string_free(z);
+        return -1;
+    } else printf("(*) SHA1: SUCCESS\n");
+
+    /* append formatted output */
+    if (! string_catfmt(z, "%s%i", "formatted-output", 1234)) {
+        printf("(!) Append formatted string: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    } else printf("(*) Append formatted string %s: SUCCESS\n", CSTR(z));
+
+    if (string_splits(z, "-", 1) == -1 || z->parts < 2) {
+        printf("(!) Splitting: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    } else printf("(*) Splitting: SUCCESS\n");
+
+    if (string_cat(z, z) != z) {
+        printf("(!) Keeping original pointer when appending to split string: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    } else printf("(*) Keeping original pointer when appending to split string: SUCCESS\n");
+
+    string_flush(TOKEN(z, 1));
+
+    z = string_free(TOKEN(z, 1));
+
+    /* test string_catfmt */
+    z = string_alloc(NULL, 0);
+
+    if (! string_catfmt(z, "%lli,0,\"/%s\",%li,0\n", 0LL, "filename", 123456789)) {
+        printf("(!) String formatted concatenation: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    } else printf("(*) String formatted concatenation: SUCCESS\n");
+
+    z = string_free(z);
+
+    /* string push/pop */
+    z = string_alloc("One", strlen("One"));
+    string_select(z, 0, SIZE(z));
+
+    if (string_push_tokens(z, "Two", strlen("Two")) == -1) {
+        printf("(!) String formatted concatenation: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    }
+    if (string_push_tokens(z, "Three", strlen("Three")) == -1) {
+        printf("(!) String formatted concatenation: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    }
+    if (string_push_tokens(z, "Four", strlen("Four")) == -1) {
+        printf("(!) String formatted concatenation: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    }
+    if (string_push_tokens(z, "Five", strlen("Five")) == -1) {
+        printf("(!) String formatted concatenation: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    }
+
+    string_upper(TOKEN(z, 1));
+
+    printf("(*) String queue: %.*s Length: %zu\n",
+           (int) SIZE(z), CSTR(z), SIZE(z));
+    for (i = 0; i < PARTS(z); i ++)
+        printf("(-) token[%i] = %.*s (size=%zu)\n",
+                i, (int) TLEN(z, i), TSTR(z, i), TLEN(z, i));
+
+    while ( (a = string_pop_token(z)) ) {
+        printf("(*) Dequeued token: %.*s\n", (int) SIZE(a), CSTR(a));
+        printf("(*) String queue: %.*s Length: %zu\n",
+               (int) SIZE(z), CSTR(z), SIZE(z));
+        for (i = 0; i < PARTS(z); i ++)
+        printf("(-) token[%i] = %.*s (size=%zu)\n",
+               i, (int) TLEN(z, i), TSTR(z, i), TLEN(z, i));
+        string_free(a);
+    }
+
+    z = string_free(z);
+
+    z = string_alloc("HTTP 888 TEST\r\nheader: value\r\nheader: value----1",
+                     strlen("HTTP 888 TEST\r\nheader: value\r\nheader: value----1"));
+    fprintf(stderr, "string len: %zu\n", SIZE(z));
+    string_splits(z, "----", 4);
+    fprintf(stderr, "token 0 = %.*s [%zu], token 1 = %.*s [%zu]\n",
+            (int) TLEN(z, 0), TSTR(z, 0), TLEN(z, 0),
+            (int)TLEN(z, 1), TSTR(z, 1), TLEN(z, 1));
+    fprintf(stderr, "string len: %zu\n", SIZE(z));
+    string_splits(TOKEN(z, 0), "\r\n", 2);
+    string_merges(TOKEN(z, 0), "X", 1);
+    fprintf(stderr, "token 0 = %.*s [%zu], token 1 = %.*s [%zu]\n",
+            (int) TLEN(z, 0), TSTR(z, 0),TLEN(z, 0),
+            (int) TLEN(z, 1), TSTR(z, 1), TLEN(z, 1));
+    fprintf(stderr, "string len: %zu\n", SIZE(z));
+    //string_fetch_fmt(TOKEN(z, 1), "%i", & i);
+    fprintf(stderr, "string parts: %i\n", z->parts);
+    if (z->parts) {
+        for (i = 0; i < PARTS(z); i ++) {
+            fprintf(stderr, "token %i len=%zu alloc=%zu data=%p [[%.*s]]\n",
+                    i, TLEN(z, i), z->token[i]._alloc, z->token[i]._data,
+                    (int) TLEN(z, i), TSTR(z, i));
+        }
+    }
+    fprintf(stderr, "Final string: [[%.*s]] Length: %zu\n",
+            (int) SIZE(z), CSTR(z), SIZE(z));
+    fprintf(stderr, "===========================\n");
+
+    string_flush(TOKEN(z, 1));
+    fprintf(stderr, "string parts: %i\n", z->parts);
+    if (z->parts) {
+        for (i = 0; i < PARTS(z); i ++) {
+            fprintf(stderr, "token %i len=%zu alloc=%zu data=%p [[%.*s]]\n",
+                    i, TLEN(z, i), z->token[i]._alloc, z->token[i]._data,
+                    (int) TLEN(z, i), TSTR(z, i));
+        }
+    }
+    fprintf(stderr, "Final string: [[%.*s]] Length: %zu\n",
+            (int) SIZE(z), CSTR(z), SIZE(z));
+    fprintf(stderr, "===========================\n");
+
+    string_cats(z, "incoming data", strlen("incoming data"));
+    fprintf(stderr, "string parts: %i\n", z->parts);
+    if (z->parts) {
+        for (i = 0; i < PARTS(z); i ++) {
+            fprintf(stderr, "token %i len=%zu alloc=%zu data=%p [[%.*s]]\n",
+                    i, TLEN(z, i), z->token[i]._alloc, z->token[i]._data,
+                    (int) TLEN(z, i), TSTR(z, i));
+        }
+    }
+
+    fprintf(stderr, "Final string: [[%.*s]] Length: %zu\n",
+            (int) SIZE(z), CSTR(z), SIZE(z));
+
+    z = string_free(z);
+
+    z = string_alloc("Test merging with a 0-length delimiter\n", 39);
+    string_splits(z, " ", 1);
+    fprintf(stderr, "string parts: %i\n", z->parts);
+    if (z->parts) {
+        for (i = 0; i < PARTS(z); i ++) {
+            fprintf(stderr, "token %i len=%zu alloc=%zu data=%p [[%.*s]]\n",
+                    i, TLEN(z, i), z->token[i]._alloc, z->token[i]._data,
+                    (int) TLEN(z, i), TSTR(z, i));
+        }
+    }
+
+    if (string_merges(z, NULL, 1) != -1) {
+        printf("(!) NULL pattern with positive length must be rejected: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    } else printf("(*) NULL pattern with positive length must be rejected: SUCCESS\n");
+
+    string_merges(z, NULL, 0);
+
+    fprintf(stderr, "string parts: %i\n", z->parts);
+    if (z->parts) {
+        for (i = 0; i < PARTS(z); i ++) {
+            fprintf(stderr, "token %i len=%zu alloc=%zu data=%p [[%.*s]]\n",
+                    i, TLEN(z, i), z->token[i]._alloc, z->token[i]._data,
+                    (int) TLEN(z, i), TSTR(z, i));
+        }
+    }
+
+    fprintf(stderr, "Final string: [[%.*s]] Length: %zu\n",
+            (int) SIZE(z), CSTR(z), SIZE(z));
+    z = string_free(z);
+
+    #ifdef HAS_ZLIB
+    /* compress string */
+    if (! (z = string_compress(w)) ) {
+        printf("(!) Compressing a string: FAILURE\n");
+        return -1;
+    } else printf("(*) Compressing a string: SUCCESS\n");
+
+    item_size = SIZE(w); w = string_free(w);
+
+    if (! (w = string_uncompress(z, item_size)) ) {
+        printf("(!) Uncompressing a string: FAILURE\n");
+        return -1;
+    } else printf("(*) Uncompressing a string (%s): SUCCESS\n", CSTR(w));
+
+    z = string_free(z);
+    #endif
+
+    w = string_free(w);
+
+    /* test complex string generation */
+    if (! (z = string_from_uint32(htonl(0x82))) ) {
+        printf("(!) Creating a string from uint32: FAILURE\n");
+        return -1;
+    } else printf("(*) Creating a string from uint32: SUCCESS\n");
+
+    printf("(-) string alloc=%zu len=%zu\n", z->_alloc, z->_len);
+
+    item_size = m_snprintf(buffer, sizeof(buffer),
+                           "%i%.*s%i%.*s%s%.*s%i%.*s%i%.*s%i"
+                           "%.*s%i%.*s%s%.*s%s%.*s%i%.*s%i%.*s",
+                           140, 1, "|", 350, 1, "|", "nickname_test_1234",
+                           1, "|", 0x08, 1, "|", 0x0, 1, "|", 25,
+                           1, "|", 75, 1, "|", "Paris", 1, "|",
+                           "e9d607c4d54e3427e4d4cb56cae1801f.jpg",
+                           1, "|", 0, 1, "|", 1, 1, "\n");
+
+    if (! string_cats(z, buffer, item_size)) {
+        printf("(!) Concatenating a string to uint32: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    } else printf("(*) Concatenating a string to uint32: SUCCESS\n");
+
+    printf("(-) string alloc=%zu len=%zu\n", z->_alloc, z->_len);
+
+    if (! string_cats(z, (char *) & item_size, sizeof(item_size))) {
+        printf("(!) Concatenating an int to string: FAILURE\n");
+        z = string_free(z);
+        return -1;
+    } else printf("(*) Concatenating an int to string: SUCCESS\n");
+
+    printf("(-) string alloc=%zu len=%zu\n", z->_alloc, z->_len);
+
+    z = string_free(z);
+
+    setlocale(LC_CTYPE, "en_US.UTF8");
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */

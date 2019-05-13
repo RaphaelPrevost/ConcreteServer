@@ -1,0 +1,41 @@
+0.4
+* HTTP plugin
+* Load balancer plugin
+* file access and caching API
+* remove TLS cache (done)
+* optimize string_split and string_replace by building the Boyer Moore lookup table only once (done)
+* Patricia tree to implement ACLs (done)
+* improve the string API to properly handle a mix of encodings
+
+
+Various notes:
+res = server_reply_init(flag);
+
+server_reply_setheader(res, "some formatting %s", plop);
+server_reply_setfile(res, file_open(root, rlen, path, plen), offset, len);
+server_reply_setfooter(res, "formatting again %s", lapin);
+
+server_send_reply(token, sockid, res);
+
+API:
+view = fs_openview("/var/www/htdocs", sizeof("/var/www/htdocs"));
+fs_sethandler(view, "/rel/path", sizeof("/rel/path"), handler);
+fs_mapdata(view, "/rel/path", sizeof("/rel/path"), somedata);
+old = fs_remapdata(view, "/rel/path", sizeof("/rel/path"), somedata);
+file = fs_openfile(view, "/rel/path", sizeof("/rel/path"), rights);
+fs_closefile(file);
+fs_closeview(view); (orphan all remaining files in use)
+
+SECURITY:
+Upon startup or SIGHUP, security.xml is loaded. It populates
+a hashtable with pairs of path and rulesets.
+
+When fs_openview() is called, if there is no rule for this path
+the success depends on the default policy.
+
+fs_mapdata use the view rulesets to allow or deny the virtual mapping
+the virtual file will inherit of the view rulesets
+
+fs_openfile use the view rulesets to allow or deny access to the file.
+rights is a structure holding the credentials and the rights asked
+
