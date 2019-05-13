@@ -1,0 +1,92 @@
+Concrete Server version 0.3.5
+=============================
+
+Copyright (c) 2005-2012 BGA://Buro.asia Limited
+
+Description
+===========
+
+    Concrete Server is a server framework, providing all the necessary
+building blocks to design and implement efficient TCP or UDP services.
+
+    The scope of this framework is not limited to networking functionalities,
+it also provides a database access API, a string library, and a plugin system
+to host different services on top of the Concrete Server.
+
+    The Concrete Server can be either embedded, by linking to the Concrete
+Server Framework Library and implementing a builtin plugin, or extended, by
+using the Concrete Server with a custom external plugin.
+
+Requirements
+============
+
+    Concrete Server should compile and run on most POSIX-compliant operating
+systems providing POSIX threads support and the GNU C Compiler.
+
+    Concrete Server can also compile and run on Microsoft Windows 2000 and
+above.
+
+Installation
+============
+
+    * POSIX-compliant Operating Systems (GNU/Linux, Mac OS X)
+      -------------------------------------------------------
+
+    To compile the Concrete Server Framework Library, the Concrete Server and
+    the shipped plugins, simply run the following command:
+
+        make -j3
+
+    If you need to rebuild it, please run the following command first:
+
+        make clean
+
+    Once the compilation is over, you can run the server in interactive mode
+    with this command:
+
+        LD_LIBRARY_PATH=. ./concrete
+
+    Or start it as a daemon:
+
+        LD_LIBRARY_PATH=. ./concrete -d
+
+    Don't hesitate to see the different options available, using:
+
+        LD_LIBRARY_PATH=. ./concrete --help
+
+    * Microsoft Windows 2000 and above
+      --------------------------------
+
+    To compile the Concrete Server Framework Library, the Concrete Server and
+    the shipped plugins, you will need to use the free Dev-C++ development
+    environment available at this address:
+
+        http://www.bloodshed.net/devcpp.html
+
+    Once Dev-C++ is installed and working, just go to the folder win32/ and
+    compile the libconcrete.dev project, then the ConcreteServer.dev
+    project.
+
+    The projects come with the required dynamic link libraries, which are
+    freely redistributable.
+
+    You can run Concrete Server in interactive mode with this command:
+
+        ConcreteServer.exe
+
+    You can also install it as an NT Service using:
+
+        ConcreteServer.exe /i
+
+    and uninstall it with:
+
+        ConcreteServer.exe /u
+
+    Don't hesitate to see the different options available using:
+
+        ConcreteServer.exe /h
+
+Thanks
+======
+
+    Thank you for using Concrete Server !

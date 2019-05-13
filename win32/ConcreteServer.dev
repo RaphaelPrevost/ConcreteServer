@@ -1,0 +1,59 @@
+[Project]
+FileName=ConcreteServer.dev
+Name=ConcreteServer
+UnitCount=1
+Type=1
+Ver=1
+ObjFiles=
+Includes=..\lib;..\lib\ports\libpthread-win32\include
+Libs=..\lib;..\lib\ports\libpthread-win32\lib;.
+PrivateResource=ConcreteServer_private.rc
+ResourceIncludes=
+MakeIncludes=
+Compiler=-D_ENABLE_SERVER -D_ENABLE_HASHTABLE -D_ENABLE_RANDOM -D_ENABLE_CONFIG -DHAS_LIBXML -DHAS_ZLIB -DHAS_MYSQL -D_BUILTIN_PLUGIN -D_ENABLE_PRIVILEGE_SEPARATION -D_ENABLE_DB -D_ENABLE_MYSQL -D_ENABLE_TRIE -D_ENABLE_HTTP_@@_
+CppCompiler=
+Linker=-lws2_32 -lconcrete_@@_
+IsCpp=0
+Icon=
+ExeOutput=
+ObjectOutput=
+OverrideOutput=1
+OverrideOutputName=concrete.exe
+HostApplication=
+Folders=
+CommandLine=
+UseCustomMakefile=0
+CustomMakefile=
+IncludeVersionInfo=1
+SupportXPThemes=0
+CompilerSet=0
+CompilerSettings=0000000000000000000000
+
+[VersionInfo]
+Major=0
+Minor=3
+Release=1
+Build=0
+LanguageID=1033
+CharsetID=1252
+CompanyName=BGA://Buro.asia Limited
+FileVersion=0.3.1
+FileDescription=Concrete Server
+InternalName=
+LegalCopyright=Copyright (c) 2005-2012 BGA://Buro.asia Limited
+LegalTrademarks=
+OriginalFilename=
+ProductName=Concrete Server
+ProductVersion=0.3.1
+AutoIncBuildNr=0
+
+[Unit1]
+FileName=..\main.c
+CompileCpp=0
+Folder=ConcreteServer
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
