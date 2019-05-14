@@ -112,8 +112,8 @@ public int plugin_init(uint32_t id, int argc, char **argv)
     }
 
     fprintf(stderr, "DialMessenger: loading DialMessenger plugin...\n");
-    fprintf(stderr, "DialMessenger: Copyright (c) 2007-2011 ");
-    fprintf(stderr, "Princesse Avis Co. Ltd., all rights reserved.\n");
+    fprintf(stderr, "DialMessenger: Copyright (c) 2007-2019 ");
+    fprintf(stderr, "Raphael Prevost, all rights reserved.\n");
     fprintf(stderr, "DialMessenger: version "DIALMSN_VERSION" ["__DATE__"]\n");
 
     fprintf(stderr, "DialMessenger: initializing the user list cache.\n");
@@ -185,7 +185,8 @@ public int plugin_init(uint32_t id, int argc, char **argv)
 
     fprintf(stderr, "DialMessenger: listening on port "DIALMSN_PORT".\n");
 
-    if (server_open_managed_socket(id, NULL, DIALMSN_PORT, SOCKET_SRV) == -1) {
+    if (server_open_managed_socket(id, NULL, DIALMSN_PORT,
+                                   SOCKET_SERVER) == -1) {
         fprintf(stderr, "DialMessenger: could not listen to "
                         "TCP port "DIALMSN_PORT".\n");
         goto _error_socket;

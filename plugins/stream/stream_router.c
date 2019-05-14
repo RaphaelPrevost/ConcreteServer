@@ -112,7 +112,7 @@ private int stream_router_init(void)
             port = stream_config_port(i, MASTER_ADDRESS);
 
             master = server_open_managed_socket(plugin_get_token(),
-                                                host, port, SOCKET_CLI);
+                                                host, port, SOCKET_CLIENT);
 
             if (master == -1) {
                 fprintf(stderr, "Stream[%i]: connection to Master "

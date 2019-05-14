@@ -65,8 +65,8 @@ public int plugin_init(uint32_t id, int argc, char **argv)
     plugin_token = id;
 
     fprintf(stderr, "Stream: loading Stream plugin...\n");
-    fprintf(stderr, "Stream: Copyright (c) 2008-2012 ");
-    fprintf(stderr, "BGA://Buro.asia Limited, all rights reserved.\n");
+    fprintf(stderr, "Stream: Copyright (c) 2008-2019 ");
+    fprintf(stderr, "Raphael Prevost, all rights reserved.\n");
     fprintf(stderr, "Stream: version "STREAM_VERSION" ["__DATE__"]\n");
 
     if (stream_config_init(argc, argv) == -1) {

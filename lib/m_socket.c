@@ -105,7 +105,7 @@ static struct addrinfo *socket_addr(int *flags, const char *ip, const char *pt)
 
     /* if no port was given, set it to 0 */
     if (! pt) {
-        if (*flags & SOCKET_SRV) return NULL;
+        if (*flags & SOCKET_SERVER) return NULL;
         else pt = "0";
     }
 
@@ -117,7 +117,7 @@ static struct addrinfo *socket_addr(int *flags, const char *ip, const char *pt)
     hint.ai_protocol = (*flags & SOCKET_UDP) ? (IPPROTO_UDP) : (IPPROTO_TCP);
 
     /* set AI_PASSIVE if this is a listening socket */
-    if (*flags & SOCKET_SRV) hint.ai_flags |= AI_PASSIVE;
+    if (*flags & SOCKET_SERVER) hint.ai_flags |= AI_PASSIVE;
 
     /* use getaddrinfo() to build the socket address */
     if ( (err = getaddrinfo(ip, pt, & hint, & res)) != 0)
@@ -654,7 +654,7 @@ public m_socket *socket_open(const char *ip, const char *port, int type)
     SOCKET sockfd = 0;
     /* XXX ioctl() param must be unsigned long for portability */
     unsigned long enabled = 1;
-    int skip_fd = (type & SOCKET_NFD), blocking_io = (type & SOCKET_BIO);
+    int skip_fd = (type & SOCKET_NEW), blocking_io = (type & SOCKET_BIO);
 
     /* clean the flags: only keep the options, ingress id and reserved bits */
     type &= (_SOCKET_OPT | _SOCKET_IID | _SOCKET_RSV);
@@ -734,7 +734,7 @@ _skip_fd:
     if (_socket_reg(new, type) == -1) goto _err_reg;
 
     #ifdef _ENABLE_SSL
-    if (! skip_fd && (type & SOCKET_SSL) && (~type & SOCKET_SRV) )
+    if (! skip_fd && (type & SOCKET_SSL) && (~type & SOCKET_SERVER) )
         return _socket_ssl_open(new);
     else
         new->_ssl = NULL;
@@ -766,13 +766,13 @@ public int socket_connect(m_socket *s)
     unsigned long enabled = 1;
 
     /* the socket must be a client */
-    if (! s || s->_flags & SOCKET_SRV) {
+    if (! s || s->_flags & SOCKET_SERVER) {
         debug("socket_connect(): bad parameters.\n");
         return SOCKET_EPARAM;
     }
 
     /* handle automatic reconnection */
-    if (s->_flags & SOCKET_CLI && s->_fd == INVALID_SOCKET) {
+    if (s->_flags & SOCKET_CLIENT && s->_fd == INVALID_SOCKET) {
         /* get a new socket descriptor */
         s->_fd = socket(s->info->ai_family, s->info->ai_socktype,
                         s->info->ai_protocol);
@@ -837,7 +837,7 @@ public int socket_listen(m_socket *s)
     #endif
 
     /* the socket must have the server flag */
-    if (! s || ~s->_flags & SOCKET_SRV) {
+    if (! s || ~s->_flags & SOCKET_SERVER) {
         debug("socket_listen(): bad parameters.\n");
         return SOCKET_EPARAM;
     }
@@ -925,13 +925,13 @@ public m_socket *socket_accept(m_socket *s)
     }
 
     /* allocate a clean socket structure to store the new connection */
-    if (! (new = socket_open(NULL, NULL, SOCKET_NFD)) ) {
+    if (! (new = socket_open(NULL, NULL, SOCKET_NEW)) ) {
         closesocket(ret);
         goto _err_accpt;
     }
 
     /* inherit flags from the parent */
-    new->_flags |= (s->_flags & ~SOCKET_SRV) & _SOCKET_OPT;
+    new->_flags |= (s->_flags & ~SOCKET_SERVER) & _SOCKET_OPT;
     /* inherit the ingress id and the reserved bits */
     new->_flags |= s->_flags & (_SOCKET_RSV | _SOCKET_IID);
     /* use the hand crafted addrinfo structure */
@@ -1151,7 +1151,7 @@ public ssize_t socket_read(m_socket *s, char *out, size_t len)
 
 private int socket_persist(m_socket *s)
 {
-    if (! s || ~s->_flags & SOCKET_CLI) {
+    if (! s || ~s->_flags & SOCKET_CLIENT) {
         debug("socket_persist(): bad parameters.\n");
         return -1;
     }

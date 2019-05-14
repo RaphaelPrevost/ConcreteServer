@@ -64,13 +64,14 @@ public int plugin_init(uint32_t id, UNUSED int argc, UNUSED char **argv)
     }
 
     fprintf(stderr, "Wamigo: loading Wamigo plugin...\n");
-    fprintf(stderr, "Wamigo: Copyright (c) 2010-2011 ");
-    fprintf(stderr, "Princesse Avis Co. Ltd., all rights reserved.\n");
+    fprintf(stderr, "Wamigo: Copyright (c) 2010-2019 ");
+    fprintf(stderr, "Raphael Prevost, all rights reserved.\n");
     fprintf(stderr, "Wamigo: version "WAMIGO_VERSION" ["__DATE__"]\n");
 
     fprintf(stderr, "Wamigo: listening on port "WAMIGO_PORT".\n");
 
-    if (server_open_managed_socket(id, NULL, WAMIGO_PORT, SOCKET_SRV) == -1) {
+    if (server_open_managed_socket(id, NULL, WAMIGO_PORT,
+                                   SOCKET_SERVER) == -1) {
         fprintf(stderr,
                 "Wamigo: could not listen to TCP port "WAMIGO_PORT".\n");
         return -1;

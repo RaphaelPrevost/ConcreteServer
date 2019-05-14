@@ -73,17 +73,35 @@
 #define _SOCKET_IIS 12
 #define _SOCKET_OPS 32
 
-/* the ingress id is conditioned by the flags field structure */
+/* socket flags */
+#define SOCKET_UDP    0x01000000    /* UDP socket */
+#define SOCKET_IP6    0x02000000    /* IPv6 socket */
+#define SOCKET_SSL    0x04000000    /* SSL socket */
+#define SOCKET_BIO    0x00010000    /* blocking I/O */
+#define SOCKET_NEW    0x00020000    /* empty socket structure */
+#define SOCKET_CLIENT 0x10000000    /* persistent client */
+#define SOCKET_SERVER 0x20000000    /* server socket */
+
+/* Ingress identifier */
 #define INGRESS_MAX 0xF
+#define INGRESS_ID(s) ((uint16_t) (((s)->_flags & _SOCKET_IID) >> _SOCKET_IIS))
+/* set the ingress id */
+#define INGRESS(i) (((i) << _SOCKET_IIS) & _SOCKET_IID)
+/* set the listen flag and ingress id at the same time */
+#define SOCKET_LISTEN(i) (SOCKET_SERVER | INGRESS(i))
 
-/* socket type flags */
-#define SOCKET_UDP 0x01000000    /* UDP socket */
-#define SOCKET_SRV 0x02000000    /* server socket */
-#define SOCKET_SSL 0x04000000    /* SSL socket */
-#define SOCKET_IP6 0x08000000    /* IPv6 socket */
-#define SOCKET_CLI 0x10000000    /* persistent client */
+/* Socket identifier */
+#if (FD_SETSIZE < _SOCKET_SID)
+#define SOCKET_MAX FD_SETSIZE
+#else
+#define SOCKET_MAX _SOCKET_SID    /* max number of sockets */
+#endif
+#define SOCKET_ID(s) ((uint16_t) ((s)->_flags & _SOCKET_SID))
 
-/* socket status flags */
+/* reserved bits */
+#define _RESERVED(s) (((s)->_flags & _SOCKET_RSV) >> _SOCKET_RSS)
+
+/* socket status */
 #define _SOCKET_B 0x0001    /* the socket is bound */
 #define _SOCKET_A 0x0002    /* the socket is being accepted */
 #define _SOCKET_C 0x0004    /* the socket is being connected */
@@ -98,17 +116,6 @@
 #define SOCKET_READABLE(s)  ((s)->_state & _SOCKET_R)
 #define SOCKET_WRITABLE(s)  ((s)->_state & _SOCKET_W)
 #define SOCKET_INCOMING     SOCKET_READABLE
-
-/* socket creation options (not recorded in the flags) */
-#define SOCKET_BIO 0x00010000
-#define SOCKET_NFD 0x00020000
-
-/* Socket identifier */
-#if (FD_SETSIZE < _SOCKET_SID)
-#define SOCKET_MAX FD_SETSIZE
-#else
-#define SOCKET_MAX _SOCKET_SID    /* max number of sockets */
-#endif
 
 /* hooks */
 #define _HOOK_LISTEN  0x01
@@ -141,6 +148,7 @@
     #define PF_INET6   0x0
 #endif
 
+/* errors */
 #define SOCKET_EPARAM -1
 #define SOCKET_EAGAIN -2
 #define SOCKET_ECLOSE -3
@@ -149,19 +157,6 @@
 
 /* socket receive buffer */
 #define SOCKET_BUFFER 65536
-
-/* the upper 4 bits of the flag holds the ingress identifier */
-#define INGRESS_ID(s) ((uint16_t) (((s)->_flags & _SOCKET_IID) >> _SOCKET_IIS))
-/* set the ingress id */
-#define INGRESS(i) (((i) << _SOCKET_IIS) & _SOCKET_IID)
-/* set the listen flag and ingress id at the same time */
-#define SOCKET_LISTEN(i) (SOCKET_SRV | (((i) << _SOCKET_IIS) & _SOCKET_IID))
-/* upper 12 bits holds the socket identifier */
-#define SOCKET_ID(s) ((uint16_t) ((s)->_flags & _SOCKET_SID))
-/* the combination of the ingress and socket identifier is the socket path */
-#define SOCKET_PATH(s) ((long) ((s)->_flags & (_SOCKET_IID | _SOCKET_SID))
-/* macro to get the reserved bits of the socket id */
-#define _RESERVED(s) (((s)->_flags & _SOCKET_RSV) >> _SOCKET_RSS)
 
 typedef struct m_socket {
     /* private, socket flags and descriptor */
@@ -228,17 +223,19 @@ public m_socket *socket_open(const char *ip, const char *port, int type);
  * @param type the socket type (TCP/UDP/SSL, client/server...)
  * @return a new socket or NULL if something went wrong
  *
- * This functions creates a new socket and registers it. You may call
- * socket_connect() or socket_listen() on it in order to use it.
+ * This functions creates a new socket and registers it. You will still need
+ * to call socket_connect() or socket_listen() in order to use it.
  *
  * You may create different types of sockets:
- * - SOCKET_UDP or SOCKET_TCP according to the underlying transfer protocol
- *   you wish to use
- * - SOCKET_IP6 if you want to use IPv6
- * - SOCKET_SSL if you want to use secure sockets
- * - SOCKET_SRV to create a listener socket
- * - SOCKET_BIO to use blocking i/o
- * SOCKET_IP6 and SOCKET_SSL may be however disabled at compilation time.
+ * - SOCKET_UDP: select the UDP transport layer (TCP by default)
+ * - SOCKET_IP6: select IPv6 network layer (IPv4 by default)
+ * - SOCKET_BIO: blocking i/o (non-blocking by default)
+ * - SOCKET_SSL: secure socket layer
+ * - SOCKET_SERVER creates a listener socket
+ * - SOCKET_CLIENT creates a persistent connection
+ *
+ * SOCKET_IP6 and SOCKET_SSL may be disabled at compilation time and will
+ * be ignored in that case.
  *
  * A socket opened with this function MUST be destroyed with socket_close().
  *

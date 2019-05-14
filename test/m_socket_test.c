@@ -122,7 +122,7 @@ int test_socket(void)
 
     /* TCP, blocking */
     printf("(-) TCP\n");
-    params = SOCKET_SRV | SOCKET_BIO;
+    params = SOCKET_SERVER | SOCKET_BIO;
 
     init_done = 0;
 
@@ -148,7 +148,7 @@ int test_socket(void)
     #ifdef _ENABLE_UDP
     /* UDP, blocking */
     printf("(-) UDP\n");
-    params = SOCKET_SRV | SOCKET_UDP | SOCKET_BIO;
+    params = SOCKET_SERVER | SOCKET_UDP | SOCKET_BIO;
 
     init_done = 0;
 
@@ -175,7 +175,7 @@ int test_socket(void)
     #ifdef _ENABLE_SSL
     /* SSL, blocking */
     printf("(-) SSL\n");
-    params = SOCKET_SRV | SOCKET_SSL | SOCKET_BIO;
+    params = SOCKET_SERVER | SOCKET_SSL | SOCKET_BIO;
 
     init_done = 0;
 
