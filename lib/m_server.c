@@ -349,7 +349,7 @@ static void _server_poll(void)
 
         for (i = 0; i < pending; i ++) {
             if (SOCKET_HASERROR(s[i])) {
-                if (~s[i]->_flags & SOCKET_CLI) {
+                if (~s[i]->_flags & SOCKET_CLIENT) {
                     socket_release(s[i]); s[i] = socket_close(s[i]);
                     continue;
                 } else goto _wait;
@@ -473,7 +473,7 @@ static m_socket *_server_receive(m_string *buffer)
             if (ret != 0) { closesocket(fd); goto _release; }
 
             /* create a virtual UDP socket */
-            z = socket_open(host, serv, SOCKET_UDP | SOCKET_NFD);
+            z = socket_open(host, serv, SOCKET_UDP | SOCKET_NEW);
             if (! z) { closesocket(fd); goto _release; }
 
             z->_fd = fd; z->_flags |= (s->_flags & _SOCKET_RSV);
@@ -958,7 +958,7 @@ public void __server_privileged_process(int channel)
             memcpy(& flags, sep2 + 1, sizeof(flags)); flags &= 0xFFFF;
 
             /* ignore the request if it is not a tcp server socket */
-            if (flags & SOCKET_UDP || ~flags & SOCKET_SRV) {
+            if (flags & SOCKET_UDP || ~flags & SOCKET_SERVER) {
                 if (send(channel, (char *) & ret, sizeof(ret), 0x0) <= 0)
                     serror(ERR(server_privileged_process, send));
                 continue;
@@ -1363,7 +1363,7 @@ public int server_open_managed_socket(uint32_t token, const char *ip,
 
     if (socket_lock(sock) != 0) { socket_close(sock); return -1; }
 
-    if (flags & SOCKET_SRV) {
+    if (flags & SOCKET_SERVER) {
         if (socket_listen(sock) != 0) {
             debug("server_open_managed_socket(): listen failed.\n");
             socket_unlock(sock);

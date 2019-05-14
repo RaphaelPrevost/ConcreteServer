@@ -56,7 +56,7 @@ static void _sigusr1_handler(UNUSED int _dummy);
 #define MAIN_PRINTVER \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"]"CONCRETE_OS"\n" \
-"Copyright (c) 2005-2012 BGA://Buro.asia Limited, all rights reserved.\n\n"
+"Copyright (c) 2005-2019 Raphael Prevost, all rights reserved.\n\n"
 
 #define MAIN_OPTSHRT_DAEMON "-d"
 #define MAIN_OPTLONG_DAEMON "--daemon"
@@ -73,7 +73,7 @@ static void _sigusr1_handler(UNUSED int _dummy);
 #define MAIN_PRINTHLP \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"]"CONCRETE_OS"\n" \
-"Copyright (c) 2005-2012 BGA://Buro.asia Limited, all rights reserved.\n\n" \
+"Copyright (c) 2005-2019 Raphael Prevost, all rights reserved.\n\n" \
 "Usage: %s [OPTION]\n" \
 "Start the Concrete Server.\n" \
 "\nOptions:\n\n" \
@@ -91,7 +91,7 @@ static void _sigusr1_handler(UNUSED int _dummy);
 #define MAIN_PRINTHLP \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"]"CONCRETE_OS"\n" \
-"Copyright (c) 2005-2012 BGA://Buro.asia Limited, all rights reserved.\n\n" \
+"Copyright (c) 2005-2019 Raphael Prevost, all rights reserved.\n\n" \
 "Usage: %s [OPTION]\n" \
 "Start the Concrete Server.\n" \
 "\nOptions:\n\n" \
@@ -141,7 +141,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv);
 #define MAIN_PRINTVER \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"] for Windows NT\n" \
-"Copyright (c) 2005-2012 BGA://Buro.asia Limited, all rights reserved.\n\n"
+"Copyright (c) 2005-2019 Raphael Prevost, all rights reserved.\n\n"
 
 #define MAIN_OPTSHRT_DAEMON "/d"
 #define MAIN_OPTLONG_DAEMON "/daemon"
@@ -169,7 +169,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv);
 #define MAIN_PRINTHLP \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"] for Windows NT\n" \
-"Copyright (c) 2005-2012 BGA://Buro.asia Limited, all rights reserved.\n\n" \
+"Copyright (c) 2005-2019 Raphael Prevost, all rights reserved.\n\n" \
 "Usage: %s [OPTION]\n" \
 "Start the Concrete Server.\n" \
 "\nOptions:\n\n" \
@@ -193,7 +193,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv);
 #define MAIN_PRINTHLP \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"] for Windows NT\n" \
-"Copyright (c) 2005-2012 BGA://Buro.asia Limited, all rights reserved.\n\n" \
+"Copyright (c) 2005-2019 Raphael Prevost, all rights reserved.\n\n" \
 "Usage: %s [OPTION]\n" \
 "Start the Concrete Server.\n" \
 "\nOptions:\n\n" \
@@ -1205,13 +1205,14 @@ export int plugin_init(uint32_t id, UNUSED int argc, UNUSED char **argv)
     plugin_token = id;
 
     fprintf(stderr, "BUILTIN: loading builtin plugin...\n");
-    fprintf(stderr, "BUILTIN: Copyright (c) 2008-2012 ");
-    fprintf(stderr, "BGA://Buro.asia Limited, all rights reserved.\n");
+    fprintf(stderr, "BUILTIN: Copyright (c) 2008-2019 ");
+    fprintf(stderr, "Raphael Prevost, all rights reserved.\n");
     fprintf(stderr, "BUILTIN: version "CONCRETE_VERSION" ["__DATE__"]\n");
 
     fprintf(stderr, "BUILTIN: listening on port "BUILTIN_PORT".\n");
 
-    if (server_open_managed_socket(id, NULL, BUILTIN_PORT, SOCKET_SRV) == -1) {
+    if (server_open_managed_socket(id, NULL, BUILTIN_PORT,
+                                   SOCKET_SERVER) == -1) {
         fprintf(stderr, "BUILTIN: could not listen to TCP port "
                 BUILTIN_PORT".\n");
         return -1;
@@ -1219,7 +1220,7 @@ export int plugin_init(uint32_t id, UNUSED int argc, UNUSED char **argv)
 
     #ifdef _ENABLE_UDP
     if (server_open_managed_socket(id, NULL, BUILTIN_PORT,
-                                   SOCKET_UDP | SOCKET_SRV) == -1) {
+                                   SOCKET_UDP | SOCKET_SERVER) == -1) {
         fprintf(stderr, "BUILTIN: could not listen to UDP port "
                 BUILTIN_PORT".\n");
         return -1;
