@@ -768,34 +768,34 @@ public int server_init(void)
 
     if (string_api_setup() == -1) {
         fprintf(stderr, "server_init(): string API setup failed.\n");
-        goto _error_string;
+        goto _err_string;
     }
 
     if (socket_api_setup() == -1) {
         fprintf(stderr, "server_init(): socket API setup failed.\n");
-        goto _error_socket;
+        goto _err_socket;
     }
 
     if (plugin_api_setup() == -1) {
         fprintf(stderr, "server_init(): plugin API setup failed.\n");
-        goto _error_plugin;
+        goto _err_plugin;
     }
 
     if (fs_api_setup() == -1) {
         fprintf(stderr, "server_init(): file API setup failed.\n");
-        goto _error_file;
+        goto _err_file;
     }
 
     if (pthread_attr_init(& attr) != 0) {
         perror(ERR(server_init, pthread_attr_init));
-        goto _error_attr;
+        goto _err_attr;
     }
 
     #ifdef _ENABLE_UDP
     /* create the UDP sockets registry */
     if (! (_UDP = hashtable_alloc(NULL)) ) {
         fprintf(stderr, "server_init(): failed to allocate the UDP registry.\n");
-        goto _error_udp;
+        goto _err_udp;
     }
     #endif
 
@@ -805,19 +805,19 @@ public int server_init(void)
          (socket_hook(_HOOK_OPENED, _server_opened_cb) == -1) ||
          (socket_hook(_HOOK_CLOSED, _server_closed_cb) == -1)) {
         fprintf(stderr, "server_init(): failed to hook the socket API.\n");
-        goto _error_hook;
+        goto _err_hook;
     }
 
     /* allocate the socket queues */
     if (! (_blocking = socket_queue_alloc()) ) return -1;
-    if (! (_readable = socket_queue_alloc()) ) goto _error_rdq;
-    if (! (_writable = socket_queue_alloc()) ) goto _error_wrq;
-    if (! (_incoming = socket_queue_alloc()) ) goto _error_inq;
+    if (! (_readable = socket_queue_alloc()) ) goto _err_rdq;
+    if (! (_writable = socket_queue_alloc()) ) goto _err_wrq;
+    if (! (_incoming = socket_queue_alloc()) ) goto _err_inq;
 
     #if defined(_ENABLE_CONFIG) && defined(HAS_LIBXML)
     if (configure(CONFDIR, "concrete.xml") == -1) {
         fprintf(stderr, "server_init(): server configuration failed.\n");
-        goto _error_config;
+        goto _err_config;
     }
 
     _concurrency = config_get_concurrency();
@@ -828,7 +828,7 @@ public int server_init(void)
     /* spawn the worker threads */
     if (! (_thread = malloc(_concurrency * sizeof(*_thread))) ) {
         perror(ERR(server_init, malloc));
-        goto _error_config;
+        goto _err_config;
     }
 
     pthread_attr_setstacksize(& attr, SERVER_STACKSIZE);
@@ -836,7 +836,7 @@ public int server_init(void)
     for (i = 0; i < _concurrency; i ++) {
         if (pthread_create(& _thread[i], & attr, _server_loop, NULL) == -1) {
             perror(ERR(server_init, pthread_create));
-            goto _error_start;
+            goto _err_start;
         }
     }
 
@@ -859,34 +859,34 @@ public int server_init(void)
 
     return 0;
 
-_error_start:
+_err_start:
     free(_thread);
     fprintf(stderr, "server_init(): failed to start server threads.\n");
-_error_config:
+_err_config:
     plugin_api_cleanup();
     socket_api_cleanup();
     _incoming = socket_queue_free(_incoming);
-_error_inq:
+_err_inq:
     _writable = socket_queue_free(_writable);
-_error_wrq:
+_err_wrq:
     _readable = socket_queue_free(_readable);
-_error_rdq:
+_err_rdq:
     _blocking = socket_queue_free(_blocking);
-_error_hook:
+_err_hook:
 #ifdef _ENABLE_UDP
     _UDP = hashtable_free(_UDP);
-_error_udp:
+_err_udp:
 #endif
     pthread_attr_destroy(& attr);
-_error_attr:
+_err_attr:
     fs_api_cleanup();
-_error_file:
+_err_file:
     plugin_api_cleanup();
-_error_plugin:
+_err_plugin:
     socket_api_cleanup();
-_error_socket:
+_err_socket:
     string_api_cleanup();
-_error_string:
+_err_string:
     return -1;
 }
 
@@ -1190,18 +1190,18 @@ public int server_privileged_call(int opcode, const void *cmd, size_t len)
             if (send(_priv_com, buf, b - buf, 0x0) <= 0) {
                 serror(ERR(privileged, send));
                 pthread_mutex_unlock(& _priv_lock);
-                goto _bindrwerror;
+                goto _err_bind;
             }
             if (recv(_priv_com, (char *) & ret, sizeof(ret), 0x0) <= 0) {
                 serror(ERR(privileged, recv));
                 pthread_mutex_unlock(& _priv_lock);
-                goto _bindrwerror;
+                goto _err_bind;
             }
             if (ret == 0) socket_sendfd(_priv_com, s->_fd);
             if (recv(_priv_com, (char *) & ret, sizeof(ret), 0x0) <= 0) {
                 serror(ERR(privileged, recv));
                 pthread_mutex_unlock(& _priv_lock);
-                goto _bindrwerror;
+                goto _err_bind;
             }
             if (ret == 0) s->_fd = socket_recvfd(_priv_com);
 
@@ -1211,7 +1211,7 @@ public int server_privileged_call(int opcode, const void *cmd, size_t len)
 
             return ret;
 
-        _bindrwerror:
+        _err_bind:
             free(buf);
             return -1;
 
@@ -1229,12 +1229,12 @@ public int server_privileged_call(int opcode, const void *cmd, size_t len)
             if (send(_priv_com, buf, sizeof("AUTH") + len, 0x0) <= 0) {
                 serror(ERR(privileged, send));
                 pthread_mutex_unlock(& _priv_lock);
-                goto _authrwerror;
+                goto _err_auth;
             }
             if (recv(_priv_com, (char *) & ret, sizeof(ret), 0x0) <= 0) {
                 serror(ERR(privileged, recv));
                 pthread_mutex_unlock(& _priv_lock);
-                goto _authrwerror;
+                goto _err_auth;
             }
 
             pthread_mutex_unlock(& _priv_lock);
@@ -1243,7 +1243,7 @@ public int server_privileged_call(int opcode, const void *cmd, size_t len)
 
             return ret;
 
-        _authrwerror:
+        _err_auth:
             free(buf);
             return -1;
 

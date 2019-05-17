@@ -778,7 +778,7 @@ public int socket_connect(m_socket *s)
                         s->info->ai_protocol);
         if (s->_fd == INVALID_SOCKET) {
             serror(ERR(socket_open, socket));
-            goto _errconnect;
+            goto _err_connect;
         }
 
         /* use non-blocking i/o */
@@ -796,10 +796,10 @@ public int socket_connect(m_socket *s)
         case EINTR:
         case EINPROGRESS:
         case EALREADY:
-        case EWOULDBLOCK: goto _erragain;
+        case EWOULDBLOCK: goto _err_again;
 
         /* other error */
-        default: goto _errconnect;
+        default: goto _err_connect;
     }
 
     /* remove "connection in progress" flag and mark the socket as connected */
@@ -815,13 +815,13 @@ public int socket_connect(m_socket *s)
 
     return 0;
 
-_erragain:
+_err_again:
         /* the server will handle the connection itself */
         s->_state |= _SOCKET_C;
         /* it is more efficient to poll before retrying */
         s->_state &= ~_SOCKET_W;
         return SOCKET_EAGAIN;
-_errconnect:
+_err_connect:
         /* connection failed */
         serror(ERR(socket_connect, connect));
         return SOCKET_EFATAL;

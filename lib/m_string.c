@@ -40,7 +40,31 @@
 /* -- hexadecimal digits -- */
 static const char _hex[] = "0123456789abcdef";
 
-/* -- base64 encoding/decoding specific variables -- */
+/* -- base58 encoding/decoding -- */
+
+/* encoding lookup table */
+static const char _b58[] = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+                           "abcdefghijkmnopqrstuvwxyz";
+
+/* decoding lookup table */
+static const char _d58[] = {
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /*  12 */
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /*  24 */
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /*  36 */
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, /*  48 */
+    -1,  0,  1,  2,  3,  4,  5,  6,  7,  8, -1, -1, /*  60 */
+    -1, -1, -1, -1, -1,  9, 10, 11, 12, 13, 14, 15, /*  72 */
+    16, -1, 17, 18, 19, 20, 21, -1, 22, 23, 24, 25, /*  84 */
+    26, 27, 28, 29, 30, 31, 32, -1, -1, -1, -1, -1, /*  96 */
+    -1, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, /* 108 */
+    -1, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, /* 120 */
+    55, 56, 57, -1, -1, -1, -1, -1                  /* 128 */
+};
+
+/* macro to ease the use of the decode table and prevent out of bound access */
+#define _D58(c) (_d58[(c) & 0x7F])
+
+/* -- base64 encoding/decoding -- */
 
 /* encoding lookup table */
 static const char _b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -143,6 +167,7 @@ public m_string *string_prealloc(const char *string, size_t len, size_t total)
 
     if ((size_t) allocsize < total) {
         debug("string_prealloc(): integer overflow.\n");
+        free(new);
         return NULL;
     }
 
@@ -819,7 +844,7 @@ public size_t string_convs(const char *src, size_t srclen, const char *src_enc,
         }
         /* conversion failure */
         perror(ERR(string_convs, iconv));
-        goto _conv_fail;
+        goto _err_conv;
     }
 
     /* dry run: evaluate the size required for the output */
@@ -829,7 +854,7 @@ public size_t string_convs(const char *src, size_t srclen, const char *src_enc,
 
     return allocsize;
 
-_conv_fail:
+_err_conv:
     iconv_close(conv);
 
     return -1;
@@ -864,7 +889,7 @@ public int string_conv(m_string *s, const char *src_enc, const char *dst_enc)
         }
         /* incomplete input or invalid multibyte sequence */
         perror(ERR(string_conv, iconv));
-        goto _conversion_failure;
+        goto _err_conv;
     }
 
     allocsize += sizeof(buffer) - outlen;
@@ -873,7 +898,7 @@ public int string_conv(m_string *s, const char *src_enc, const char *dst_enc)
         if (allocsize > SIZE(s)) {
             /* extend the string */
             if (string_extend(s, allocsize) == -1)
-                goto _conversion_failure;
+                goto _err_conv;
         }
         string_free_token(s);
     }
@@ -884,7 +909,7 @@ public int string_conv(m_string *s, const char *src_enc, const char *dst_enc)
         /* convert again */
         if (iconv(conv, & in, & inlen, & out, & outlen) == (size_t) -1) {
             perror(ERR(string_conv, iconv));
-            goto _conversion_failure;
+            goto _err_conv;
         }
     } else memcpy(s->_data, buffer, allocsize);
 
@@ -894,7 +919,7 @@ public int string_conv(m_string *s, const char *src_enc, const char *dst_enc)
 
     return 0;
 
-_conversion_failure:
+_err_conv:
     iconv_close(conv);
 
     return -1;
@@ -1244,9 +1269,8 @@ public int string_dim(m_string *string, size_t size)
     } else if (diff < 0) string->_len += diff;
 
     /* zero out the remainder of the buffer */
-    /* FIXME ??? */
     if (SIZE(string) < string->_alloc)
-        memset(string->_data + string->_len, 0, 1);
+        string->_data[string->_len] = 0;
 
     return 0;
 }
@@ -1295,14 +1319,14 @@ static m_string *_string_mov(m_string *to, off_t o, const char * from, size_t l)
     /* sanity checks */
     if (o < 0 || ! from) {
         debug("string_movs(): bad parameters.\n");
-        goto _string_movs_error;
+        goto _error;
     }
 
     /* if the destination string does not exist, allocate it */
     if (! to) {
         if (! (to = string_alloc(NULL, l)) ) {
             debug("string_movs(): allocation failure.\n");
-            return NULL;
+            goto _error;
         } else alloc = 1;
     } else while (parent->parent) parent = parent->parent;
 
@@ -1313,7 +1337,7 @@ static m_string *_string_mov(m_string *to, off_t o, const char * from, size_t l)
     /* reject out of bound offsets and resize the destination string */
     if (string_extend(to, o + l) == -1) {
         debug("string_movs(): resize failure.\n");
-        goto _string_movs_error;
+        goto _error;
     } else if (within) {
         /* if the source was within destination, correct the pointer */
         from = CSTR(parent) + within_offset;
@@ -1321,7 +1345,7 @@ static m_string *_string_mov(m_string *to, off_t o, const char * from, size_t l)
         /* check if the offset is still in bound */
         if ( (from < CSTR(parent)) || (from >= STRING_END(parent)) ) {
             debug("string_movs(): offset out of bound.\n");
-            goto _string_movs_error;
+            goto _error;
         }
     }
 
@@ -1335,7 +1359,7 @@ static m_string *_string_mov(m_string *to, off_t o, const char * from, size_t l)
 
     return to;
 
-_string_movs_error:
+_error:
     if (alloc) string_free(to);
     return NULL;
 }
@@ -1910,7 +1934,7 @@ public m_string *string_reps(m_string *string, const char *search, size_t slen,
 
     if ( (count = i) == 0) {
         debug("string_reps(): search string not found.\n");
-        goto _error_nfnd;
+        goto _err_nfnd;
     }
 
     /* XXX ensure the string has enough room for the replacement
@@ -1919,21 +1943,21 @@ public m_string *string_reps(m_string *string, const char *search, size_t slen,
        out-of-memory error and end up with a garbled string */
     if (string_extend(string, SIZE(string) + count * (rlen - slen)) == -1) {
         debug("string_reps(): resize failure.\n");
-        goto _error_size;
+        goto _err_size;
     }
 
     /* perform the replacement */
     for (i = 0; i < count; i ++) {
         /* copy the data between the strings that are going to be replaced */
         if (! string_movs(string, dst, CSTR(string) + src, offset[i] - src))
-            goto _error_move;
+            goto _err_move;
         dst += offset[i] - src; src = offset[i] + slen;
 
         /* loop no further without proper replacement string */
         if (! rep || ! rlen) continue;
 
         /* replace the string */
-        if (! string_movs(string, dst, rep, rlen)) goto _error_move;
+        if (! string_movs(string, dst, rep, rlen)) goto _err_move;
         dst += rlen;
     }
 
@@ -1947,10 +1971,10 @@ public m_string *string_reps(m_string *string, const char *search, size_t slen,
 
     return string;
 
-_error_move: /* this should never happen */
+_err_move: /* this should never happen */
     debug("string_reps(): string_movs() failed !\n");
-_error_size: /* string_extend() failure */
-_error_nfnd: /* not found */
+_err_size: /* string_extend() failure */
+_err_nfnd: /* not found */
     free(offset);
     return NULL;
 }
@@ -2193,7 +2217,7 @@ public int string_parse(m_string *string, const char *pattern, size_t len)
 
     if (! (off = malloc(size * sizeof(*off))) ) {
         perror(ERR(string_parse, malloc));
-        goto _error_malloc;
+        goto _err_malloc;
     }
 
     for (i = 0, last = 0; ; last = off[1], i ++) {
@@ -2203,14 +2227,14 @@ public int string_parse(m_string *string, const char *pattern, size_t len)
         if (r <= 0) {
             if (i) break;
             debug("string_parse(): error matching pattern %s\n", pattern);
-            goto _error_exec;
+            goto _err_exec;
         }
 
         /* found something, add a token and possibly subtokens */
         if (! (new_token = realloc(token, (i + 1) * sizeof(*token))) ) {
             perror(ERR(string_parse, realloc));
             if (token) while (i --) free(token[i].token); free(token);
-            goto _error_token;
+            goto _err_token;
         }
 
         token = new_token;
@@ -2230,7 +2254,7 @@ public int string_parse(m_string *string, const char *pattern, size_t len)
 
         if (! (token[i].token = malloc(token[i].parts * sizeof(token[i]))) ) {
             perror(ERR(string_parse, malloc));
-            goto _error_token;
+            goto _err_token;
         }
 
         for (j = 2, k = 0; j + 1 < (unsigned) r * 2; j += 2, k ++) {
@@ -2251,11 +2275,11 @@ public int string_parse(m_string *string, const char *pattern, size_t len)
 
     return 0;
 
-_error_token:
+_err_token:
     if (token) while (i --) free(token[i].token); free(token);
-_error_exec:
+_err_exec:
     free(off);
-_error_malloc:
+_err_malloc:
     pcre_free(regex);
 
     return -1;
@@ -2263,6 +2287,170 @@ _error_malloc:
 
 /* -------------------------------------------------------------------------- */
 #endif
+/* -------------------------------------------------------------------------- */
+
+public m_string *string_b58s(const char *s, size_t size)
+{
+    /** @brief convert a C string to base58 encoding */
+
+    size_t i = 0, zcount = 0;
+    int j = 0, high = 0, carry = 0;
+    int32_t b58size = 0;
+    uint8_t *buffer = NULL;
+    m_string *ret = NULL;
+
+    if (! s || ! size) {
+        debug("string_b58s(): bad parameters.\n");
+        return NULL;
+    }
+
+    /* get the number of leading NUL chars */
+    while (zcount < size && ! s[zcount]) zcount ++;
+
+    /* compute the size of the base58 encoded string, with a trailing NUL */
+    b58size = (size - zcount) * 138 / 100 + 1;
+
+    if ((size_t) b58size < size) {
+        debug("string_b58s(): integer overflow.\n");
+        return NULL;
+    }
+
+    if (! (buffer = calloc(b58size, sizeof(*buffer))) ) {
+        perror(ERR(string_b58s, calloc));
+        return NULL;
+    }
+
+    for (i = zcount, high = b58size - 1; i < size; i ++, high = j) {
+        for (carry = (uint8_t) s[i], j = b58size - 1; j > high || carry; j --) {
+            carry += 256 * buffer[j];
+            buffer[j] = carry % 58;
+            carry /= 58;
+        }
+    }
+
+    for (j = 0; j < b58size && ! buffer[j]; j ++);
+
+    if (! (ret = string_alloc(NULL, zcount + b58size - j)) )
+        goto _err_alloc;
+
+    if (zcount) memset(ret->_data, '1', zcount);
+
+    for (i = zcount; j < b58size; i ++, j ++)
+        ret->_data[i] = _b58[buffer[j]];
+
+    ret->_data[i] = '\0'; ret->_len = i;
+
+_err_alloc:
+    free(buffer);
+
+    return ret;
+}
+
+/* -------------------------------------------------------------------------- */
+
+public m_string *string_b58(const m_string *s)
+{
+    /** @brief convert a string to base58 encoding */
+
+    return string_b58s(CSTR(s), SIZE(s));
+}
+
+/* -------------------------------------------------------------------------- */
+
+public m_string *string_deb58s(const char *s, size_t size)
+{
+    /** @brief convert a base58 encoded C string to plain text */
+
+    uint32_t *r = NULL;
+    size_t i = 0, zcount = 0, remain = 0;
+    int j = 0, outlen = 0;
+    uint64_t b = 0;
+    uint32_t c = 0, mask = 0;
+    m_string *ret = NULL;
+
+    if (! s || ! size) {
+        debug("string_deb58s(): bad parameters.\n");
+        return NULL;
+    }
+
+    /* output buffer */
+    if (! (r = calloc( (outlen = (size + 3) / 4) + 1, sizeof(*r))) ) {
+        perror(ERR(string_deb58s, calloc));
+        return NULL;
+    }
+
+    /* string wrapper */
+    if (! (ret = string_alloc(NULL, 0)) ) {
+        debug("string_deb58s(): out of memory.\n");
+        free(r);
+        return NULL;
+    }
+
+    /* legitimate leading 0s */
+    while (zcount < size && s[zcount] == '1') zcount ++;
+
+    if ( (remain = size & 3) ) mask = 0xFFFFFFFF << (remain * 8);
+
+    for (i = zcount; i < size; i ++) {
+        if ((int) (c = _D58(s[i])) == -1) goto _panic;
+
+        for (j = outlen - 1; j; j --) {
+            b = ((uint64_t) r[j]) * 58 + c;
+            c = (b & 0x3F00000000) >> 32;
+            r[j] = b & 0xFFFFFFFF;
+        }
+
+        /* output was too large */
+        if (c || r[0] & mask) goto _panic;
+    }
+
+    c = r[(i = 0)]; ret->_data = (char *) r;
+
+    switch (remain) {
+    case 3: { ret->_data[i ++] = (c & 0xFF0000) >> 16; }
+    case 2: { ret->_data[i ++] = (c & 0xFF00) >> 8; }
+    case 1: { ret->_data[i ++] = (c & 0xFF); j = 1; goto _loop; }
+    }
+
+    for (j = 0; j < outlen; j ++) {
+_loop:  c = r[j];
+        ret->_data[i ++] = (c >> 0x18) & 0xFF;
+        ret->_data[i ++] = (c >> 0x10) & 0xFF;
+        ret->_data[i ++] = (c >> 0x08) & 0xFF;
+        ret->_data[i ++] = (c & 0xFF);
+    }
+
+    /* check if there is spurious remaining 0s */
+    for (remain = 0; remain < i && ! ret->_data[remain]; remain ++);
+    if (zcount > remain) goto _panic;
+
+    /* real length */
+    ret->_len = i - (remain - zcount);
+
+    /* remove spurious leading 0s */
+    memmove(ret->_data, ret->_data + remain - zcount, ret->_len);
+    ret->_data[ret->_len] = '\0';
+
+    /* package the buffer */
+    ret->_flags = 0; ret->_alloc = outlen * sizeof(*r);
+    ret->_parts_alloc = ret->parts = 0; ret->token = NULL;
+
+    return ret;
+
+_panic:
+    free(r); string_free(ret);
+    return NULL;
+}
+
+/* -------------------------------------------------------------------------- */
+
+public m_string *string_deb58(const m_string *s)
+{
+    /** @brief convert a base58 encoded string to plain text */
+
+    return string_deb58s(CSTR(s), SIZE(s));
+}
+
 /* -------------------------------------------------------------------------- */
 
 public m_string *string_b64s(const char *s, size_t size, size_t linesize)

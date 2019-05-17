@@ -146,7 +146,7 @@ private int plugin_open(const char *path, const char *name)
 
     if (! (p->_lock = malloc(sizeof(*p->_lock))) ) {
         perror(ERR(plugin_open, malloc));
-        goto _errmalloc;
+        goto _err_malloc;
     }
 
     pthread_rwlock_init(p->_lock, NULL);
@@ -157,7 +157,7 @@ private int plugin_open(const char *path, const char *name)
     if (_plugin_reg(p) == -1) {
         fprintf(stderr, ERR(plugin_open, _plugin_reg)
                         ": plugin registration failed.\n");
-        goto _errreg;
+        goto _err_reg;
     }
 
     /* map the shared library in the process address space */
@@ -167,9 +167,9 @@ private int plugin_open(const char *path, const char *name)
             free(fullpath);
             if (! p->_handle) {
                 fprintf(stderr, ERR(plugin_open, dlopen)": %s\n", dlerror());
-                goto _errdlopen;
+                goto _err_dlopen;
             }
-        } else goto _errdlopen;
+        } else goto _err_dlopen;
     } else {
         #ifndef WIN32
         if (! (p->_handle = dlopen(NULL, RTLD_LAZY)) ) {
@@ -178,32 +178,32 @@ private int plugin_open(const char *path, const char *name)
         #endif
             fprintf(stderr,
                     ERR(plugin_open, GetModuleHandle)": %s\n", dlerror());
-            goto _errdlopen;
+            goto _err_dlopen;
         }
     }
 
     /* load mandatory symbols */
     if (! (plugin_api = (unsigned int (*)(void))
            dlfunc(p->_handle, "plugin_api"))
-       ) goto _errdlget;
+       ) goto _err_dlget;
 
     /* check the required API revision */
     if (plugin_api() > __CONCRETE__) {
         fprintf(stderr, "plugin_open(): %s uses a newer API revision.\n", path);
-        goto _errdlsym;
+        goto _err_dlsym;
     }
 
     if (! (p->plugin_init = (int (*)(uint32_t, int, char **))
                              dlfunc(p->_handle, "plugin_init"))
-       ) goto _errdlget;
+       ) goto _err_dlget;
 
     if (! (p->plugin_fini = (void (*)(void))
                              dlfunc(p->_handle, "plugin_fini"))
-       ) goto _errdlget;
+       ) goto _err_dlget;
 
     if (! (p->plugin_main = (void (*)(uint16_t, uint16_t, m_string *))
                              dlfunc(p->_handle, "plugin_main"))
-       ) goto _errdlget;
+       ) goto _err_dlget;
 
     /* optional symbol, plugin interrupt handler */
     p->plugin_intr = (void (*)(uint16_t, uint16_t, int))
@@ -223,15 +223,15 @@ private int plugin_open(const char *path, const char *name)
 
     return ret;
 
-_errdlget:
+_err_dlget:
     fprintf(stderr, ERR(plugin_open, dlsym)": %s\n", dlerror());
-_errdlsym:
+_err_dlsym:
     dlclose(p->_handle);
-_errdlopen:
+_err_dlopen:
     _plugin_dereg(p);
-_errreg:
+_err_reg:
     free(p->_lock);
-_errmalloc:
+_err_malloc:
     free(p);
     return -1;
 }

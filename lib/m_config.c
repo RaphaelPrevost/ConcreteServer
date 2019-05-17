@@ -261,7 +261,7 @@ static int _config_ssl(unsigned int id, xmlNode *ssl)
        or ca for client use */
     if ( (! cert || ! key) && ! ca) {
         fprintf(stderr, "_config_ssl(): missing parameters.\n");
-        ret = -1; goto _ctx_fail;
+        ret = -1; goto _err_ctx;
     }
 
     /* check if there is an existing SSL context */
@@ -269,18 +269,18 @@ static int _config_ssl(unsigned int id, xmlNode *ssl)
         /* create and initialize a new SSL context */
         if (! (meth = SSLv23_method()) ) {
             sslerror(ERR(_config_ssl, SSLv23_method));
-            ret = -1; goto _ctx_fail;
+            ret = -1; goto _err_ctx;
         }
 
         if (! (ctx = SSL_CTX_new(meth)) ) {
             sslerror(ERR(_config_ssl, SSL_CTX_new));
-            ret = -1; goto _ctx_fail;
+            ret = -1; goto _err_ctx;
         }
 
         /* load the certificate */
         if (cert && ! SSL_CTX_use_certificate_chain_file(ctx, cert)) {
             sslerror(ERR(_config_ssl, SSL_CTX_use_certificate_chain_file));
-            ret = -1; goto _ctx_err;
+            ret = -1; goto _err_crt;
         }
 
         /* set the password callback */
@@ -292,13 +292,13 @@ static int _config_ssl(unsigned int id, xmlNode *ssl)
         /* load the private key */
         if (key && ! SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM)) {
             sslerror(ERR(_config_ssl, SSL_CTX_use_PrivateKey_file));
-            ret = -1; goto _ctx_err;
+            ret = -1; goto _err_crt;
         }
 
         /* load the CA file */
         if (ca && ! SSL_CTX_load_verify_locations(ctx, ca, 0)) {
             sslerror(ERR(_config_ssl, SSL_CTX_load_verify_locations));
-            ret = -1; goto _ctx_err;
+            ret = -1; goto _err_crt;
         }
 
         #if (OPENSSL_VERSION_NUMBER < 0x00905100L)
@@ -319,9 +319,9 @@ static int _config_ssl(unsigned int id, xmlNode *ssl)
 
     return ret;
 
-_ctx_err:
+_err_crt:
     SSL_CTX_free(ctx);
-_ctx_fail:
+_err_ctx:
     xmlFree(cert); xmlFree(key); xmlFree(ca); xmlFree(password);
 
     return ret;

@@ -1364,6 +1364,66 @@ public int string_parse(m_string *string, const char *pattern, size_t len);
 #endif
 /* -------------------------------------------------------------------------- */
 
+public m_string *string_b58s(const char *s, size_t size);
+
+/**
+ * @ingroup string
+ * @fn m_string *string_b58s(const char *s, size_t size)
+ * @param s the string to be processed
+ * @param size the length of the string
+ * @return NULL if an error occured, a pointer to the base58 string otherwise.
+ *
+ * This function returns a base58 encoded copy of the given string, using
+ * Satoshi Nakamoto's alphabet.
+ *
+ */
+
+/* -------------------------------------------------------------------------- */
+
+public m_string *string_b58(const m_string *s);
+
+/**
+ * @ingroup string
+ * @fn m_string *string_b58(const m_string *s)
+ * @param s the string to be processed
+ * @return NULL if an error occured, a pointer to the base58 string otherwise.
+ *
+ * This function is simply a wrapper around @ref string_b58s(), please see
+ * the documentation of @ref string_b58s().
+ *
+ */
+
+/* -------------------------------------------------------------------------- */
+
+public m_string *string_deb58s(const char *s, size_t size);
+
+/**
+ * @ingroup string
+ * @fn m_string *string_deb58s(const char *s, size_t size)
+ * @param s the string to be processed
+ * @param size the length of the string
+ * @return NULL if an error occured, a pointer to the decoded string otherwise.
+ *
+ * This function decodes a base58 encoded string to plain text.
+ *
+ */
+
+/* -------------------------------------------------------------------------- */
+
+public m_string *string_deb58(const m_string *s);
+
+/**
+ * @ingroup string
+ * @fn m_string *string_deb58(const m_string *s)
+ * @param s the string to be processed
+ * @return NULL if an error occured, a pointer to the decoded string otherwise.
+ *
+ * This function is simply a wrapper around @ref string_deb58s(), please see
+ * the documentation of @ref string_deb58s().
+ *
+ */
+
+/* -------------------------------------------------------------------------- */
 public m_string *string_b64s(const char *s, size_t size, size_t linesize);
 
 /**

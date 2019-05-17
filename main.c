@@ -293,7 +293,7 @@ int main(int argc, char **argv)
                 printf(WINMAIN_SERVICENAME " was successfully started.\n");
                 exit(EXIT_SUCCESS);
             } else {
-                printf(WINMAIN_SERVICENAME " could not be started.\n");
+                printf(WINMAIN_SERVICENAME " cannot be started.\n");
                 exit(EXIT_FAILURE);
             }
         }
@@ -304,7 +304,7 @@ int main(int argc, char **argv)
                 printf(WINMAIN_SERVICENAME " was successfully stopped.\n");
                 exit(EXIT_SUCCESS);
             } else {
-                printf(WINMAIN_SERVICENAME " could not be stopped.\n");
+                printf(WINMAIN_SERVICENAME " cannot be stopped.\n");
                 exit(EXIT_FAILURE);
             }
         }
@@ -713,7 +713,7 @@ static VOID _spawn_child(UNUSED VOID *dummy)
         debug("_spawn_child(): path too long.\n");
         _endthread();
     } else if (bufsize == 0) {
-        debug("main_process(): could not get path to the executable.\n");
+        debug("main_process(): cannot get path to the executable.\n");
         _endthread();
     }
 
@@ -735,7 +735,7 @@ static VOID _spawn_child(UNUSED VOID *dummy)
                         NULL,                           /* current directory */
                         & startup_info,                      /* startup info */
                         & process_info)) {                   /* process info */
-        debug("main_process(): could not create privileged process.\n");
+        debug("main_process(): cannot create privileged process.\n");
         closesocket(child.in); closesocket(child.out);
         _endthread();
     }
@@ -767,14 +767,14 @@ static BOOL _service_install(VOID)
         debug("_service_install(): path too long.\n");
         return FALSE;
     } else if (ret == 0) {
-        debug("_service_install(): could not get path to the executable.\n");
+        debug("_service_install(): cannot get path to the executable.\n");
         return FALSE;
     }
 
     /* open the service control manager */
     manager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (! manager) {
-        debug("_service_install(): could not open the SCManager.\n");
+        debug("_service_install(): cannot open the SCManager.\n");
         return FALSE;
     }
 
@@ -824,7 +824,7 @@ static BOOL _service_uninstall(VOID)
 
     manager = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
     if (! manager) {
-        debug("_service_uninstall(): could not connect to the SCManager.\n");
+        debug("_service_uninstall(): cannot connect to the SCManager.\n");
         return FALSE;
     }
 
@@ -832,13 +832,13 @@ static BOOL _service_uninstall(VOID)
                           WINMAIN_SERVICENAME, SERVICE_QUERY_STATUS | DELETE);
 
     if (! service) {
-        debug("_service_uninstall(): could not open the service.\n");
+        debug("_service_uninstall(): cannot open the service.\n");
         CloseServiceHandle(manager);
         return FALSE;
     }
 
     if (! QueryServiceStatus(service, & status)) {
-        debug("_service_uninstall(): could not get service status.\n");
+        debug("_service_uninstall(): cannot get service status.\n");
         CloseServiceHandle(service); CloseServiceHandle(manager);
         return FALSE;
     }
@@ -879,20 +879,20 @@ static BOOL _service_start(VOID)
 
     manager = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
     if (! manager) {
-        debug("_service_start(): could not connect to the SCManager.\n");
+        debug("_service_start(): cannot connect to the SCManager.\n");
         return FALSE;
     }
 
     service = OpenService(manager, WINMAIN_SERVICENAME, SERVICE_START);
 
     if (! service) {
-        debug("_service_start(): could not open the service.\n");
+        debug("_service_start(): cannot open the service.\n");
         CloseServiceHandle(manager);
         return FALSE;
     }
 
     if (! StartService(service, 0, 0)) {
-        debug("_service_start(): could not start the service.\n");
+        debug("_service_start(): cannot start the service.\n");
         CloseServiceHandle(service);
         CloseServiceHandle(manager);
         return FALSE;
@@ -913,20 +913,20 @@ static BOOL _service_stop(VOID)
 
     manager = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT);
     if (! manager) {
-        debug("_service_stop(): could not connect to the SCManager.\n");
+        debug("_service_stop(): cannot connect to the SCManager.\n");
         return FALSE;
     }
 
     service = OpenService(manager, WINMAIN_SERVICENAME, SERVICE_STOP);
 
     if (! service) {
-        debug("_service_stop(): could not open the service.\n");
+        debug("_service_stop(): cannot open the service.\n");
         CloseServiceHandle(manager);
         return FALSE;
     }
 
     if (! ControlService(service, SERVICE_CONTROL_STOP, & status)) {
-        debug("_service_stop(): could not stop the service.\n");
+        debug("_service_stop(): cannot stop the service.\n");
         CloseServiceHandle(service);
         CloseServiceHandle(manager);
         return FALSE;
@@ -1019,14 +1019,14 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv)
     /* create the termination event */
     termination_event = CreateEvent(& sec_attr, TRUE, FALSE, NULL);
     if (! termination_event) {
-        debug("_service_main(): could not create termination event.\n");
+        debug("_service_main(): cannot create termination event.\n");
         _service_die();
     }
 
     #ifdef _ENABLE_PRIVILEGE_SEPARATION
     /* get CreateRestrictedToken() */
     if (! (advapi32 = LoadLibrary("ADVAPI32.DLL")) ) {
-        debug("_service_main(): could not open ADVAPI32.DLL\n");
+        debug("_service_main(): cannot open ADVAPI32.DLL\n");
         _service_die();
     }
 
@@ -1042,7 +1042,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv)
         debug("_service_main(): path too long.\n");
         goto _error_0;
     } else if (bufsize == 0) {
-        debug("_service_main(): could not get path to the executable.\n");
+        debug("_service_main(): cannot get path to the executable.\n");
         goto _error_0;
     }
 
@@ -1050,7 +1050,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv)
     if (! OpenProcessToken(GetCurrentProcess(),
                            TOKEN_ALL_ACCESS,
                            & process_token)) {
-        debug("_service_main(): could not get process token.\n");
+        debug("_service_main(): cannot get process token.\n");
         goto _error_0;
     }
 
@@ -1062,7 +1062,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv)
                                    0, 0, 0, 0, 0, 0,
                                    & drop_sids[0].Sid);
     if (! ret) {
-        debug("_service_main(): could not allocate SIDs.\n");
+        debug("_service_main(): cannot allocate SIDs.\n");
         goto _error_1;
     }
 
@@ -1073,7 +1073,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv)
                                    & drop_sids[1].Sid);
 
     if (! ret) {
-        debug("_service_main(): could not allocate SIDs.\n");
+        debug("_service_main(): cannot allocate SIDs.\n");
         goto _error_2;
     }
 
@@ -1085,7 +1085,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv)
                                  & restricted_token);
 
     if (! ret) {
-        debug("_service_main(): could not create a restricted token.\n");
+        debug("_service_main(): cannot create a restricted token.\n");
         goto _error_3;
     }
 
@@ -1118,7 +1118,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv)
                               NULL,              /* current directory */
                               & startup_info,    /* startup info */
                               & process_info)) { /* process info */
-        debug("_service_main(): could not create unprivileged process.\n");
+        debug("_service_main(): cannot create unprivileged process.\n");
         CloseHandle(process_token); CloseHandle(restricted_token);
         closesocket(sockpair[0]); closesocket(sockpair[1]);
         _service_die();
@@ -1213,16 +1213,14 @@ export int plugin_init(uint32_t id, UNUSED int argc, UNUSED char **argv)
 
     if (server_open_managed_socket(id, NULL, BUILTIN_PORT,
                                    SOCKET_SERVER) == -1) {
-        fprintf(stderr, "BUILTIN: could not listen to TCP port "
-                BUILTIN_PORT".\n");
+        fprintf(stderr, "BUILTIN: cannot listen to TCP port "BUILTIN_PORT".\n");
         return -1;
     }
 
     #ifdef _ENABLE_UDP
     if (server_open_managed_socket(id, NULL, BUILTIN_PORT,
                                    SOCKET_UDP | SOCKET_SERVER) == -1) {
-        fprintf(stderr, "BUILTIN: could not listen to UDP port "
-                BUILTIN_PORT".\n");
+        fprintf(stderr, "BUILTIN: cannot listen to UDP port "BUILTIN_PORT".\n");
         return -1;
     }
     #endif
