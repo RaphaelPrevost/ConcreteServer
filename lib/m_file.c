@@ -519,10 +519,10 @@ public int fs_mkdir(m_view *v, const char *p, size_t l)
 
     /* skip the root */
     if (! (folder = string_select(path, v->rootlen, len - v->rootlen)) )
-        goto _errmkdir;
+        goto _err_mkdir;
 
     /* split it using the directory separator */
-    if (string_splits(folder, DIR_SEP_STR, 1) == -1) goto _errmkdir;
+    if (string_splits(folder, DIR_SEP_STR, 1) == -1) goto _err_mkdir;
 
     for (i = 0; i < PARTS(folder); i ++) {
 
@@ -535,7 +535,7 @@ public int fs_mkdir(m_view *v, const char *p, size_t l)
             /* use default permissions */
             if (mkdir(CSTR(path), 0777) == -1) {
                 perror(ERR(fs_mkdir, mkdir));
-                goto _errmkdir;
+                goto _err_mkdir;
             }
         }
 
@@ -544,7 +544,7 @@ public int fs_mkdir(m_view *v, const char *p, size_t l)
 
     return 0;
 
-_errmkdir:
+_err_mkdir:
     folder = string_free(folder);
     return -1;
 }

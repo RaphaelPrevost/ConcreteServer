@@ -36,6 +36,16 @@ int test_string(void)
     z = string_free(z);
     printf(" SUCCESS\n");
 
+    /* base58 and base64 encoding */
+    z = string_b58s("test string", strlen("test string"));
+    printf("(*) Base58 encoding: test string -> %.*s [%zu]\n",
+           (int) SIZE(z), CSTR(z), SIZE(z));
+    z = string_free(z);
+    z = string_deb58s("Vs5LyRhXt9nUp14", strlen("Vs5LyRhXt9nUp14"));
+    printf("(*) Base58 encoding: Vs5LyRhXt9nUp14 -> %.*s [%zu]\n",
+           (int) SIZE(z), CSTR(z), SIZE(z));
+    z = string_free(z);
+
     #ifdef HAS_ICONV
     z = string_alloc(gb18030, 20);
     i = string_convs(gb18030, 20, "GB18030", NULL, 0, "UTF-8");
