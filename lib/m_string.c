@@ -250,17 +250,18 @@ public m_string *string_vfmt(m_string *str, const char *fmt, va_list args)
     }
 
     if (! str) {
-        if (! (str = string_alloc(NULL, ret + 1)) ) {
+        if (! (str = string_alloc(NULL, ret)) ) {
             debug("string_vfmt(): allocation failure.\n");
             va_end(copy);
             return NULL;
         }
-    } else if (string_extend(str, ret + 1) == -1) {
+    } else if (string_extend(str, ret) == -1) {
         debug("string_vfmt(): resize failure.\n");
         va_end(copy);
         return NULL;
     }
 
+    /* the length returned by vsnprintf does not include the trailing \0 */
     str->_len = m_vsnprintf(str->_data, ret + 1, fmt, copy);
 
     va_end(copy);
@@ -319,45 +320,26 @@ public m_string *string_catfmt(m_string *str, const char *fmt, ...)
     /* discard the mangled list */
     va_end(args);
 
-    /* the length returned by vsnprintf does not include the trailing \0 */
     if (! str) {
-        if (! (str = string_alloc(NULL, ret + 1)) ) {
+        if (! (str = string_alloc(NULL, ret)) ) {
             debug("string_catfmt(): allocation failure.\n");
             va_end(copy);
             return NULL;
         }
     } else {
-        if (string_extend(str, (off = SIZE(str)) + ret + 1) == -1) {
+        if (string_extend(str, (off = SIZE(str)) + ret) == -1) {
             debug("string_catfmt(): resize failure.\n");
             va_end(copy);
             return NULL;
-        }
-        str->_len += ret;
+        } else str->_len += ret;
     }
 
+    /* the length returned by vsnprintf does not include the trailing \0 */
     m_vsnprintf(str->_data + off, ret + 1, fmt, copy);
 
     va_end(copy);
 
     return str;
-}
-
-/* -------------------------------------------------------------------------- */
-
-public int string_printf(m_string *s, const char *fmt, ...)
-{
-    va_list args;
-    int ret = -1;
-
-    if (! s) return -1;
-
-    va_start(args, fmt);
-    ret = m_vsnprintf(s->_data, s->_len, fmt, args);
-    va_end(args);
-
-    if (ret > 0) s->_len = ret;
-
-    return ret;
 }
 
 /* -------------------------------------------------------------------------- */

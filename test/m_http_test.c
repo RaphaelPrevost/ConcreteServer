@@ -4,6 +4,7 @@
 
 #include "../lib/m_server.h"
 #include "../lib/m_http.h"
+#include "../lib/m_file.h"
 
 int test_http(void)
 {
@@ -13,6 +14,8 @@ int test_http(void)
     m_string *z = NULL, *w = NULL, *m = NULL;
     clock_t start, stop;
     int http_status = 0;
+    m_view *v = NULL;
+    m_file *f = NULL;
     const char *frag = "HTTP/1.1 200 OK\r\nContent-";
     const char *pipeline = "Length: 1\r\n\r\n0HTTP 200 OK\r\nContent-Length: 4\r\nContent-Type: text/plain\r\n\r\nEFIE HTTP/CONNECT /url/test.html HTTP/1.1\r\nHost: lapin.com\r\n\r\nHTTPHTTP 200 OK\r\nContent-Length: 8\r\nContent-Type: text/html\r\n\r\n12345678GET /url/lapin%20malin.pdf HTTP/1.0\r\nHost: lapin.com\r\n\r\nbeginning of some requestHTTP/1.1 200 OK\r\nHost: lapin.com\r\n\r\ni put some content without content length!yeah!HTTP/1.1 200 OK\r\nContent-Length: 1\r\n\r\nQHTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nABCDEHTTP/1.1 200 OK\r\nContent-Length: 31\r\n\r\nsome text and enclosed HTTP aaaHTTP/1.1 200 OK\r\nHost: lapin.com\r\nsome content, but request is bad\r\nHTTP/1.1 200 OK\r\nContent-Length: 14\r\n\r\nGood request !HTTP/1.1 200 OK\r\nContent-";
 
@@ -29,6 +32,26 @@ int test_http(void)
         printf("%i: %.*s\n", i + 1, (int) TLEN(request, i), TSTR(request, i));
     request = string_free(request);
     http_close(h);
+
+    fprintf(stderr, "=======================\n");
+
+    v = fs_openview("lib", strlen("lib"));
+    f = fs_openfile(v, "m_http.c", strlen("m_http.c"), NULL);
+    h = http_open();
+    http_set_header(h, "User-Agent", "Mozilla");
+    http_set_header(h, "Accept", "*/*");
+    h = http_set_var(h, "test", "true", strlen("true"));
+    http_set_header(h, "Content-Transfer-Encoding", "binary");
+    h = http_set_file(h, "parm", "filename", f, 0, 100);
+    http_set_header(h, "Content-Transfer-Encoding", "binary");
+    request = http_format(h, HTTP_POST, "/form.php", "www.example.com");
+    printf("%s\n", CSTR(request));
+    for (i = 0; i < request->parts; i ++)
+        printf("%i: %.*s\n", i + 1, (int) TLEN(request, i), TSTR(request, i));
+    request = string_free(request);
+    http_close(h);
+    f = fs_closefile(f);
+    v = fs_closeview(v);
 
     m = string_alloc(frag, strlen(frag));
     z = string_alloc(pipeline, strlen(pipeline));

@@ -1,5 +1,9 @@
 #include "../lib/m_string.h"
 
+#ifdef _ENABLE_RANDOM
+#include "../lib/m_random.h"
+#endif
+
 #define DUMMY_LEN 256
 
 /* -------------------------------------------------------------------------- */
@@ -17,6 +21,10 @@ int test_string(void)
     off_t pos = 0;
     char buffer[256];
     size_t item_size = 0;
+    #ifdef _ENABLE_RANDOM
+    uint32_t random_token[10];
+    m_random *r = NULL;
+    #endif
 
     setlocale(LC_CTYPE, "zh_CN.UTF8");
 
@@ -45,6 +53,18 @@ int test_string(void)
     printf("(*) Base58 encoding: Vs5LyRhXt9nUp14 -> %.*s [%zu]\n",
            (int) SIZE(z), CSTR(z), SIZE(z));
     z = string_free(z);
+
+    #ifdef _ENABLE_RANDOM
+    r = random_arrayinit(NULL, 0);
+    for (i = 0; i < 10; i ++)
+        random_token[i] = random_uint32(r);
+
+    z = string_b58s((char *) random_token, 10 * sizeof(*random_token));
+    printf("(*) Base58 encoded random token: %.*s [%zu]\n",
+           (int) SIZE(z), CSTR(z), SIZE(z));
+    z = string_free(z);
+    r = random_fini(r);
+    #endif
 
     #ifdef HAS_ICONV
     z = string_alloc(gb18030, 20);
