@@ -254,11 +254,13 @@ public m_http *http_set_file(m_http *h, const char *k, const char *filename,
 public m_string *http_compile(m_http *h, int method, const char *action,
                               const char *host, size_t inline_file_size)
 {
-    unsigned int multipart = 0;
-    m_string *req = NULL;
-    m_string *postdata = NULL;
+    m_string *req = NULL, *postdata = NULL;
     m_http *head = NULL;
     size_t len = 0, addlen = 0;
+    int i = 0;
+    uint32_t random[10];
+    m_random *ctx = NULL;
+    m_string *token = NULL, *multipart = NULL;
 
     if (! h || ! method || ! action || ! host) {
         debug("http_format(): bad parameters.\n");
@@ -271,7 +273,25 @@ public m_string *http_compile(m_http *h, int method, const char *action,
     /* if there is file attachments, there is no choice but to compose
        a multipart request; however, if there is only regular form values,
        it's better to send a shorter x-www-form-urlencoded request */
-    while (h->prev) { if (h->file) multipart = 1; h = h->prev; }
+    while (h->prev) {
+        if (h->file && ! multipart) {
+            /* generate a random 320 bits boundary token */
+            ctx = random_arrayinit((uint32_t *) h, sizeof(*h));
+            for (i = 0; i < 10; i ++) random[i] = random_uint32(ctx);
+            ctx = random_fini(ctx);
+
+            token = string_b58s((char *) random, sizeof(random));
+
+            /* prepare the header */
+            multipart = string_fmt(NULL,
+                                   "Content-Type: multipart/form-data; "
+                                   "boundary=%.*s\r\n",
+                                   (int) SIZE(token), CSTR(token));
+        }
+
+        h = h->prev;
+    }
+
     head = h; if (head->next) h = head->next;
 
     if (method == HTTP_POST && multipart) do {
@@ -280,11 +300,13 @@ public m_string *http_compile(m_http *h, int method, const char *action,
 
         if (! h->file) {
             #define BOUNDARY                                  \
-            "--665201314\r\n"                                 \
+            "--%.*s\r\n"                                      \
             "Content-Disposition: form-data; name=\"%s\"\r\n"
 
             /* regular value */
-            postdata = string_catfmt(postdata, BOUNDARY, h->name);
+            postdata = string_catfmt(postdata, BOUNDARY,
+                                     (int) SIZE(token),
+                                     CSTR(token), h->name);
             /* append local headers */
             if (h->prev && h->_headers)
                 string_cat(postdata, h->_headers);
@@ -297,12 +319,14 @@ public m_string *http_compile(m_http *h, int method, const char *action,
 
             #undef BOUNDARY
         } else {
-            #define BOUNDARY                                                   \
-            "--665201314\r\n"                                                  \
+            #define BOUNDARY                                              \
+            "--%.*s\r\n"                                                  \
             "Content-Disposition: form-data; name=\"%s\"; filename=\"%s\"\r\n"
 
             /* file */
-            postdata = string_catfmt(postdata, BOUNDARY, h->name, h->value);
+            postdata = string_catfmt(postdata, BOUNDARY,
+                                     (int) SIZE(token),
+                                     CSTR(token), h->name, h->value);
             /* append local headers */
             if (h->prev && h->_headers)
                 string_cat(postdata, h->_headers);
@@ -329,7 +353,8 @@ public m_string *http_compile(m_http *h, int method, const char *action,
 
         if (h->next) h = h->next; else {
             /* finalize the multipart postdata */
-            string_catfmt(postdata, "--665201314--\r\n\r\n");
+            string_catfmt(postdata, "--%.*s--\r\n\r\n",
+                          (int) SIZE(token), CSTR(token));
             break;
         }
 
@@ -345,7 +370,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
     } while (1);
 
     if (method == HTTP_POST) {
-        req = string_fmt(req,
+        req = string_fmt(NULL,
                          "POST %s HTTP/1.1\r\n"
                          "Host: %s\r\n"
                          "Content-Length: %i\r\n"
@@ -355,9 +380,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
                          "%.*s",
                          action, host,
                          (postdata) ? SIZE(postdata) + addlen : 0,
-                         (postdata && multipart) ?
-                         "Content-Type: multipart/form-data; "
-                         "boundary=665201314\r\n" :
+                         (postdata && multipart) ? CSTR(multipart) :
                          (postdata) ?
                          "Content-Type: application/x-www-form-urlencoded\r\n" :
                          "",
@@ -365,10 +388,13 @@ public m_string *http_compile(m_http *h, int method, const char *action,
                          (postdata) ? SIZE(postdata) : 0,
                          (postdata) ? CSTR(postdata) : "");
 
+        token = string_free(token);
+        multipart = string_free(multipart);
+
     } else if (method == HTTP_GET) {
         /* we ignore files and headers found in the parts, but we collect
            all the form values to compose the GET request */
-        req = string_fmt(req,
+        req = string_fmt(NULL,
                          "GET %s%s%.*s HTTP/1.1\r\n"
                          "Host: %s\r\n"
                          "%s"

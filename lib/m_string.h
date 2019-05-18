@@ -338,28 +338,6 @@ public m_string *string_catfmt(m_string *str, const char *fmt, ...);
 
 /* -------------------------------------------------------------------------- */
 
-public int string_printf(m_string *s, const char *fmt, ...);
-
-/**
- * @ingroup string
- * @fn m_string *string_printf(m_string *s, const char *fmt, ...)
- * @param str the string to be overwritten, may be NULL.
- * @param fmt the printf(3) compatible format.
- * @param ... the arguments matching the format.
- * @return the number of bytes written in the destination string.
- *
- * This function is a wrapper around @ref m_vsnprintf(), like
- * @ref string_vfmt(). However, this function will not allocate or resize
- * the destination string; it will simply write the formatted output to the
- * destination string internal buffer.
- *
- * @see m_vsnprintf
- * @see string_vfmt
- *
- */
-
-/* -------------------------------------------------------------------------- */
-
 public m_string *string_from_uint32(uint32_t u32);
 
 /**

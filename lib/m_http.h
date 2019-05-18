@@ -42,6 +42,7 @@
 #include "m_core_def.h"
 #include "m_string.h"
 #include "m_file.h"
+#include "m_random.h"
 
 /* -------------------------------------------------------------------------- */
 
