@@ -44,29 +44,55 @@ typedef struct _m_node {
 
 public m_queue *queue_alloc(void)
 {
+    pthread_condattr_t attr;
     m_queue *ret = malloc(sizeof(*ret));
 
     if (! ret) { perror(ERR(queue_alloc, malloc)); return NULL; }
 
     if (pthread_mutex_init(& ret->_head_lock, NULL) == -1) {
-        perror(ERR(queue_alloc, pthread_mutex_init)); return queue_free(ret);
+        perror(ERR(queue_alloc, pthread_mutex_init));
+        goto _err_head_lock;
     }
 
     if (pthread_mutex_init(& ret->_tail_lock, NULL) == -1) {
-        perror(ERR(queue_alloc, pthread_mutex_init)); return queue_free(ret);
+        perror(ERR(queue_alloc, pthread_mutex_init));
+        goto _err_tail_lock;
     }
 
-    if (pthread_cond_init(& ret->_empty, NULL) == -1) {
-        perror(ERR(queue_alloc, pthread_cond_init)); return queue_free(ret);
+    pthread_condattr_init(& attr);
+
+    #if ! defined(WIN32) && ! defined(__APPLE__)
+    /* use the monotonic clock on POSIX compliant systems */
+    pthread_condattr_setclock(& attr, CLOCK_MONOTONIC);
+    #endif
+
+    if (pthread_cond_init(& ret->_empty, & attr) == -1) {
+        perror(ERR(queue_alloc, pthread_cond_init));
+        goto _err_cond_init;
     }
 
     if (! (ret->_head = ret->_tail = malloc(sizeof(_m_node))) ) {
-        perror(ERR(queue_alloc, malloc)); return queue_free(ret);
+        perror(ERR(queue_alloc, malloc));
+        goto _err_node_alloc;
     }
 
     ret->_head->next = ret->_head->data = NULL;
 
+    pthread_condattr_destroy(& attr);
+
     return ret;
+
+_err_node_alloc:
+    pthread_cond_destroy(& ret->_empty);
+_err_cond_init:
+    pthread_condattr_destroy(& attr);
+    pthread_mutex_destroy(& ret->_tail_lock);
+_err_tail_lock:
+    pthread_mutex_destroy(& ret->_head_lock);
+_err_head_lock:
+    free(ret);
+
+    return NULL;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -144,27 +170,35 @@ public int queue_empty(m_queue *queue)
 
 /* -------------------------------------------------------------------------- */
 
-public void queue_wait(m_queue *queue, unsigned int duration)
+public void queue_wait(m_queue *q, unsigned int duration)
 {
-    struct timespec ts;
+    struct timespec ts = { 0, 0 };
+
+    if (! q || ! duration) return;
+
+    #ifdef WIN32
     struct timeval tv;
-    int ret = 0;
-
-    if (! queue || ! duration) return;
-
     gettimeofday(& tv, NULL);
-
     ts.tv_sec = tv.tv_sec;
-    ts.tv_nsec = (tv.tv_usec + duration) * 1000;
+    ts.tv_nsec = tv.tv_usec * 1000;
+    #elif ! defined(__APPLE__)
+    clock_gettime(CLOCK_MONOTONIC, & ts);
+    #endif
 
-    pthread_mutex_lock(& queue->_tail_lock);
+    ts.tv_sec += duration / 1000000;
+    ts.tv_nsec += (duration % 1000000) * 1000;
 
-    if (queue_empty(queue)) {
-        ret = pthread_cond_timedwait(& queue->_empty, & queue->_tail_lock, & ts);
-        if (ret == ETIMEDOUT) debug("queue_wait(): timed out.");
+    pthread_mutex_lock(& q->_tail_lock);
+
+    if (queue_empty(q)) {
+        #ifdef __APPLE__
+        pthread_cond_timedwait_relative_np(& q->_empty, & q->_tail_lock, & ts);
+        #else
+        pthread_cond_timedwait(& q->_empty, & q->_tail_lock, & ts);
+        #endif
     }
 
-    pthread_mutex_unlock(& queue->_tail_lock);
+    pthread_mutex_unlock(& q->_tail_lock);
 
     return;
 }

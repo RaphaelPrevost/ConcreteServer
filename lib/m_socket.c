@@ -1232,6 +1232,8 @@ private int socket_hook(int hook, void (*fn)(m_socket *s))
 
 public m_socket_queue *socket_queue_alloc(void)
 {
+    pthread_condattr_t attr;
+
     m_socket_queue *ret = malloc(sizeof(*ret));
 
     if (! ret) { perror(ERR(socket_queue_alloc, malloc)); return NULL; }
@@ -1248,7 +1250,14 @@ public m_socket_queue *socket_queue_alloc(void)
         goto _err_tail_lock;
     }
 
-    if (pthread_cond_init(& ret->_empty, NULL) == -1) {
+    pthread_condattr_init(& attr);
+
+    #if ! defined(WIN32) && ! defined(__APPLE__)
+    /* use the monotonic clock on POSIX compliant systems */
+    pthread_condattr_setclock(& attr, CLOCK_MONOTONIC);
+    #endif
+
+    if (pthread_cond_init(& ret->_empty, & attr) == -1) {
         perror(ERR(socket_queue_alloc, pthread_cond_init));
         goto _err_cond_init;
     }
@@ -1258,11 +1267,14 @@ public m_socket_queue *socket_queue_alloc(void)
         goto _err_ring_alloc;
     }
 
+    pthread_condattr_destroy(& attr);
+
     return ret;
 
 _err_ring_alloc:
     pthread_cond_destroy(& ret->_empty);
 _err_cond_init:
+    pthread_condattr_destroy(& attr);
     pthread_mutex_destroy(& ret->_tail_lock);
 _err_tail_lock:
     pthread_mutex_destroy(& ret->_head_lock);
@@ -1355,22 +1367,30 @@ public int socket_queue_empty(m_socket_queue *q)
 
 public void socket_queue_wait(m_socket_queue *q, unsigned int duration)
 {
-    struct timespec ts;
-    struct timeval tv;
-    int ret = 0;
+    struct timespec ts = { 0, 0 };
 
     if (! q || ! duration) return;
 
+    #ifdef WIN32
+    struct timeval tv;
     gettimeofday(& tv, NULL);
-
     ts.tv_sec = tv.tv_sec;
-    ts.tv_nsec = (tv.tv_usec + duration) * 1000;
+    ts.tv_nsec = tv.tv_usec * 1000;
+    #elif ! defined(__APPLE__)
+    clock_gettime(CLOCK_MONOTONIC, & ts);
+    #endif
+
+    ts.tv_sec += duration / 1000000;
+    ts.tv_nsec += (duration % 1000000) * 1000;
 
     pthread_mutex_lock(& q->_tail_lock);
 
     if (socket_queue_empty(q)) {
-        ret = pthread_cond_timedwait(& q->_empty, & q->_tail_lock, & ts);
-        if (ret == ETIMEDOUT) debug("socket_queue_wait(): timed out.");
+        #ifdef __APPLE__
+        pthread_cond_timedwait_relative_np(& q->_empty, & q->_tail_lock, & ts);
+        #else
+        pthread_cond_timedwait(& q->_empty, & q->_tail_lock, & ts);
+        #endif
     }
 
     pthread_mutex_unlock(& q->_tail_lock);
