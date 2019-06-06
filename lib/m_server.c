@@ -240,7 +240,7 @@ public m_reply *server_send_reply(uint16_t sockid, m_reply *r)
 static int server_reply_process(m_reply *r, m_socket *s)
 {
     ssize_t w = 0;
-    struct timeval tv;
+    struct timespec ts;
 
     if (! r || ! s) return SOCKET_EPARAM;
 
@@ -254,8 +254,8 @@ static int server_reply_process(m_reply *r, m_socket *s)
        that the task will not be processed before it has
        elapsed. */
     if (r->timer && r->delay) {
-        gettimeofday(& tv, NULL);
-        if (r->timer + r->delay > tv.tv_sec)
+        monotonic_timer(& ts);
+        if (r->timer + r->delay > ts.tv_sec)
             return SOCKET_EDELAY;
     }
 
@@ -759,11 +759,13 @@ public int server_init(void)
     pthread_attr_t attr;
     int builtin = 0;
 
+    monotonic_timer_init();
+
     /* greeting message ! */
     fprintf(stderr, "\nConcrete Server\n");
     fprintf(stderr, "version "CONCRETE_VERSION" ["__DATE__"]\n");
-    fprintf(stderr, "Copyright (c) 2005-2012 ");
-    fprintf(stderr, "BGA://Buro.asia Limited, all rights reserved.\n\n");
+    fprintf(stderr, "Copyright (c) 2005-2019 ");
+    fprintf(stderr, "Raphael Prevost, all rights reserved.\n\n");
     fprintf(stderr, "Concrete: starting engine.\n");
 
     if (string_api_setup() == -1) {

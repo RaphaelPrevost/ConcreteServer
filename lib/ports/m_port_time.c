@@ -35,11 +35,36 @@
 
 #include "m_port_time.h"
 
-/* This code was released to public domain by Wu Yongwei. */
-
 /* -------------------------------------------------------------------------- */
 #ifdef WIN32
 /* -------------------------------------------------------------------------- */
+
+static LARGE_INTEGER freq;
+
+public void monotonic_timer_init(void)
+{
+    QueryPerformanceFrequency(& freq);
+}
+
+/* -------------------------------------------------------------------------- */
+
+public int monotonic_timer(struct timespec *ts)
+{
+    LARGE_INTEGER t;
+
+    if (! ts) return -1;
+
+    QueryPerformanceCounter(& t);
+
+    ts->tv_sec = t.QuadPart / freq.QuadPart;
+    ts->tv_nsec = (1000000000 * (t.QuadPart % freq.QuadPart)) / freq.QuadPart;
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+
+/* This code was released to public domain by Wu Yongwei. */
 
 public int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
@@ -66,6 +91,52 @@ public int gettimeofday(struct timeval *tv, struct timezone *tz)
         tz->tz_minuteswest = _timezone / 60;
         tz->tz_dsttime = _daylight;
     }
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+#elif defined(__APPLE__)
+/* -------------------------------------------------------------------------- */
+
+static mach_timebase_info_data_t tb;
+
+public void monotonic_timer_init(void)
+{
+    mach_timebase_info(& tb);
+}
+
+/* -------------------------------------------------------------------------- */
+
+public int monotonic_timer(struct timespec *ts)
+{
+    uint64_t ns = 0;
+
+    if (! ts) return -1;
+
+    ns = (mach_absolute_time() * (uint64_t) tb.numer) / (uint64_t) tb.denom;
+    ts->tv_sec = ns / 1000000000;
+    ts->tv_nsec = ns - (ts->tv_sec * 1000000000);
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+#else
+/* -------------------------------------------------------------------------- */
+
+public void monotonic_timer_init(void)
+{
+    ;
+}
+
+/* -------------------------------------------------------------------------- */
+
+public int monotonic_timer(struct timespec *ts)
+{
+    if (! ts) return -1;
+
+    clock_gettime(CLOCK_MONOTONIC, ts);
 
     return 0;
 }

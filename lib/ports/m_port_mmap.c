@@ -39,7 +39,7 @@
 #ifdef WIN32 /* WIN32 mmap() compatibility module */
 /* -------------------------------------------------------------------------- */
 
-public int get_page_size()
+public int get_page_size(void)
 {
     #ifndef __WINE__
     SYSTEM_INFO info;
