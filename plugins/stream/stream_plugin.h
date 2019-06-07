@@ -46,8 +46,8 @@
 
 #define STREAM_VERSION     CONCRETE_VERSION
 
-/* Concrete supports up to 16 ingress id, which means a maximum of 8 streams */
-#define _STREAMS_MAX       8
+/* Concrete supports up to 256 ingress id, which means a maximum of 128 streams */
+#define _STREAMS_MAX       128
 
 #define PERSONALITY_MASTER 0x01
 #define PERSONALITY_WORKER 0x02

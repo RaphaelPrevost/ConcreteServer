@@ -65,25 +65,24 @@
 /* bitmasks */
 #define _SOCKET_SID 0x00000FFF
 #define _SOCKET_RSV 0x00F00000
-#define _SOCKET_IID 0x0000F000
+#define _SOCKET_IID 0x000FF000
 #define _SOCKET_OPT 0xFF000000
 
 /* shift */
 #define _SOCKET_RSS 20
 #define _SOCKET_IIS 12
-#define _SOCKET_OPS 32
 
 /* socket flags */
 #define SOCKET_UDP    0x01000000    /* UDP socket */
 #define SOCKET_IP6    0x02000000    /* IPv6 socket */
 #define SOCKET_SSL    0x04000000    /* SSL socket */
-#define SOCKET_BIO    0x00010000    /* blocking I/O */
-#define SOCKET_NEW    0x00020000    /* empty socket structure */
+#define SOCKET_BIO    0x00000001    /* blocking I/O */
+#define SOCKET_NEW    0x00000002    /* empty socket structure */
 #define SOCKET_CLIENT 0x10000000    /* persistent client */
 #define SOCKET_SERVER 0x20000000    /* server socket */
 
 /* Ingress identifier */
-#define INGRESS_MAX 0xF
+#define INGRESS_MAX 0xFF
 #define INGRESS_ID(s) ((uint16_t) (((s)->_flags & _SOCKET_IID) >> _SOCKET_IIS))
 /* set the ingress id */
 #define INGRESS(i) (((i) << _SOCKET_IIS) & _SOCKET_IID)
