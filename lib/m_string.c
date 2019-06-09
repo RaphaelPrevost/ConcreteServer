@@ -2041,21 +2041,21 @@ public m_string *string_select(m_string *string, unsigned int off, size_t len)
 
 /* -------------------------------------------------------------------------- */
 
-public int string_add_token(m_string *s, unsigned int start, size_t end)
+public m_string *string_add_token(m_string *s, off_t start, off_t end)
 {
     /** @brief adds a new token to the string, selecting the delimited part */
 
     m_string *tokens = NULL, *token = NULL;
 
-    if (! s || ! CSTR(s) || end > SIZE(s) || end <= start) {
+    if (! s || ! CSTR(s) || (size_t) end > SIZE(s) || end <= start) {
         debug("string_add_token(): bad parameters.\n");
-        return -1;
+        return NULL;
     }
 
     if (s->_parts_alloc < s->parts + 1) {
         if (! (tokens = realloc(s->token, (s->parts + 1) * sizeof(*tokens))) ) {
             perror(ERR(string_add_token, realloc));
-            return -1;
+            return NULL;
         }
         s->_parts_alloc = ++ s->parts;
         s->token = tokens;
@@ -2071,7 +2071,7 @@ public int string_add_token(m_string *s, unsigned int start, size_t end)
     token->_parts_alloc = token->parts = 0;
     token->token = NULL;
 
-    return 0;
+    return token;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3082,6 +3082,207 @@ public int string_urlencode(m_string *url, int flags)
     free(encoded);
 
     return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+#endif
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+#ifdef _ENABLE_JSON
+/* -------------------------------------------------------------------------- */
+
+public int string_parse_json(m_string *s, int strict)
+{
+    unsigned int pos = 0, i = 0, value_expected = 0, skip = 0;
+    unsigned char c = 0;
+    m_string *json = s;
+
+    if (! json) {
+        debug("string_parse_json(): bad parameters.\n");
+        return -1;
+    }
+
+    /* remove existing tokens */
+    string_free_token(json);
+
+    for (pos = 0; pos < SIZE(json); pos ++) {
+
+        switch ( (c = json->_data[pos]) ) {
+
+        case '{':
+        case '[': {
+            if (IS_PRIMITIVE(json)) goto _err_parser;
+
+            if (! IS_STRING(json)) {
+                json = string_add_token(json, pos, SIZE(json));
+                json->_flags &= ~JSON_TYPE;
+                json->_flags |= (c == '[') ? JSON_ARRAY : JSON_OBJECT;
+                value_expected = 0; pos = 0;
+            }
+        } break;
+
+        case '}':
+        case ']': {
+            if (strict && value_expected) {
+                debug("string_parse_json(): a value is expected.\n");
+                goto _err_parser;
+            }
+
+            if (IS_PRIMITIVE(json)) {
+                if (json->parent) {
+                    if (IS_TYPE(json->parent, JSON_ARRAY | JSON_OBJECT)) {
+                        pos --; goto _token;
+                    }
+                }
+
+                if (strict) {
+                    debug("string_parse_json(): parent is not an array or "
+                          "an object.\n");
+                    goto _err_parser;
+                }
+            } else if (! IS_STRING(json)) {
+                /* check if the brackets are matching */
+                if (json->_data[0] != c - 2) {
+                    debug("string_parse_json(): mismatched or missing "
+                          "bracket.\n");
+                    goto _err_parser;
+                } else goto _token;
+            }
+        } break;
+
+        case '\'': if (! strict) /* FALLTHRU */
+        case '\"': {
+            if (IS_PRIMITIVE(json)) goto _err_parser;
+
+            if (! IS_STRING(json)) {
+                json = string_add_token(json, pos, SIZE(json));
+                json->_flags &= ~JSON_TYPE; json->_flags |= JSON_STRING;
+                value_expected = 0; pos = 0;
+            } else {
+                /* check if the quotes are matching */
+                if (json->_data[0] != c) {
+                    debug("string_parse_json(): mismatched or missing "
+                          "quotation mark.\n");
+                    goto _err_parser;
+                } else goto _token;
+            }
+        } break;
+
+        case '\\': { /* escape sequence */
+            if (pos + 1 < SIZE(json)) goto _err_parser;
+
+            if (! IS_STRING(json)) {
+                if (! strict && IS_PRIMITIVE(json)) {
+                    json->_flags &= ~JSON_PRIMITIVE;
+                    json->_flags |= JSON_STRING;
+                } else {
+                    debug("string_parse_json(): escape sequences are not "
+                          "allowed in primitives.\n");
+                    goto _err_parser;
+                }
+            }
+
+            switch (json->_data[++ pos]) {
+            case '\"':
+            case  '/':
+            case '\\':
+            case  'b':
+            case  'f':
+            case  'r':
+            case  'n':
+            case  't': break;
+            case  'u': { /* unicode escape sequence */
+                for (i = 0; i < 4 && ++ pos < SIZE(json); i ++) {
+                    c = json->_data[pos];
+                    if (! ((c >= '0' && c <= '9') ||
+                           (c >= 'A' && c <= 'F') ||
+                           (c >= 'a' && c <= 'f')) ) {
+                        debug("string_parse_json(): hexadecimal expected.\n");
+                        goto _err_parser;
+                    }
+                }
+                pos --;
+            } break;
+
+            /* unexpected char */
+            default: goto _err_parser;
+            }
+        } break;
+
+        case '\t': /* whitespace */
+        case '\r':
+        case '\n':
+        case  ' ': if (IS_PRIMITIVE(json)) goto _delim; break;
+
+        case  ':': { /* allowed in OBJECT and STRING */
+            if (IS_PRIMITIVE(json)) {
+                if (strict) {
+                    debug("string_parse_json(): a key must be a string "
+                          "enclosed in quotation marks.\n");
+                    goto _err_parser;
+                } else { value_expected = 1; goto _delim; }
+            } else if (IS_ARRAY(json)) {
+                if (strict) {
+                    debug("string_parse_json(): key/value pairs are only "
+                          "allowed in objects.\n");
+                    goto _err_parser;
+                }
+            }
+
+            if (! IS_STRING(json)) value_expected = 1;
+        } break;
+
+        case  ',': { /* allowed in OBJECT, ARRAY and STRING */
+            if (IS_PRIMITIVE(json)) {
+                if (json->parent) {
+                    if (IS_TYPE(json->parent, JSON_ARRAY | JSON_OBJECT)) {
+                        value_expected = 1; goto _delim;
+                    }
+                }
+
+                if (strict) {
+                    debug("string_parse_json(): parent is not an object "
+                          "or an array.\n");
+                    goto _err_parser;
+                }
+            } else {
+                if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) value_expected = 1;
+                else if (strict && ! IS_STRING(json)) {
+                    debug("string_parse_json(): not an object or an array.\n");
+                    goto _err_parser;
+                }
+            }
+        } break;
+
+        default:
+            if (c < 32 || c > 127) goto _err_parser;
+
+            if (! IS_TYPE(json, JSON_STRING | JSON_PRIMITIVE)) {
+                json = string_add_token(json, pos, SIZE(json));
+                json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
+                value_expected = 0; pos = 0;
+            }
+        }
+
+        continue;
+
+_delim: skip = 1;
+_token: json->_len = json->_alloc = pos + (1 - skip);
+        skip = 0;
+        if (json->parent) {
+            pos += json->_data - json->parent->_data;
+            json = json->parent;
+        }
+    }
+
+    return 0;
+
+_err_parser:
+    debug("string_parse_json(): illegal character \'%c\' at %i.\n",
+          c, (json->_data - s->_data) + pos + 1);
+    string_free_token(s);
+    return -1;
 }
 
 /* -------------------------------------------------------------------------- */
