@@ -60,7 +60,7 @@ typedef struct m_string {
     char *_data;
     size_t _len;
     size_t _alloc;
-    uint32_t _flags;
+    uint16_t _flags;
     uint16_t _parts_alloc;
 
     /* public (no more than 64k tokens) */
@@ -89,18 +89,33 @@ typedef struct m_search_string {
 #define _STRING_FLAG_BUFFER 0x0040 /* this string is used for buffering */
 #define IS_BUFFER(x) ((x)->_flags & _STRING_FLAG_BUFFER)
 #define _STRING_FLAG_MASKXT 0x001f /* mask extension flags */
+/*                          0x0080    reserved */
 
 #ifdef _ENABLE_HTTP
-#define _STRING_FLAG_HTTP 0x0100 /* HTTP request */
+#define _STRING_FLAG_HTTP   0x0100 /* HTTP request */
 #define IS_HTTP(x) ((x)->_flags & _STRING_FLAG_HTTP)
 #endif
-#define _STRING_FLAG_FRAG 0x0200 /* used by the server for streaming */
+#define _STRING_FLAG_FRAG   0x0200 /* used by the server for streaming */
 #define IS_FRAG(x) ((x)->_flags & _STRING_FLAG_FRAG)
-#define _STRING_FLAG_LARGE 0x0400 /* large request */
+#define _STRING_FLAG_LARGE  0x0400 /* large request */
 #define IS_LARGE(x) ((x)->_flags & _STRING_FLAG_LARGE)
 #ifdef _ENABLE_HTTP
-#define _STRING_FLAG_CHUNK 0x0800 /* HTTP 1.1 Chunked encoding */
+#define _STRING_FLAG_CHUNK  0x0800 /* HTTP 1.1 Chunked encoding */
 #define IS_CHUNK(x) ((x)->_flags & _STRING_FLAG_CHUNK)
+#endif
+
+#ifdef _ENABLE_JSON
+#define JSON_OBJECT         0x1000
+#define JSON_ARRAY          0x2000
+#define JSON_STRING         0x4000
+#define JSON_PRIMITIVE      0x8000
+#define JSON_TYPE           0xF000
+
+#define IS_OBJECT(x) ((x)->_flags & JSON_OBJECT)
+#define IS_ARRAY(x) ((x)->_flags & JSON_ARRAY)
+#define IS_STRING(x) ((x)->_flags & JSON_STRING)
+#define IS_PRIMITIVE(x) ((x)->_flags & JSON_PRIMITIVE)
+#define IS_TYPE(x, type) ((x)->_flags & (type))
 #endif
 
 #define STRING_STATIC_INITIALIZER(s, l) \
@@ -1298,7 +1313,7 @@ public m_string *string_select(m_string *string, unsigned int off, size_t len);
 
 /* -------------------------------------------------------------------------- */
 
-public int string_add_token(m_string *s, unsigned int start, size_t end);
+public m_string *string_add_token(m_string *s, off_t start, off_t end);
 
 /* -------------------------------------------------------------------------- */
 

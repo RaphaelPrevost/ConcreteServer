@@ -537,7 +537,7 @@ _split:
 
             if (error != 2 && end > 0) {
                 /* enqueue the request */
-                if (string_add_token(input, start, end) == -1)
+                if (! string_add_token(input, start, end))
                     return buf;
             } else error = 0;
         }
@@ -548,7 +548,7 @@ _next:
 
     if (start >= stream) {
         /* add the remainder */
-        if (string_add_token(input, start, SIZE(input)) == -1)
+        if (! string_add_token(input, start, SIZE(input)))
             return buf;
         if (http) *http = 1;
     } else if (stream && start == -1) {

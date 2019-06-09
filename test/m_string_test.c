@@ -15,9 +15,12 @@ int test_string(void)
     const char *gb18030 = "\xd5\xe2\xb8\xf6\xb7\xfe\xce\xf1\xc6\xf7"
                           "\xd3\xd0\xc3\xbb\xd3\xd0\xce\xca\xcc\xe2";
     #endif
+    #ifdef _ENABLE_JSON
+    const char *jsontxt = "{ \"k\": 123, \"array\": [1, 2, 3], \"bool\": false, \"strings\":[\"alpha\", \"beta\", \"gamma\", \"\"] }";
+    #endif
     const char *cs = "Random string1234";
     m_string *a = NULL, *w = NULL, *z = NULL;
-    unsigned int i = 0, j = 0;
+    unsigned int i = 0, j = 0, k = 0;
     off_t pos = 0;
     char buffer[256];
     size_t item_size = 0;
@@ -74,6 +77,31 @@ int test_string(void)
     printf("(-) Unicode buffer: %.*s\n", (int) SIZE(z), CSTR(z));
     string_free(z);
     #endif
+
+    #ifdef _ENABLE_JSON
+    printf("(*) Parsing JSON: %s\n", jsontxt);
+    z = string_alloc(jsontxt, strlen(jsontxt));
+    string_parse_json(z, 1);
+    for (i = 0; i < PARTS(z); i ++) {
+        printf("|-%ctoken[%i] = %.*s (size=%i)\n", (TOKEN(z,i)->_flags & JSON_OBJECT) ? '@' : (TOKEN(z,i)->_flags & JSON_STRING) ? '$' : (TOKEN(z,i)->_flags & JSON_PRIMITIVE) ? '%' : '?',
+                i, TLEN(z, i), TSTR(z, i), TLEN(z, i));
+        if (PARTS(TOKEN(z, i)))
+        printf("|- token[%i].parts = %i\n", i, PARTS(TOKEN(z, i)));
+        for (j = 0; j < PARTS(TOKEN(z, i)); j ++) {
+            printf("| |_ %ctoken[%i] = %.*s (size=%i)\n", (TOKEN(TOKEN(z,i),j)->_flags & JSON_OBJECT) ? '@' : (TOKEN(TOKEN(z,i),j)->_flags & JSON_STRING) ? '$' : (TOKEN(TOKEN(z,i),j)->_flags & JSON_PRIMITIVE) ? '%' : '?',
+                j, TLEN(TOKEN(z, i), j), TSTR(TOKEN(z, i), j), TLEN(TOKEN(z, i), j));
+                if (PARTS(TOKEN(TOKEN(z, i),j)))
+                printf("| |- token[%i].parts = %i\n", j, PARTS(TOKEN(TOKEN(z, i),j)));
+                for (k = 0; k < PARTS(TOKEN(TOKEN(z, i),j)); k ++) {
+                    printf("| | |_ %ctoken[%i] = %.*s (size=%i)\n", (TOKEN(TOKEN(TOKEN(z,i),j),k)->_flags & JSON_OBJECT) ? '@' : (TOKEN(TOKEN(TOKEN(z,i),j),k)->_flags & JSON_STRING) ? '$' : (TOKEN(TOKEN(TOKEN(z,i),j),k)->_flags & JSON_PRIMITIVE) ? '%' : '?',
+                    k, TLEN(TOKEN(TOKEN(z, i), j), k), TSTR(TOKEN(TOKEN(z, i),j), k), TLEN(TOKEN(TOKEN(z, i),j), k));
+                }
+        }
+    }
+    string_free(z);
+    #endif
+
+    exit(EXIT_SUCCESS);
 
     /* catch integer overflow */
     if (string_alloc(NULL, 4294967293)) {
