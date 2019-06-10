@@ -8,6 +8,35 @@
 
 /* -------------------------------------------------------------------------- */
 
+static void print_tokens(const m_string *s, unsigned int indent)
+{
+    unsigned int i = 0, j = 0;
+
+    if (! s) return;
+
+    printf("%.*s%s%.*s %s",
+           indent, "", (indent) ? " " : "+ ", SIZE(s), CSTR(s),
+           (IS_OBJECT(s) ? "(object)" :
+            IS_ARRAY(s) ? "(array)" :
+            IS_STRING(s) ? "(string)" :
+            IS_PRIMITIVE(s) ? "(primitive)" : ""));
+    if (! IS_TYPE(s, JSON_TYPE))
+        printf("(size=%zu)", SIZE(s));
+    printf("\n");
+
+    for (i = 0; i < s->parts; i ++) {
+        for (j = 0; j < indent; j ++)
+            printf("%c  ", (j + 1 == indent && s != LAST_TOKEN(s->parent)) ?
+                   '|' : ' ');
+        printf("|-[%i]", i);
+        print_tokens(TOKEN(s, i), indent + 1);
+    }
+
+    return;
+}
+
+/* -------------------------------------------------------------------------- */
+
 int test_string(void)
 {
     const char *str = "这个服务器有没有问题";
@@ -16,11 +45,11 @@ int test_string(void)
                           "\xd3\xd0\xc3\xbb\xd3\xd0\xce\xca\xcc\xe2";
     #endif
     #ifdef _ENABLE_JSON
-    const char *jsontxt = "{ \"k\": 123, \"array\": [1, 2, 3], \"bool\": false, \"strings\":[\"alpha\", \"beta\", \"gamma\", \"\"] }";
+    const char *jsontxt = "{\"obj\":{\"k\":0,\"b\":false,\"z\":\"\"},\"matrix\":[[[1,2],[2,3]]]}";
     #endif
     const char *cs = "Random string1234";
     m_string *a = NULL, *w = NULL, *z = NULL;
-    unsigned int i = 0, j = 0, k = 0;
+    unsigned int i = 0;
     off_t pos = 0;
     char buffer[256];
     size_t item_size = 0;
@@ -63,7 +92,7 @@ int test_string(void)
         random_token[i] = random_uint32(r);
 
     z = string_b58s((char *) random_token, 10 * sizeof(*random_token));
-    printf("(*) Base58 encoded random token: %.*s [%zu]\n",
+    printf("(*) Base58 encoded random token:\n(-) %.*s [%zu]\n",
            (int) SIZE(z), CSTR(z), SIZE(z));
     z = string_free(z);
     r = random_fini(r);
@@ -82,26 +111,9 @@ int test_string(void)
     printf("(*) Parsing JSON: %s\n", jsontxt);
     z = string_alloc(jsontxt, strlen(jsontxt));
     string_parse_json(z, 1);
-    for (i = 0; i < PARTS(z); i ++) {
-        printf("|-%ctoken[%i] = %.*s (size=%i)\n", (TOKEN(z,i)->_flags & JSON_OBJECT) ? '@' : (TOKEN(z,i)->_flags & JSON_STRING) ? '$' : (TOKEN(z,i)->_flags & JSON_PRIMITIVE) ? '%' : '?',
-                i, TLEN(z, i), TSTR(z, i), TLEN(z, i));
-        if (PARTS(TOKEN(z, i)))
-        printf("|- token[%i].parts = %i\n", i, PARTS(TOKEN(z, i)));
-        for (j = 0; j < PARTS(TOKEN(z, i)); j ++) {
-            printf("| |_ %ctoken[%i] = %.*s (size=%i)\n", (TOKEN(TOKEN(z,i),j)->_flags & JSON_OBJECT) ? '@' : (TOKEN(TOKEN(z,i),j)->_flags & JSON_STRING) ? '$' : (TOKEN(TOKEN(z,i),j)->_flags & JSON_PRIMITIVE) ? '%' : '?',
-                j, TLEN(TOKEN(z, i), j), TSTR(TOKEN(z, i), j), TLEN(TOKEN(z, i), j));
-                if (PARTS(TOKEN(TOKEN(z, i),j)))
-                printf("| |- token[%i].parts = %i\n", j, PARTS(TOKEN(TOKEN(z, i),j)));
-                for (k = 0; k < PARTS(TOKEN(TOKEN(z, i),j)); k ++) {
-                    printf("| | |_ %ctoken[%i] = %.*s (size=%i)\n", (TOKEN(TOKEN(TOKEN(z,i),j),k)->_flags & JSON_OBJECT) ? '@' : (TOKEN(TOKEN(TOKEN(z,i),j),k)->_flags & JSON_STRING) ? '$' : (TOKEN(TOKEN(TOKEN(z,i),j),k)->_flags & JSON_PRIMITIVE) ? '%' : '?',
-                    k, TLEN(TOKEN(TOKEN(z, i), j), k), TSTR(TOKEN(TOKEN(z, i),j), k), TLEN(TOKEN(TOKEN(z, i),j), k));
-                }
-        }
-    }
+    print_tokens(z, 0);
     string_free(z);
     #endif
-
-    exit(EXIT_SUCCESS);
 
     /* catch integer overflow */
     if (string_alloc(NULL, 4294967293)) {
@@ -133,59 +145,23 @@ int test_string(void)
     #ifdef _ENABLE_PCRE
     printf("(*) Looking for \"Random string(.*)\"\n");
     string_parse(a, "Random string(.*)", strlen("Random string(.*)"));
-    for (i = 0; i < PARTS(a); i ++) {
-        printf("(-) token[%i] = %.*s (size=%i)\n",
-                i, TLEN(a, i), TSTR(a, i), TLEN(a, i));
-        printf("(-) token[%i].parts = %i\n", i, PARTS(TOKEN(a, i)));
-        for (j = 0; j < PARTS(TOKEN(a, i)); j ++) {
-            printf("(-) token[%i] = %.*s (size=%i)\n",
-                j, TLEN(TOKEN(a, i), j), TSTR(TOKEN(a, i), j), TLEN(TOKEN(a, i), j));
-        }
-    }
+    print_tokens(a, 0);
+
     printf("(*) Looking for \"Random string(.)\"\n");
     string_parse(a, "Random string(.)", strlen("Random string(.)"));
-    for (i = 0; i < PARTS(a); i ++) {
-        printf("(-) token[%i] = %.*s (size=%i)\n",
-                i, TLEN(a, i), TSTR(a, i), TLEN(a, i));
-        printf("(-) token[%i].parts = %i\n", i, PARTS(TOKEN(a, i)));
-        for (j = 0; j < PARTS(TOKEN(a, i)); j ++) {
-            printf("(-) token[%i] = %.*s (size=%i)\n",
-                j, TLEN(TOKEN(a, i), j), TSTR(TOKEN(a, i), j), TLEN(TOKEN(a, i), j));
-        }
-    }
+    print_tokens(a, 0);
+
     printf("(*) Looking for \"(Random)\"\n");
     string_parse(a, "(Random)", strlen("(Random)"));
-    for (i = 0; i < PARTS(a); i ++) {
-        printf("(-) token[%i] = %.*s (size=%i)\n",
-                i, TLEN(a, i), TSTR(a, i), TLEN(a, i));
-        printf("(-) token[%i].parts = %i\n", i, PARTS(TOKEN(a, i)));
-        for (j = 0; j < PARTS(TOKEN(a, i)); j ++) {
-            printf("(-) token[%i] = %.*s (size=%i)\n",
-                j, TLEN(TOKEN(a, i), j), TSTR(TOKEN(a, i), j), TLEN(TOKEN(a, i), j));
-        }
-    }
+    print_tokens(a, 0);
+
     printf("(*) Looking for \"test_no_match\"\n");
     string_parse(a, "test_no_match", strlen("test_no_match"));
-    for (i = 0; i < PARTS(a); i ++) {
-        printf("(-) token[%i] = %.*s (size=%i)\n",
-                i, TLEN(a, i), TSTR(a, i), TLEN(a, i));
-        printf("(-) token[%i].parts = %i\n", i, PARTS(TOKEN(a, i)));
-        for (j = 0; j < PARTS(TOKEN(a, i)); j ++) {
-            printf("(-) token[%i] = %.*s (size=%i)\n",
-                j, TLEN(TOKEN(a, i), j), TSTR(TOKEN(a, i), j), TLEN(TOKEN(a, i), j));
-        }
-    }
+    print_tokens(a, 0);
+
     printf("(*) Looking for \"a\"\n");
     string_parse(a, "a", strlen("a"));
-    for (i = 0; i < PARTS(a); i ++) {
-        printf("(-) token[%i] = %.*s (size=%i)\n",
-                i, TLEN(a, i), TSTR(a, i), TLEN(a, i));
-        printf("(-) token[%i].parts = %i\n", i, PARTS(TOKEN(a, i)));
-        for (j = 0; j < PARTS(TOKEN(a, i)); j ++) {
-            printf("(-) token[%i] = %.*s (size=%i)\n",
-                j, TLEN(TOKEN(a, i), j), TSTR(TOKEN(a, i), j), TLEN(TOKEN(a, i), j));
-        }
-    }
+    print_tokens(a, 0);
     #endif
 
     /* looking for "je" */
@@ -263,9 +239,7 @@ int test_string(void)
         return -1;
     } else printf("(*) Splitting on \":\" in \"%s\": SUCCESS\n", CSTR(w));
 
-    for (i = 0; i < PARTS(w); i ++)
-        printf("(-) token[%i] = %.*s (size=%zu)\n",
-                i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
+    print_tokens(w, 0);
 
     /* split first token on "-" */
     if (PARTS(w) == 2) {
@@ -277,10 +251,7 @@ int test_string(void)
         } else printf("(*) Splitting on \"-\" in \"%.*s\": SUCCESS\n",
                       (int) TLEN(w, 0), TSTR(w, 0));
 
-        for (i = 0; i < PARTS(TOKEN(w, 0)); i ++)
-            printf("(-) token[%i] = %.*s (size=%zu)\n",
-                    i, (int) TLEN(TOKEN(w, 0), i), TSTR(TOKEN(w, 0), i),
-                    TLEN(TOKEN(w, 0), i));
+        print_tokens(w, 0);
 
         if (PARTS(TOKEN(w, 0)) == 3) {
             if (! string_pres(TOKEN(TOKEN(w, 0), 2), "20", strlen("20"))) {
@@ -299,30 +270,18 @@ int test_string(void)
                (int) TLEN(w, 0), TSTR(w, 0));
         w = string_free(w);
         return -1;
-    } else printf("(*) Merging token on \"/\" (\"%.*s\"): SUCCESS\n",
-                  (int) TLEN(w, 0), TSTR(w, 0));
+    } else printf("(*) Merging token on \"/\": SUCCESS\n");
 
-    for (i = 0; i < PARTS(w); i ++)
-        printf("(-) token[%i] = %.*s (size=%zu)\n",
-               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
-
-    printf("(-) Resulting string: \"%.*s\"\n", (int) SIZE(w), CSTR(w));
+    print_tokens(w, 0);
 
     if (string_merges(w, " -> ", strlen(" -> ")) == -1) {
         printf("(!) Merging string \"%.*s\" on \" -> \": FAILURE\n",
                (int) SIZE(w), CSTR(w));
         w = string_free(w);
         return -1;
-    } else printf("(*) Merging string on \" -> \" (\"%.*s\"): SUCCESS\n",
-                  (int) SIZE(w), CSTR(w));
+    } else printf("(*) Merging string on \" -> \": SUCCESS\n");
 
-    for (i = 0; i < PARTS(w); i ++)
-        printf("(-) token[%i] = %.*s (size=%zu)\n",
-               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
-    for (i = 0; i < PARTS(TOKEN(w, 0)); i ++)
-        printf("(-) token[0]->token[%i] = %.*s (size=%zu)\n",
-               i, (int) TLEN(TOKEN(w, 0), i), TSTR(TOKEN(w, 0), i),
-               TLEN(TOKEN(w, 0), i));
+    print_tokens(w, 0);
 
     if (string_dim(TOKEN(w, 0), strlen("13/10")) == -1) {
         printf("(!) Shrinking token: FAILURE\n");
@@ -334,28 +293,15 @@ int test_string(void)
         return -1;
     } else printf("(*) Shrinking token (%s): SUCCESS\n", CSTR(w));
 
-    for (i = 0; i < PARTS(w); i ++)
-        printf("(-) token[%i] = %.*s (size=%zu)\n",
-               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
-    for (i = 0; i < PARTS(TOKEN(w, 0)); i ++)
-        printf("(-) token[0]->token[%i] = %.*s (size=%zu)\n",
-               i, (int) TLEN(TOKEN(w, 0), i), TSTR(TOKEN(w, 0), i),
-               TLEN(TOKEN(w, 0), i));
+    print_tokens(w, 0);
 
     if (string_suppr(w, TLEN(w, 0), strlen(" -> ")) == -1) {
         printf("(!) Suppressing substring: FAILURE\n");
         w = string_free(w);
         return -1;
-    } else printf("(*) Suppressing substring (%.*s): SUCCESS\n",
-                  (int) SIZE(w), CSTR(w));
+    } else printf("(*) Suppressing substring \" -> \": SUCCESS\n");
 
-    for (i = 0; i < PARTS(w); i ++)
-        printf("(-) token[%i] = %.*s (size=%zu)\n",
-               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
-    for (i = 0; i < PARTS(TOKEN(w, 0)); i ++)
-        printf("(-) token[0]->token[%i] = %.*s (size=%zu)\n",
-               i, (int) TLEN(TOKEN(w, 0), i), TSTR(TOKEN(w, 0), i),
-               TLEN(TOKEN(w, 0), i));
+    print_tokens(w, 0);
 
     /* try resplitting */
     if (string_splits(w, "/", strlen("/")) == -1) {
@@ -364,9 +310,7 @@ int test_string(void)
         return -1;
     } else printf("(*) Replitting on \"/\" in \"%s\": SUCCESS\n", CSTR(w));
 
-    for (i = 0; i < PARTS(w); i ++)
-        printf("(-) token[%i] = %.*s (size=%zu)\n",
-               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
+    print_tokens(w, 0);
 
     #ifdef _ENABLE_HTTP
     /* insert special chars in a token and urlencode it */
@@ -466,89 +410,50 @@ int test_string(void)
 
     string_upper(TOKEN(z, 1));
 
-    printf("(*) String queue: %.*s Length: %zu\n",
-           (int) SIZE(z), CSTR(z), SIZE(z));
-    for (i = 0; i < PARTS(z); i ++)
-        printf("(-) token[%i] = %.*s (size=%zu)\n",
-                i, (int) TLEN(z, i), TSTR(z, i), TLEN(z, i));
+    print_tokens(z, 0);
 
     while ( (a = string_pop_token(z)) ) {
         printf("(*) Dequeued token: %.*s\n", (int) SIZE(a), CSTR(a));
-        printf("(*) String queue: %.*s Length: %zu\n",
-               (int) SIZE(z), CSTR(z), SIZE(z));
-        for (i = 0; i < PARTS(z); i ++)
-        printf("(-) token[%i] = %.*s (size=%zu)\n",
-               i, (int) TLEN(z, i), TSTR(z, i), TLEN(z, i));
+        print_tokens(z, 0);
         string_free(a);
     }
 
     z = string_free(z);
 
+    printf("(*) Splitting and merging a pseudo HTTP request:\n");
+
     z = string_alloc("HTTP 888 TEST\r\nheader: value\r\nheader: value----1",
                      strlen("HTTP 888 TEST\r\nheader: value\r\nheader: value----1"));
-    fprintf(stderr, "string len: %zu\n", SIZE(z));
+
     string_splits(z, "----", 4);
-    fprintf(stderr, "token 0 = %.*s [%zu], token 1 = %.*s [%zu]\n",
-            (int) TLEN(z, 0), TSTR(z, 0), TLEN(z, 0),
-            (int)TLEN(z, 1), TSTR(z, 1), TLEN(z, 1));
-    fprintf(stderr, "string len: %zu\n", SIZE(z));
+
+    print_tokens(z, 0);
+
     string_splits(TOKEN(z, 0), "\r\n", 2);
     string_merges(TOKEN(z, 0), "X", 1);
-    fprintf(stderr, "token 0 = %.*s [%zu], token 1 = %.*s [%zu]\n",
-            (int) TLEN(z, 0), TSTR(z, 0),TLEN(z, 0),
-            (int) TLEN(z, 1), TSTR(z, 1), TLEN(z, 1));
-    fprintf(stderr, "string len: %zu\n", SIZE(z));
-    //string_fetch_fmt(TOKEN(z, 1), "%i", & i);
-    fprintf(stderr, "string parts: %i\n", z->parts);
-    if (z->parts) {
-        for (i = 0; i < PARTS(z); i ++) {
-            fprintf(stderr, "token %i len=%zu alloc=%zu data=%p [[%.*s]]\n",
-                    i, TLEN(z, i), z->token[i]._alloc, z->token[i]._data,
-                    (int) TLEN(z, i), TSTR(z, i));
-        }
-    }
-    fprintf(stderr, "Final string: [[%.*s]] Length: %zu\n",
-            (int) SIZE(z), CSTR(z), SIZE(z));
-    fprintf(stderr, "===========================\n");
+
+    print_tokens(z, 0);
+
+    printf("===========================\n");
+    printf("(*) Flushing the request data:\n");
 
     string_flush(TOKEN(z, 1));
-    fprintf(stderr, "string parts: %i\n", z->parts);
-    if (z->parts) {
-        for (i = 0; i < PARTS(z); i ++) {
-            fprintf(stderr, "token %i len=%zu alloc=%zu data=%p [[%.*s]]\n",
-                    i, TLEN(z, i), z->token[i]._alloc, z->token[i]._data,
-                    (int) TLEN(z, i), TSTR(z, i));
-        }
-    }
-    fprintf(stderr, "Final string: [[%.*s]] Length: %zu\n",
-            (int) SIZE(z), CSTR(z), SIZE(z));
-    fprintf(stderr, "===========================\n");
+
+    print_tokens(z, 0);
+
+    printf("===========================\n");
+    printf("(*) Appending new data:\n");
 
     string_cats(z, "incoming data", strlen("incoming data"));
-    fprintf(stderr, "string parts: %i\n", z->parts);
-    if (z->parts) {
-        for (i = 0; i < PARTS(z); i ++) {
-            fprintf(stderr, "token %i len=%zu alloc=%zu data=%p [[%.*s]]\n",
-                    i, TLEN(z, i), z->token[i]._alloc, z->token[i]._data,
-                    (int) TLEN(z, i), TSTR(z, i));
-        }
-    }
 
-    fprintf(stderr, "Final string: [[%.*s]] Length: %zu\n",
-            (int) SIZE(z), CSTR(z), SIZE(z));
+    print_tokens(z, 0);
 
     z = string_free(z);
 
-    z = string_alloc("Test merging with a 0-length delimiter\n", 39);
+    z = string_alloc("Test merging with a 0-length delimiter", 38);
     string_splits(z, " ", 1);
-    fprintf(stderr, "string parts: %i\n", z->parts);
-    if (z->parts) {
-        for (i = 0; i < PARTS(z); i ++) {
-            fprintf(stderr, "token %i len=%zu alloc=%zu data=%p [[%.*s]]\n",
-                    i, TLEN(z, i), z->token[i]._alloc, z->token[i]._data,
-                    (int) TLEN(z, i), TSTR(z, i));
-        }
-    }
+
+    print_tokens(z, 0);
 
     if (string_merges(z, NULL, 1) != -1) {
         printf("(!) NULL pattern with positive length must be rejected: FAILURE\n");
@@ -558,17 +463,8 @@ int test_string(void)
 
     string_merges(z, NULL, 0);
 
-    fprintf(stderr, "string parts: %i\n", z->parts);
-    if (z->parts) {
-        for (i = 0; i < PARTS(z); i ++) {
-            fprintf(stderr, "token %i len=%zu alloc=%zu data=%p [[%.*s]]\n",
-                    i, TLEN(z, i), z->token[i]._alloc, z->token[i]._data,
-                    (int) TLEN(z, i), TSTR(z, i));
-        }
-    }
+    print_tokens(z, 0);
 
-    fprintf(stderr, "Final string: [[%.*s]] Length: %zu\n",
-            (int) SIZE(z), CSTR(z), SIZE(z));
     z = string_free(z);
 
     #ifdef HAS_ZLIB
