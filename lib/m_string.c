@@ -2220,7 +2220,7 @@ public int string_parse(m_string *string, const char *pattern, size_t len)
         }
 
         token = new_token;
-
+        token[i].parent = string;
         token[i]._flags = string->_flags | _STRING_FLAG_NOFREE;
         token[i]._data = string->_data + off[0];
         token[i]._len = off[1] - off[0] + ! (off[1] - off[0]);
@@ -2240,6 +2240,7 @@ public int string_parse(m_string *string, const char *pattern, size_t len)
         }
 
         for (j = 2, k = 0; j + 1 < (unsigned) r * 2; j += 2, k ++) {
+            token[i].token[k].parent = & token[i];
             token[i].token[k]._flags = string->_flags | _STRING_FLAG_NOFREE;
             token[i].token[k]._data = string->_data + off[j];
             token[i].token[k]._len = off[j + 1] - off[j] + ! (off[j + 1] - off[j]);
