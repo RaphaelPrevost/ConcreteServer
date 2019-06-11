@@ -3171,7 +3171,7 @@ public int string_parse_json(m_string *s, int strict)
         } break;
 
         case '\\': { /* escape sequence */
-            if (pos + 1 < SIZE(json)) goto _err_parser;
+            if (pos + 1 >= SIZE(json)) goto _err_parser;
 
             if (! IS_STRING(json)) {
                 if (! strict && IS_PRIMITIVE(json)) {
