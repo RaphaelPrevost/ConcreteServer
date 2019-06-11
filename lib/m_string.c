@@ -3095,7 +3095,7 @@ public int string_urlencode(m_string *url, int flags)
 
 public int string_parse_json(m_string *s, int strict)
 {
-    unsigned int pos = 0, i = 0, value_expected = 0, skip = 0;
+    unsigned int pos = 0, i = 0, value_expected = 0, kv = 0, skip = 0;
     unsigned char c = 0;
     m_string *json = s;
 
@@ -3111,7 +3111,7 @@ public int string_parse_json(m_string *s, int strict)
 
         switch ( (c = json->_data[pos]) ) {
 
-        case '{':
+        case '{': kv = 0;
         case '[': {
             if (IS_PRIMITIVE(json)) goto _err_parser;
 
@@ -3123,7 +3123,7 @@ public int string_parse_json(m_string *s, int strict)
             }
         } break;
 
-        case '}':
+        case '}': if (strict && (! kv -- || json->parts & 0x1)) goto _err_parser;
         case ']': {
             if (strict && value_expected) {
                 debug("string_parse_json(): a value is expected.\n");
@@ -3231,10 +3231,20 @@ public int string_parse_json(m_string *s, int strict)
                 }
             }
 
-            if (! IS_STRING(json)) value_expected = 1;
+            if (! IS_STRING(json)) {
+                value_expected = 1;
+                if (strict) kv ++;
+            }
         } break;
 
         case  ',': { /* allowed in OBJECT, ARRAY and STRING */
+            if (strict) {
+                if (value_expected || (IS_OBJECT(json) && ! kv --) ) {
+                    debug("string_parse_json(): a value is expected.\n");
+                    goto _err_parser;
+                }
+            }
+
             if (IS_PRIMITIVE(json)) {
                 if (json->parent) {
                     if (IS_TYPE(json->parent, JSON_ARRAY | JSON_OBJECT)) {
