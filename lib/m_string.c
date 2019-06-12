@@ -1423,7 +1423,11 @@ public m_string *string_cats(m_string *to, const char *from, size_t len)
     /* find the last token first */
     if (to) {
         while (to->parent) to = to->parent;
-        while (to->parts) to = & to->token[to->parts - 1];
+        while (to->parts) {
+            if (STRING_END(to) == STRING_END(LAST_TOKEN(to)))
+                to = LAST_TOKEN(to);
+            else break;
+        }
     }
 
     return (to = string_movs(to, (to) ? SIZE(to) : 0, from, len)) ?
@@ -3069,14 +3073,14 @@ public int string_parse_json(m_string *s, int strict)
     }
 
     /* check if we should resume parsing */
-    if (json->parts && IS_TYPE(TOKEN(json, 0), JSON_ARRAY | JSON_OBJECT)) {
-        /* clear the last subtokens and restart from here */
-        if (json->token[0].parts) {
-            string_free_token(LAST_TOKEN(TOKEN(json, 0)));
-            pos = CSTR(LAST_TOKEN(TOKEN(json, 0))) - CSTR(TOKEN(json, 0));
-            json->token[0].parts --; json = TOKEN(json, 0);
+    if (json->parts && IS_TYPE(LAST_TOKEN(json), JSON_TYPE)) {
+        json = LAST_TOKEN(json);
+        if (json->parts && HAS_ERROR(json)) {
+            /* restart from the last token (and clear its subtokens) */
+            pos = CSTR(LAST_TOKEN(json)) - CSTR(json);
+            string_free_token(LAST_TOKEN(json)); json->parts --;
             if (IS_TYPE(json, JSON_OBJECT)) kv = 1;
-        } else string_free_token(json);
+        } else { json = json->parent; string_free_token(json); }
     } else string_free_token(json);
 
     for ( ; pos < SIZE(json); pos ++) {
@@ -3091,6 +3095,7 @@ public int string_parse_json(m_string *s, int strict)
                 json = string_add_token(json, pos, SIZE(json));
                 json->_flags &= ~JSON_TYPE;
                 json->_flags |= (c == '[') ? JSON_ARRAY : JSON_OBJECT;
+                json->_flags |= _STRING_FLAG_ERRORS;
                 value_expected = 1; pos = 0;
             }
         } break;
@@ -3139,6 +3144,7 @@ public int string_parse_json(m_string *s, int strict)
                 }
                 json = string_add_token(json, pos, SIZE(json));
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_STRING;
+                json->_flags |= _STRING_FLAG_ERRORS;
                 value_expected = 0; pos = 0;
             } else {
                 /* check if the quotes are matching */
@@ -3268,6 +3274,7 @@ public int string_parse_json(m_string *s, int strict)
 _delim: skip = 1;
 _token: json->_len = json->_alloc = pos + (1 - skip);
         skip = 0;
+        json->_flags &= ~_STRING_FLAG_ERRORS;
         if (json->parent) {
             pos += json->_data - json->parent->_data;
             json = json->parent;
