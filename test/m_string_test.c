@@ -46,7 +46,9 @@ int test_string(void)
     #endif
     #ifdef _ENABLE_JSON
     const char *good_json = "{\"obj\":{\"b\":false,\"z\":[\"\"]},\"matrix\":[[[1,2],[2,3]]],\"empty\":{}}";
-    int bad_json = 10;
+    const char *incomplete_json1 = "{\"a\":[1,2,3],\"b\":[4,5";
+    const char *incomplete_json2 = ",6],\"c\":[7,8,9]}";
+    unsigned int bad_json = 10;
     const char *bad[] = { "{\"a\":}", "{\"a\"}", "{\"a\" \"b\"}", "{\"a\" ::::: \"b\"}", "{\"a\": [1 \"b\"] }", "{\"a\"\"\"}", "{\"a\":1\"\"}", "{\"a\":1\"b\":1}", "{\"a\":\"b\",{\"c\":\"d\"}}", "[\"a\":\"b\"]"};
     #endif
     const char *cs = "Random string1234";
@@ -124,6 +126,14 @@ int test_string(void)
         }
         z = string_free(z);
     }
+    printf("(*) Parsing incomplete JSON:\n");
+    z = string_alloc(incomplete_json1, strlen(incomplete_json1));
+    string_parse_json(z, 1);
+    print_tokens(z, 0);
+    string_cats(z, incomplete_json2, strlen(incomplete_json2));
+    string_parse_json(z, 1);
+    print_tokens(z, 0);
+    z = string_free(z);
     #endif
 
     /* catch integer overflow */

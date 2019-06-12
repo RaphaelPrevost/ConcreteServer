@@ -2004,39 +2004,14 @@ public m_string *string_select(m_string *string, unsigned int off, size_t len)
 {
     /** @brief create a string token encompassing the given part of string */
 
-    m_string *token = NULL;
-
     if (! string || ! len) {
         debug("string_select(): bad parameters.\n");
         return NULL;
     }
 
-    if (off + len > SIZE(string)) {
-        debug("string_select(): selection out of bound.\n");
-        return NULL;
-    }
+    string_free_token(string);
 
-    if (string->token) {
-        /* avoid pointless allocations if an existing token can be reused */
-        while (string->parts --)
-            string_free_token(& string->token[string->parts]);
-        token = string->token;
-    } else if (! (token = malloc(sizeof(*token))) ) {
-        perror(ERR(string_select, malloc));
-        return NULL;
-    } else string_free_token(string);
-
-    token->parent = string;
-    /* the token inherits the parent's flags and adds the "no free" bit */
-    token->_flags = string->_flags | _STRING_FLAG_NOFREE;
-    token->_data = string->_data + off;
-    token->_alloc = token->_len = len;
-    token->_parts_alloc = token->parts = 0;
-    token->token = NULL;
-
-    string->token = token; string->parts = 1;
-
-    return string->token;
+    return string_add_token(string, off, off + len);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2046,6 +2021,7 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
     /** @brief adds a new token to the string, selecting the delimited part */
 
     m_string *tokens = NULL, *token = NULL;
+    int i = 0, j = 0;
 
     if (! s || ! CSTR(s) || (size_t) end > SIZE(s) || end <= start) {
         debug("string_add_token(): bad parameters.\n");
@@ -2057,8 +2033,14 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
             perror(ERR(string_add_token, realloc));
             return NULL;
         }
-        s->_parts_alloc = ++ s->parts;
-        s->token = tokens;
+
+        /* XXX update all the subtokens' pointers */
+        for (i = 0; i < s->parts; i ++) {
+            for (j = 0; j < tokens[i].parts; j ++)
+                tokens[i].token[j].parent = & tokens[i];
+        }
+
+        s->_parts_alloc = ++ s->parts; s->token = tokens;
     } else { tokens = s->token; s->parts ++; }
 
     token = & tokens[s->parts - 1];
@@ -2090,7 +2072,6 @@ public int string_push_token(m_string *s, m_string *token)
 
 public int string_push_tokens(m_string *s, const char *strtoken, size_t len)
 {
-    m_string *tokens = NULL, *token = NULL;
     size_t slen = 0;
 
     if (! s || ! strtoken || ! CSTR(s) || ! len) {
@@ -2100,32 +2081,15 @@ public int string_push_tokens(m_string *s, const char *strtoken, size_t len)
 
     slen = SIZE(s);
 
-    /* make room for the new token */
+    /* make room for the new data */
     if (string_extend(s, slen + len + 1) == -1) return -1;
 
-    /* append the token */
+    /* copy the data */
     memmove(s->_data + slen, strtoken, len);
     s->_data[slen + len] = 0; s->_len += len;
 
-    /* delimit the new token */
-    if (s->_parts_alloc < s->parts + 1) {
-        if (! (tokens = realloc(s->token, (s->parts + 1) * sizeof(*tokens))) ) {
-            perror(ERR(string_push_tokens, realloc));
-            return -1;
-        }
-        s->_parts_alloc = ++ s->parts;
-        s->token = tokens;
-    } else { tokens = s->token; s->parts ++; }
-
-    token = & tokens[s->parts - 1];
-
-    /* the token inherits the parent's flags and adds the "no free" bit */
-    token->parent = s;
-    token->_flags = s->_flags | _STRING_FLAG_NOFREE;
-    token->_data = s->_data + slen;
-    token->_alloc = token->_len = len;
-    token->_parts_alloc = token->parts = 0;
-    token->token = NULL;
+    /* append the token */
+    if (! string_add_token(s, slen, slen + len)) return -1;
 
     return 0;
 }
@@ -3104,10 +3068,18 @@ public int string_parse_json(m_string *s, int strict)
         return -1;
     }
 
-    /* remove existing tokens */
-    string_free_token(json);
+    /* check if we should resume parsing */
+    if (json->parts && IS_TYPE(TOKEN(json, 0), JSON_ARRAY | JSON_OBJECT)) {
+        /* clear the last subtokens and restart from here */
+        if (json->token[0].parts) {
+            string_free_token(LAST_TOKEN(TOKEN(json, 0)));
+            pos = CSTR(LAST_TOKEN(TOKEN(json, 0))) - CSTR(TOKEN(json, 0));
+            json->token[0].parts --; json = TOKEN(json, 0);
+            if (IS_TYPE(json, JSON_OBJECT)) kv = 1;
+        } else string_free_token(json);
+    } else string_free_token(json);
 
-    for (pos = 0; pos < SIZE(json); pos ++) {
+    for ( ; pos < SIZE(json); pos ++) {
 
         switch ( (c = json->_data[pos]) ) {
 
@@ -3307,7 +3279,6 @@ _token: json->_len = json->_alloc = pos + (1 - skip);
 _error:
     debug("string_parse_json(): illegal character \'%c\' at %i.\n",
           c, (json->_data - s->_data) + pos + 1);
-    string_free_token(s);
     return -1;
 }
 
