@@ -20,6 +20,7 @@ static void print_tokens(const m_string *s, unsigned int indent)
             IS_ARRAY(s) ? "(array)" :
             IS_STRING(s) ? "(string)" :
             IS_PRIMITIVE(s) ? "(primitive)" : ""));
+    if (HAS_ERROR(s)) printf(" (!) ");
     if (! IS_TYPE(s, JSON_TYPE))
         printf("(size=%zu)", SIZE(s));
     printf("\n");
@@ -48,8 +49,14 @@ int test_string(void)
     const char *good_json = "{\"obj\":{\"b\":false,\"z\":[\"\"]},\"matrix\":[[[1,2],[2,3]]],\"empty\":{}}";
     const char *incomplete_json1 = "{\"a\":[1,2,3],\"b\":[4,5";
     const char *incomplete_json2 = ",6],\"c\":[7,8,9]}";
-    unsigned int bad_json = 10;
-    const char *bad[] = { "{\"a\":}", "{\"a\"}", "{\"a\" \"b\"}", "{\"a\" ::::: \"b\"}", "{\"a\": [1 \"b\"] }", "{\"a\"\"\"}", "{\"a\":1\"\"}", "{\"a\":1\"b\":1}", "{\"a\":\"b\",{\"c\":\"d\"}}", "[\"a\":\"b\"]"};
+    const char *json_stream1 = "{\"a\": \"stream_part\"}[[[[{\"b\"";
+    const char *json_stream2 = ": \"partial stream part\"}]]]]";
+    const char *json_stream3 = "{\"a\": [1, true] }";
+    const char *json_stream4 = "{\"b\": [0, false] }";
+    const char *incomplete_string1 = "\"incomplete ";
+    const char *incomplete_string2 = "string\"";
+    unsigned int bad_json = 13;
+    const char *bad[] = { "{\"a\":}", "{\"a\"}", "{\"a\" \"b\"}", "{\"a\" ::::: \"b\"}", "{\"a\": [1 \"b\"] }", "{\"a\"\"\"}", "{\"a\":1\"\"}", "{\"a\":1\"b\":1}", "{\"a\":\"b\",{\"c\":\"d\"}}", "[\"a\":\"b\"]", "{ {\"a\": 1 } {\"b\": 2}}", "{,}", "[1,,3]" };
     #endif
     const char *cs = "Random string1234";
     m_string *a = NULL, *w = NULL, *z = NULL;
@@ -131,6 +138,33 @@ int test_string(void)
     string_parse_json(z, 1);
     print_tokens(z, 0);
     string_cats(z, incomplete_json2, strlen(incomplete_json2));
+    string_parse_json(z, 1);
+    print_tokens(z, 0);
+    z = string_free(z);
+
+    z = string_alloc(json_stream1, strlen(json_stream1));
+    if (string_parse_json(z, 1) == -1)
+        printf("(!) Error with complete object in the stream!\n");
+    print_tokens(z, 0);
+    string_cats(z, json_stream2, strlen(json_stream2));
+    string_parse_json(z, 1);
+    print_tokens(z, 0);
+    z = string_free(z);
+
+    z = string_alloc(json_stream3, strlen(json_stream3));
+    if (string_parse_json(z, 1) == -1)
+        printf("(!) Error with complete object in the stream!\n");
+    print_tokens(z, 0);
+    string_cats(z, json_stream4, strlen(json_stream4));
+    string_parse_json(z, 1);
+    print_tokens(z, 0);
+    z = string_free(z);
+
+    z = string_alloc(incomplete_string1, strlen(incomplete_string1));
+    if (string_parse_json(z, 1) == -1)
+        printf("(!) Error with complete object in the stream!\n");
+    print_tokens(z, 0);
+    string_cats(z, incomplete_string2, strlen(incomplete_string2));
     string_parse_json(z, 1);
     print_tokens(z, 0);
     z = string_free(z);
