@@ -3111,24 +3111,26 @@ public int string_parse_json(m_string *s, int strict)
 
         switch ( (c = json->_data[pos]) ) {
 
-        case '{': kv = 0;
+        case '{': if (strict && IS_OBJECT(json) && ! kv) goto _error; kv = 0;
         case '[': {
-            if (IS_PRIMITIVE(json)) goto _err_parser;
+            if (IS_PRIMITIVE(json)) goto _error;
 
             if (! IS_STRING(json)) {
                 json = string_add_token(json, pos, SIZE(json));
                 json->_flags &= ~JSON_TYPE;
                 json->_flags |= (c == '[') ? JSON_ARRAY : JSON_OBJECT;
-                value_expected = 0; pos = 0;
+                value_expected = 1; pos = 0;
             }
         } break;
 
-        case '}': if (strict && (! kv -- || json->parts & 0x1)) goto _err_parser;
+        case '}': if (strict && (! kv && json->parts & 0x1)) goto _error;
         case ']': {
-            if (strict && value_expected) {
+            if (strict && (json->parts && value_expected)) {
                 debug("string_parse_json(): a value is expected.\n");
-                goto _err_parser;
+                goto _error;
             }
+
+            value_expected = 0;
 
             if (IS_PRIMITIVE(json)) {
                 if (json->parent) {
@@ -3140,23 +3142,29 @@ public int string_parse_json(m_string *s, int strict)
                 if (strict) {
                     debug("string_parse_json(): parent is not an array or "
                           "an object.\n");
-                    goto _err_parser;
+                    goto _error;
                 }
             } else if (! IS_STRING(json)) {
                 /* check if the brackets are matching */
                 if (json->_data[0] != c - 2) {
                     debug("string_parse_json(): mismatched or missing "
                           "bracket.\n");
-                    goto _err_parser;
+                    goto _error;
                 } else goto _token;
             }
         } break;
 
         case '\'': if (! strict) /* FALLTHRU */
         case '\"': {
-            if (IS_PRIMITIVE(json)) goto _err_parser;
+            if (IS_PRIMITIVE(json)) goto _error;
 
             if (! IS_STRING(json)) {
+                if (strict && IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
+                    if (! value_expected) {
+                        debug("string_parse_json(): unexpected string.\n");
+                        goto _error;
+                    }
+                }
                 json = string_add_token(json, pos, SIZE(json));
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_STRING;
                 value_expected = 0; pos = 0;
@@ -3165,13 +3173,13 @@ public int string_parse_json(m_string *s, int strict)
                 if (json->_data[0] != c) {
                     debug("string_parse_json(): mismatched or missing "
                           "quotation mark.\n");
-                    goto _err_parser;
+                    goto _error;
                 } else goto _token;
             }
         } break;
 
         case '\\': { /* escape sequence */
-            if (pos + 1 >= SIZE(json)) goto _err_parser;
+            if (pos + 1 >= SIZE(json)) goto _error;
 
             if (! IS_STRING(json)) {
                 if (! strict && IS_PRIMITIVE(json)) {
@@ -3180,7 +3188,7 @@ public int string_parse_json(m_string *s, int strict)
                 } else {
                     debug("string_parse_json(): escape sequences are not "
                           "allowed in primitives.\n");
-                    goto _err_parser;
+                    goto _error;
                 }
             }
 
@@ -3200,14 +3208,14 @@ public int string_parse_json(m_string *s, int strict)
                            (c >= 'A' && c <= 'F') ||
                            (c >= 'a' && c <= 'f')) ) {
                         debug("string_parse_json(): hexadecimal expected.\n");
-                        goto _err_parser;
+                        goto _error;
                     }
                 }
                 pos --;
             } break;
 
             /* unexpected char */
-            default: goto _err_parser;
+            default: goto _error;
             }
         } break;
 
@@ -3221,33 +3229,33 @@ public int string_parse_json(m_string *s, int strict)
                 if (strict) {
                     debug("string_parse_json(): a key must be a string "
                           "enclosed in quotation marks.\n");
-                    goto _err_parser;
+                    goto _error;
                 } else { value_expected = 1; goto _delim; }
             } else if (IS_ARRAY(json)) {
                 if (strict) {
                     debug("string_parse_json(): key/value pairs are only "
                           "allowed in objects.\n");
-                    goto _err_parser;
+                    goto _error;
                 }
             }
 
             if (! IS_STRING(json)) {
+                if (strict && kv ++) goto _error;
                 value_expected = 1;
-                if (strict) kv ++;
             }
         } break;
 
         case  ',': { /* allowed in OBJECT, ARRAY and STRING */
-            if (strict) {
-                if (value_expected || (IS_OBJECT(json) && ! kv --) ) {
-                    debug("string_parse_json(): a value is expected.\n");
-                    goto _err_parser;
-                }
+            if (strict && value_expected) {
+                debug("string_parse_json(): a value is expected.\n");
+                goto _error;
             }
 
             if (IS_PRIMITIVE(json)) {
                 if (json->parent) {
                     if (IS_TYPE(json->parent, JSON_ARRAY | JSON_OBJECT)) {
+                        if (strict && (IS_OBJECT(json->parent) && ! kv --))
+                            goto _error;
                         value_expected = 1; goto _delim;
                     }
                 }
@@ -3255,21 +3263,28 @@ public int string_parse_json(m_string *s, int strict)
                 if (strict) {
                     debug("string_parse_json(): parent is not an object "
                           "or an array.\n");
-                    goto _err_parser;
+                    goto _error;
                 }
             } else {
-                if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) value_expected = 1;
-                else if (strict && ! IS_STRING(json)) {
+                if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
+                    if (strict && (IS_OBJECT(json) && ! kv --))
+                        goto _error;
+                    value_expected = 1;
+                } else if (strict && ! IS_STRING(json)) {
                     debug("string_parse_json(): not an object or an array.\n");
-                    goto _err_parser;
+                    goto _error;
                 }
             }
         } break;
 
         default:
-            if (c < 32 || c > 127) goto _err_parser;
+            if (c < 32 || c > 127) goto _error;
 
             if (! IS_TYPE(json, JSON_STRING | JSON_PRIMITIVE)) {
+                if (strict && ! value_expected) {
+                    debug("string_parse_json(): unexpected primitive.\n");
+                    goto _error;
+                }
                 json = string_add_token(json, pos, SIZE(json));
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
                 value_expected = 0; pos = 0;
@@ -3289,7 +3304,7 @@ _token: json->_len = json->_alloc = pos + (1 - skip);
 
     return 0;
 
-_err_parser:
+_error:
     debug("string_parse_json(): illegal character \'%c\' at %i.\n",
           c, (json->_data - s->_data) + pos + 1);
     string_free_token(s);
