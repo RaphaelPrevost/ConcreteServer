@@ -45,7 +45,9 @@ int test_string(void)
                           "\xd3\xd0\xc3\xbb\xd3\xd0\xce\xca\xcc\xe2";
     #endif
     #ifdef _ENABLE_JSON
-    const char *jsontxt = "{\"obj\":{\"k\":0,\"b\":false,\"z\":\"\"},\"matrix\":[[[1,2],[2,3]]]}";
+    const char *good_json = "{\"obj\":{\"b\":false,\"z\":[\"\"]},\"matrix\":[[[1,2],[2,3]]],\"empty\":{}}";
+    int bad_json = 10;
+    const char *bad[] = { "{\"a\":}", "{\"a\"}", "{\"a\" \"b\"}", "{\"a\" ::::: \"b\"}", "{\"a\": [1 \"b\"] }", "{\"a\"\"\"}", "{\"a\":1\"\"}", "{\"a\":1\"b\":1}", "{\"a\":\"b\",{\"c\":\"d\"}}", "[\"a\":\"b\"]"};
     #endif
     const char *cs = "Random string1234";
     m_string *a = NULL, *w = NULL, *z = NULL;
@@ -108,11 +110,20 @@ int test_string(void)
     #endif
 
     #ifdef _ENABLE_JSON
-    printf("(*) Parsing JSON: %s\n", jsontxt);
-    z = string_alloc(jsontxt, strlen(jsontxt));
+    printf("(*) Parsing correct JSON:\n");
+    z = string_alloc(good_json, strlen(good_json));
     string_parse_json(z, 1);
     print_tokens(z, 0);
     string_free(z);
+    printf("(*) Checking if incorrect JSON is rejected:\n");
+    for (i = 0; i < bad_json; i ++) {
+        printf("(-) %s\n", bad[i]);
+        z = string_alloc(bad[i], strlen(bad[i]));
+        if (string_parse_json(z, 1) != -1) {
+            print_tokens(z, 0);
+        }
+        z = string_free(z);
+    }
     #endif
 
     /* catch integer overflow */
