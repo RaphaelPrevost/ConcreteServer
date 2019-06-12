@@ -3286,6 +3286,7 @@ _token: json->_len = json->_alloc = pos + (1 - skip);
 _error:
     debug("string_parse_json(): illegal character \'%c\' at %i.\n",
           c, (json->_data - s->_data) + pos + 1);
+    string_free_token(s);
     return -1;
 }
 

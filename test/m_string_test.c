@@ -10,7 +10,8 @@
 
 static void print_tokens(const m_string *s, unsigned int indent)
 {
-    unsigned int i = 0, j = 0;
+    unsigned int i = 0, j = 0, k = 0;
+    const m_string *cur = NULL, *parent = NULL;
 
     if (! s) return;
 
@@ -26,9 +27,12 @@ static void print_tokens(const m_string *s, unsigned int indent)
     printf("\n");
 
     for (i = 0; i < s->parts; i ++) {
-        for (j = 0; j < indent; j ++)
-            printf("%c  ", (j + 1 == indent && s != LAST_TOKEN(s->parent)) ?
-                   '|' : ' ');
+        for (j = 0; j < indent; j ++) {
+            for (parent = s, k = j; k < indent; k ++) {
+                cur = parent; parent = parent->parent;
+            }
+            printf("%c  ", (LAST_TOKEN(parent) != cur) ? '|' : ' ');
+        }
         printf("|-[%i]", i);
         print_tokens(TOKEN(s, i), indent + 1);
     }
@@ -142,15 +146,17 @@ int test_string(void)
     print_tokens(z, 0);
     z = string_free(z);
 
+    printf("(*) Parsing incomplete JSON stream:\n");
     z = string_alloc(json_stream1, strlen(json_stream1));
     if (string_parse_json(z, 1) == -1)
-        printf("(!) Error with complete object in the stream!\n");
+        printf("(!) Error!\n");
     print_tokens(z, 0);
     string_cats(z, json_stream2, strlen(json_stream2));
     string_parse_json(z, 1);
     print_tokens(z, 0);
     z = string_free(z);
 
+    printf("(*) Parsing JSON stream with complete object:\n");
     z = string_alloc(json_stream3, strlen(json_stream3));
     if (string_parse_json(z, 1) == -1)
         printf("(!) Error with complete object in the stream!\n");
@@ -160,9 +166,10 @@ int test_string(void)
     print_tokens(z, 0);
     z = string_free(z);
 
+    printf("(*) Parsing JSON stream with incomplete string:\n");
     z = string_alloc(incomplete_string1, strlen(incomplete_string1));
     if (string_parse_json(z, 1) == -1)
-        printf("(!) Error with complete object in the stream!\n");
+        printf("(!) Error!\n");
     print_tokens(z, 0);
     string_cats(z, incomplete_string2, strlen(incomplete_string2));
     string_parse_json(z, 1);
