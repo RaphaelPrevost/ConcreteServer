@@ -51,7 +51,7 @@ int test_string(void)
     #endif
     #ifdef _ENABLE_JSON
     const char *good_json = "{\"obj\":{\"b\":false,\"z\":[\"\"]},\"matrix\":[[[1,2],[2,3]]],\"empty\":{}}";
-    const char *incomplete_json1 = "{\"a\":[1,2,3],\"b\":[4,5";
+    const char *incomplete_json1 = "{\"0\": {}, \"a\":[1,2,3],\"b\":[4,5";
     const char *incomplete_json2 = ",6],\"c\":[7,8,9]}";
     const char *json_stream1 = "{\"a\": \"stream_part\"}[[[[{\"b\"";
     const char *json_stream2 = ": \"partial stream part\"}]]]]";
@@ -59,8 +59,8 @@ int test_string(void)
     const char *json_stream4 = "{\"b\": [0, false] }";
     const char *incomplete_string1 = "\"incomplete, ";
     const char *incomplete_string2 = "string\"";
-    unsigned int bad_json = 17;
-    const char *bad[] = { "{\"a\":}", "{\"a\"}", "{\"a\" \"b\"}", "{\"a\" ::::: \"b\"}", "{\"a\": [1 \"b\"] }", "{\"a\"\"\"}", "{\"a\":1\"\"}", "{\"a\":1\"b\":1}", "{\"a\":\"b\",{\"c\":\"d\"}}", "[\"a\":\"b\"]", "{ {\"a\": 1 } {\"b\": 2}}", "{,}", "[1,,3]", "\"unescaped\nstring\"", "{ : 1}", "{\"a\": 1,,}", "[1,2]]" };
+    unsigned int bad_json = 22;
+    const char *bad[] = { "{\"a\":}", "{\"a\"}", "{\"a\" \"b\"}", "{\"a\" ::::: \"b\"}", "{\"a\": [1 \"b\"] }", "{\"a\"\"\"}", "{\"a\":1\"\"}", "{\"a\":1\"b\":1}", "{\"a\":\"b\",{\"c\":\"d\"}}", "[\"a\":\"b\"]", "{ {\"a\": 1 } {\"b\": 2}}", "{,}", "{ : }", "[1,,3]", "\"unescaped\tstring\"", "{ : 1}", "{\"a\": 1,,}", "[1,2]]", "[1,2],", "{\"a\": 0},", "{ },", "{ }:" };
     #endif
     const char *cs = "Random string1234";
     m_string *a = NULL, *w = NULL, *z = NULL;
