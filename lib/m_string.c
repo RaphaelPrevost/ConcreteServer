@@ -3100,7 +3100,7 @@ public int string_parse_json(m_string *s, int strict)
             }
         } break;
 
-        case '}': if (strict && (! kv && json->parts & 0x1)) goto _error;
+        case '}': if (strict && (! kv ++ && json->parts & 0x1)) goto _error;
         case ']': {
             if (strict && (json->parts && value_expected)) {
                 debug("string_parse_json(): a value is expected.\n");
