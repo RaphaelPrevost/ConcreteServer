@@ -3122,6 +3122,10 @@ public int string_parse_json(m_string *s, int strict)
                     goto _error;
                 }
             } else if (! IS_STRING(json)) {
+                /* a closing bracket must be within an array or object */
+                if (strict && ! IS_TYPE(json, JSON_ARRAY | JSON_OBJECT))
+                    goto _error;
+
                 /* check if the brackets are matching */
                 if (json->_data[0] != c - 2) {
                     debug("string_parse_json(): mismatched or missing "
@@ -3197,9 +3201,9 @@ public int string_parse_json(m_string *s, int strict)
             }
         } break;
 
-        case '\t': /* whitespace */
+        case '\t': /* line breaks and tabs must be escaped in STRING */
         case '\r':
-        case '\n':
+        case '\n': if (strict && IS_STRING(json)) goto _error;
         case  ' ': if (IS_PRIMITIVE(json)) goto _delim; break;
 
         case  ':': { /* allowed in OBJECT and STRING */
@@ -3218,12 +3222,14 @@ public int string_parse_json(m_string *s, int strict)
             }
 
             if (! IS_STRING(json)) {
-                if (strict && kv ++) goto _error;
+                if (strict && (value_expected || kv ++)) goto _error;
                 value_expected = 1;
             }
         } break;
 
         case  ',': { /* allowed in OBJECT, ARRAY and STRING */
+            if (IS_STRING(json)) break;
+
             if (strict && value_expected) {
                 debug("string_parse_json(): a value is expected.\n");
                 goto _error;
@@ -3248,7 +3254,7 @@ public int string_parse_json(m_string *s, int strict)
                     if (strict && (IS_OBJECT(json) && ! kv --))
                         goto _error;
                     value_expected = 1;
-                } else if (strict && ! IS_STRING(json)) {
+                } else if (strict) {
                     debug("string_parse_json(): not an object or an array.\n");
                     goto _error;
                 }

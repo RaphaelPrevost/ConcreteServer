@@ -57,10 +57,10 @@ int test_string(void)
     const char *json_stream2 = ": \"partial stream part\"}]]]]";
     const char *json_stream3 = "{\"a\": [1, true] }";
     const char *json_stream4 = "{\"b\": [0, false] }";
-    const char *incomplete_string1 = "\"incomplete ";
+    const char *incomplete_string1 = "\"incomplete, ";
     const char *incomplete_string2 = "string\"";
-    unsigned int bad_json = 13;
-    const char *bad[] = { "{\"a\":}", "{\"a\"}", "{\"a\" \"b\"}", "{\"a\" ::::: \"b\"}", "{\"a\": [1 \"b\"] }", "{\"a\"\"\"}", "{\"a\":1\"\"}", "{\"a\":1\"b\":1}", "{\"a\":\"b\",{\"c\":\"d\"}}", "[\"a\":\"b\"]", "{ {\"a\": 1 } {\"b\": 2}}", "{,}", "[1,,3]" };
+    unsigned int bad_json = 17;
+    const char *bad[] = { "{\"a\":}", "{\"a\"}", "{\"a\" \"b\"}", "{\"a\" ::::: \"b\"}", "{\"a\": [1 \"b\"] }", "{\"a\"\"\"}", "{\"a\":1\"\"}", "{\"a\":1\"b\":1}", "{\"a\":\"b\",{\"c\":\"d\"}}", "[\"a\":\"b\"]", "{ {\"a\": 1 } {\"b\": 2}}", "{,}", "[1,,3]", "\"unescaped\nstring\"", "{ : 1}", "{\"a\": 1,,}", "[1,2]]" };
     #endif
     const char *cs = "Random string1234";
     m_string *a = NULL, *w = NULL, *z = NULL;
