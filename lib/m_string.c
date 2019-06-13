@@ -3087,7 +3087,8 @@ public int string_parse_json(m_string *s, int strict)
 
         switch ( (c = json->_data[pos]) ) {
 
-        case '{': if (strict && IS_OBJECT(json) && ! kv) goto _error; kv = 0;
+        case '{': if (strict && IS_OBJECT(json) && ! kv) goto _error;
+                  if (! IS_STRING(json)) kv = 0;
         case '[': {
             if (IS_PRIMITIVE(json)) goto _error;
 
@@ -3100,7 +3101,8 @@ public int string_parse_json(m_string *s, int strict)
             }
         } break;
 
-        case '}': if (strict && ! kv && json->parts & 0x1) goto _error; kv = 1;
+        case '}': if (strict && ! kv && json->parts & 0x1) goto _error;
+                  if (! IS_STRING(json)) kv = 1;
         case ']': {
             if (strict && (json->parts && value_expected)) {
                 debug("string_parse_json(): a value is expected.\n");
