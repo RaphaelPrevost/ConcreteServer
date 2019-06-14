@@ -3264,7 +3264,7 @@ public int string_parse_json(m_string *s, int strict)
         } break;
 
         default:
-            if (c < 32 || c > 127) goto _error;
+            if (c < 32) goto _error;
 
             if (! IS_TYPE(json, JSON_STRING | JSON_PRIMITIVE)) {
                 if (strict && ! value_expected) {
