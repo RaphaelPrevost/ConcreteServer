@@ -1540,6 +1540,39 @@ public int string_urlencode(m_string *url, int flags);
 #endif
 /* -------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------- */
+#ifdef _ENABLE_JSON
+/* -------------------------------------------------------------------------- */
+
+public int string_parse_json(m_string *s, int strict);
+
+/**
+ * @ingroup string
+ * @fn m_string *string_parse_json(m_string *s, int strict)
+ * @param s the string to be parsed
+ * @param strict boolean - enable or disable strict parsing
+ * @return -1 if an error occured, 0 otherwise
+ *
+ * This function creates tokens for each JSON element in the provided string,
+ * according to RFC 7159. If strict parsing is disabled, invalid JSON input
+ * will be accepted and tokenized as best as possible. Strict parsing will
+ * reject badly structured JSON but is purposefully lax toward JSON primitives
+ * in order to be maximally compatible.
+ *
+ * The function is designed to handle streaming and partial input. If several
+ * JSON messages are concatenated, each will be parsed as distinct tokens.
+ * Partial input will not trigger an error, but will be flagged, so that
+ * valid tokens can be processed first, and parsing resumed later when more
+ * data become available.
+ *
+ * @note Use the macro @ref HAS_ERROR to test if a token is incomplete.
+ *
+ */
+
+/* -------------------------------------------------------------------------- */
+#endif
+/* -------------------------------------------------------------------------- */
+
 public void string_free_token(m_string *string);
 
 /**
