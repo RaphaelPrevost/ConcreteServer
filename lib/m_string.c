@@ -3065,6 +3065,7 @@ public int string_parse_json(m_string *s, int strict)
 {
     unsigned int pos = 0, i = 0, value_expected = 0, kv = 0, skip = 0;
     unsigned char c = 0;
+    char *p = NULL;
     m_string *json = s;
 
     if (! json) {
@@ -3263,17 +3264,31 @@ public int string_parse_json(m_string *s, int strict)
             }
         } break;
 
-        default:
-            if (c < 32) goto _error;
+        default: if (c < 32) goto _error;
 
             if (! IS_TYPE(json, JSON_STRING | JSON_PRIMITIVE)) {
+                p = (char *) CSTR(json) + pos;
+
                 if (strict && ! value_expected) {
-                    debug("string_parse_json(): unexpected primitive.\n");
-                    goto _error;
+                    switch (c) {
+                    case 'f': if (memcmp(p, "false", SIZE(json) - pos) < 0)
+                                  goto _error; p += 4; break;
+                    case 'n': if (memcmp(p, "null", SIZE(json) - pos) < 0)
+                                  goto _error; p += 3; break;
+                    case 't': if (memcmp(p, "true", SIZE(json) - pos) < 0)
+                                  goto _error; p += 3; break;
+                    default: strtod(CSTR(json) + pos, & p);
+                        if (p == CSTR(json) + pos) {
+                            debug("string_parse_json(): invalid primitive.\n");
+                            goto _error;
+                        }
+                    }
                 }
+
+                value_expected = 0;
                 json = string_add_token(json, pos, SIZE(json));
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
-                value_expected = 0; pos = 0;
+                if ( (pos = (p - CSTR(json))) ) goto _token;
             }
         }
 
