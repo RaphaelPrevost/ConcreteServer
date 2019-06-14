@@ -3084,6 +3084,10 @@ public int string_parse_json(m_string *s, int strict)
         } else { json = json->parent; string_free_token(json); }
     } else string_free_token(json);
 
+    /* skip UTF-8 BOM if present */
+    if (! memcmp(CSTR(json) + pos, "\xef\xbb\xbf", MIN(SIZE(json) - pos, 3)))
+        pos += 3;
+
     for ( ; pos < SIZE(json); pos ++) {
 
         switch ( (c = json->_data[pos]) ) {
@@ -3271,11 +3275,11 @@ public int string_parse_json(m_string *s, int strict)
 
                 if (strict && ! value_expected) {
                     switch (c) {
-                    case 'f': if (memcmp(p, "false", SIZE(json) - pos) < 0)
+                    case 'f': if (memcmp(p, "false", MIN(SIZE(json) - pos, 5)))
                                   goto _error; p += 4; break;
-                    case 'n': if (memcmp(p, "null", SIZE(json) - pos) < 0)
+                    case 'n': if (memcmp(p, "null", MIN(SIZE(json) - pos, 4)))
                                   goto _error; p += 3; break;
-                    case 't': if (memcmp(p, "true", SIZE(json) - pos) < 0)
+                    case 't': if (memcmp(p, "true", MIN(SIZE(json) - pos, 4)))
                                   goto _error; p += 3; break;
                     default: strtod(CSTR(json) + pos, & p);
                         if (p == CSTR(json) + pos) {
