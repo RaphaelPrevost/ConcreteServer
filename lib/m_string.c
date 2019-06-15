@@ -3065,9 +3065,8 @@ public int string_urlencode(m_string *url, int flags)
 
 public int string_parse_json(m_string *s, int strict)
 {
-    unsigned int pos = 0, i = 0, value_expected = 0, kv = 0, skip = 0;
-    unsigned char c = 0;
-    char *p = NULL;
+    unsigned int pos = 0, i = 0, value_expected = 0, kv = 0;
+    char c = 0, *p = NULL;
     m_string *json = s;
 
     if (! json) {
@@ -3080,17 +3079,17 @@ public int string_parse_json(m_string *s, int strict)
         json = LAST_TOKEN(json);
         if (json->parts && HAS_ERROR(json)) {
             /* restart from the last token (and clear its subtokens) */
-            pos = CSTR(LAST_TOKEN(json)) - CSTR(json);
+            i = CSTR(LAST_TOKEN(json)) - CSTR(json);
             string_free_token(LAST_TOKEN(json)); json->parts --;
             if (IS_TYPE(json, JSON_OBJECT)) kv = 1;
         } else { json = json->parent; string_free_token(json); }
     } else string_free_token(json);
 
     /* skip UTF-8 BOM if present */
-    if (! memcmp(CSTR(json) + pos, "\xef\xbb\xbf", MIN(SIZE(json) - pos, 3)))
-        pos += 3;
+    if (! memcmp(CSTR(json) + i, "\xef\xbb\xbf", MIN(SIZE(json) - i, 3)))
+        i += 3;
 
-    for ( ; pos < SIZE(json); pos ++) {
+    for (pos = i; pos < SIZE(json); pos ++) {
 
         switch ( (c = json->_data[pos]) ) {
 
@@ -3202,7 +3201,7 @@ public int string_parse_json(m_string *s, int strict)
                         goto _error;
                     }
                 }
-                pos --;
+                i = 0; pos --;
             } break;
 
             /* unexpected char */
@@ -3303,9 +3302,9 @@ public int string_parse_json(m_string *s, int strict)
 
         continue;
 
-_delim: skip = 1;
-_token: json->_len = json->_alloc = pos + (1 - skip);
-        skip = 0;
+_delim: i = 1;
+_token: json->_len = json->_alloc = pos + (1 - i);
+        i = 0;
         json->_flags &= ~_STRING_FLAG_ERRORS;
         if (json->parent) {
             pos += json->_data - json->parent->_data;
