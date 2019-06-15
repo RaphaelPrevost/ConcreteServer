@@ -2039,9 +2039,11 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
         }
 
         /* XXX update all the subtokens' pointers */
-        for (i = 0; i < s->parts; i ++) {
-            for (j = 0; j < tokens[i].parts; j ++)
-                tokens[i].token[j].parent = & tokens[i];
+        if (tokens != s->token) {
+            for (i = 0; i < s->parts; i ++) {
+                for (j = 0; j < tokens[i].parts; j ++)
+                    tokens[i].token[j].parent = & tokens[i];
+            }
         }
 
         s->_parts_alloc = ++ s->parts; s->token = tokens;
@@ -3268,32 +3270,35 @@ public int string_parse_json(m_string *s, int strict)
             }
         } break;
 
-        default: if (c < 32) goto _error;
+        default: if (IS_TYPE(json, JSON_STRING | JSON_PRIMITIVE)) break;
 
-            if (! IS_TYPE(json, JSON_STRING | JSON_PRIMITIVE)) {
-                p = (char *) CSTR(json) + pos;
+            p = (char *) CSTR(json) + pos;
 
-                if (strict && ! value_expected) {
-                    switch (c) {
-                    case 'f': if (memcmp(p, "false", MIN(SIZE(json) - pos, 5)))
-                                  goto _error; p += 4; break;
-                    case 'n': if (memcmp(p, "null", MIN(SIZE(json) - pos, 4)))
-                                  goto _error; p += 3; break;
-                    case 't': if (memcmp(p, "true", MIN(SIZE(json) - pos, 4)))
-                                  goto _error; p += 3; break;
-                    default: strtod(CSTR(json) + pos, & p);
-                        if (p == CSTR(json) + pos) {
-                            debug("string_parse_json(): invalid primitive.\n");
-                            goto _error;
-                        }
-                    }
+            if (strict && ! value_expected) {
+                if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
+                    debug("string_parse_json(): unexpected primitive.\n");
+                    goto _error;
                 }
 
-                value_expected = 0;
-                json = string_add_token(json, pos, SIZE(json));
-                json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
-                if ( (pos = (p - CSTR(json))) ) goto _token;
+                switch (c) {
+                case 'f': if (memcmp(p, "false", MIN(SIZE(json) - pos, 5)))
+                                goto _error; p += 4; break;
+                case 'n': if (memcmp(p, "null", MIN(SIZE(json) - pos, 4)))
+                                goto _error; p += 3; break;
+                case 't': if (memcmp(p, "true", MIN(SIZE(json) - pos, 4)))
+                                goto _error; p += 3; break;
+                default: strtod(CSTR(json) + pos, & p);
+                    if (p == CSTR(json) + pos) {
+                        debug("string_parse_json(): invalid primitive.\n");
+                        goto _error;
+                    } else p --;
+                }
             }
+
+            value_expected = 0;
+            json = string_add_token(json, pos, SIZE(json));
+            json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
+            if ( (pos = (p - CSTR(json))) ) goto _token;
         }
 
         continue;
