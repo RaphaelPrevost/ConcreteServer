@@ -3204,6 +3204,8 @@ public int string_parse_json(m_string *s, int strict)
                 i = 0; pos --;
             } break;
 
+            case '\'': if (! strict) break;
+
             /* unexpected char */
             default: goto _error;
             }
