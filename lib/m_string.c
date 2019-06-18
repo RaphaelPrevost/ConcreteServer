@@ -89,6 +89,53 @@ static const char _d64[] = {
 /* macro to ease the use of the decode table and prevent out of bound access */
 #define _D64(c) (_d64[(c) & 0x7F])
 
+#ifdef _ENABLE_JSON
+static const unsigned char _j[] = {
+    15, 15, 15, 15, 15, 15, 15, 15, 15,  8,  8, 15, /*  12 */
+    15,  8, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /*  24 */
+    15, 15, 15, 15, 15, 15, 15, 15,  9,  0,  6,  0, /*  36 */
+     0,  0,  0,  5,  0,  0,  0, 12, 11, 13, 14,  0, /*  48 */
+    48, 48, 48, 48, 48, 48, 48, 48, 48, 48, 10,  0, /*  60 */
+     0,  0,  0,  0,  0, 32, 32, 32, 32,112, 32,  0, /*  72 */
+     0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, /*  84 */
+     0,  0,  0,  0,  0,  0,  0,  3,  7,  4,  0,  0, /*  96 */
+     0, 32, 32, 32, 32,112,160,  0,  0,  0,  0,  0, /* 108 */
+     0,  0,128,  0,  0,  0,  0,  0,128,  0,  0,  0, /* 120 */
+     0,  0,  0,  1,  0,  2,  0,  0, 15, 15, 15, 15, /* 128 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 140 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 152 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 164 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 176 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 188 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 200 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 212 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 224 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 236 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 248 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15              /* 256 */
+};
+
+#define OBJ_START   1 /* { */
+#define OBJ_CLOSE   2 /* } */
+#define ARR_START   3 /* [ */
+#define ARR_CLOSE   4 /* ] */
+#define QUOTE_SGL   5 /* ' */
+#define QUOTE_DBL   6 /* " */
+#define ESCAPESEQ   7 /* \ */
+#define WHITE       8 /* \t, \r, \n */
+#define SPACE       9 /*  */
+#define COLON      10 /* : */
+#define COMMA      11 /* , */
+#define DIGIT_POS  12 /* + */
+#define DIGIT_NEG  13 /* - */
+#define DIGIT_RAD  14 /* . */
+#define OTHER      15
+#define DIGIT_NUM  16 /* 0-9 */
+#define DIGIT_HEX  32 /* A-F, a-f */
+#define DIGIT_EXP  64 /* e E */
+#define BOOL      128 /* t, f, n */
+#endif
+
 /* -- sha1 private context -- */
 typedef struct {
     uint32_t h0, h1, h2, h3, h4;
@@ -1806,7 +1853,8 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
 {
     /** @brief replaces separators in a split string by a new separator */
 
-    int p = 0, last = 0;
+    int p = 0;
+    unsigned int last = 0;
 
     if (! string || ! CSTR(string)) {
         debug("string_merges(): bad parameters.\n");
@@ -1832,7 +1880,7 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
     if (p == 0) {
         last = PARTS(string) - 1;
 
-        while (last --) memcpy((char *) TEND(string, last), pattern, len);
+        while (last -- > 0) memcpy((char *) TEND(string, last), pattern, len);
 
         return 0;
     }
@@ -1844,7 +1892,7 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
 
     if (p > 0) {
         /* move every token starting from the end */
-        while (last --) {
+        while (last -- > 0) {
             memmove((char *) TSTR(string, last) + (last * p),
                     TSTR(string, last),
                     TLEN(string, last));
@@ -2025,7 +2073,8 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
     /** @brief adds a new token to the string, selecting the delimited part */
 
     m_string *tokens = NULL, *token = NULL;
-    int i = 0, j = 0;
+    unsigned int i = 0, j = 0;
+    int p = 0;
 
     if (! s || ! CSTR(s) || (size_t) end > SIZE(s) || end <= start) {
         debug("string_add_token(): bad parameters.\n");
@@ -2033,7 +2082,8 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
     }
 
     if (s->_parts_alloc < s->parts + 1) {
-        if (! (tokens = realloc(s->token, (s->parts + 1) * sizeof(*tokens))) ) {
+        p = (s->_parts_alloc < 65535) ? s->_parts_alloc * 2 + 1 : 2;
+        if (! (tokens = realloc(s->token, (s->_parts_alloc + p) * sizeof(*tokens))) ) {
             perror(ERR(string_add_token, realloc));
             return NULL;
         }
@@ -2046,10 +2096,10 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
             }
         }
 
-        s->_parts_alloc = ++ s->parts; s->token = tokens;
-    } else { tokens = s->token; s->parts ++; }
+        s->parts ++; s->_parts_alloc += p; s->token = tokens;
+    } else s->parts ++;
 
-    token = & tokens[s->parts - 1];
+    token = LAST_TOKEN(s);
 
     /* the token inherits the parent's flags and adds the "no free" bit */
     token->parent = s;
@@ -3065,8 +3115,10 @@ public int string_urlencode(m_string *url, int flags)
 
 public int string_parse_json(m_string *s, int strict)
 {
-    unsigned int pos = 0, i = 0, value_expected = 0, kv = 0;
-    char c = 0, *p = NULL;
+    unsigned int pos = 0, i = 0, kv = 0;
+    unsigned char c = 0, z = 0;
+    char value_expected = 0, radix = 0, exp = 0, sign = 0, leading_digit = 0;
+    char *p = NULL;
     m_string *json = s;
 
     if (! json) {
@@ -3091,28 +3143,41 @@ public int string_parse_json(m_string *s, int strict)
 
     for (pos = i; pos < SIZE(json); pos ++) {
 
-        switch ( (c = json->_data[pos]) ) {
+        switch ( (z = _j[ (c = json->_data[pos]) ]) ) {
 
-        case '{': if (strict && IS_OBJECT(json) && ! kv) goto _error;
-                  if (! IS_STRING(json)) kv = 0;
-        case '[': {
+        /* { */
+        case OBJ_START: if (! IS_STRING(json)) {
+            if (strict && IS_OBJECT(json) && ! kv) goto _error;
+            kv = 0;
+        } else break;
+
+        /* [ */
+        case ARR_START: if (! IS_STRING(json)) {
             if (IS_PRIMITIVE(json)) goto _error;
 
-            if (! IS_STRING(json)) {
-                json = string_add_token(json, pos, SIZE(json));
-                json->_flags &= ~JSON_TYPE;
-                json->_flags |= (c == '[') ? JSON_ARRAY : JSON_OBJECT;
-                json->_flags |= _STRING_FLAG_ERRORS;
-                value_expected = 1; pos = 0;
-            }
+            json = string_add_token(json, pos, SIZE(json));
+            /* prealloc at least 4 tokens */
+            if ( (json->token = malloc(4 * sizeof(*json->token))) )
+                json->_parts_alloc = 4;
+            json->_flags &= ~JSON_TYPE;
+            json->_flags |= (c == '[') ? JSON_ARRAY : JSON_OBJECT;
+            json->_flags |= _STRING_FLAG_ERRORS;
+            value_expected = 1; pos = 0;
         } break;
 
-        case '}': if (strict && ! kv && json->parts & 0x1) goto _error;
-                  if (! IS_STRING(json)) kv = 1;
-        case ']': {
-            if (strict && (json->parts && value_expected)) {
-                debug("string_parse_json(): a value is expected.\n");
-                goto _error;
+        /* } */
+        case OBJ_CLOSE: if (! IS_STRING(json)) {
+            if (strict && ! kv && json->parts & 0x1) goto _error;
+            kv = 1;
+        } else break;
+
+        /* ] */
+        case ARR_CLOSE: if (! IS_STRING(json)) {
+            if (strict && value_expected) {
+                if (! IS_TYPE(json, JSON_ARRAY | JSON_OBJECT) || json->parts) {
+                    debug("string_parse_json(): a value is expected.\n");
+                    goto _error;
+                }
             }
 
             value_expected = 0;
@@ -3129,7 +3194,7 @@ public int string_parse_json(m_string *s, int strict)
                           "an object.\n");
                     goto _error;
                 }
-            } else if (! IS_STRING(json)) {
+            } else {
                 /* a closing bracket must be within an array or object */
                 if (strict && ! IS_TYPE(json, JSON_ARRAY | JSON_OBJECT))
                     goto _error;
@@ -3143,8 +3208,9 @@ public int string_parse_json(m_string *s, int strict)
             }
         } break;
 
-        case '\'': if (! strict) /* FALLTHRU */
-        case '\"': {
+        /* ', " */
+        case QUOTE_SGL: if (! strict)
+        case QUOTE_DBL: {
             if (IS_PRIMITIVE(json)) goto _error;
 
             if (! IS_STRING(json)) {
@@ -3158,6 +3224,21 @@ public int string_parse_json(m_string *s, int strict)
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_STRING;
                 json->_flags |= _STRING_FLAG_ERRORS;
                 value_expected = 0; pos = 0;
+
+                if (strict) {
+                    #define __zero(x)    (((x)-0x01010101U)&~(x)&0x80808080U)
+                    #define __less(x, n) (((x)-~0U/255*(n))&~(x)&~0U/255*128)
+                    uint32_t u = *(uint32_t *) (json->_data + pos + 1);
+                    if (__zero(u & 0x1D1D1D1DU)) /* " */
+                        continue;
+                    if (__zero(u & 0x23232323U)) /* \ */
+                        continue;
+                    if (__less(u, 0x20)) /* unescaped special chars */
+                        continue;
+                    pos += 4;
+                    #undef __zero
+                    #undef __less
+                }
             } else {
                 /* check if the quotes are matching */
                 if (json->_data[0] != c) {
@@ -3168,7 +3249,8 @@ public int string_parse_json(m_string *s, int strict)
             }
         } break;
 
-        case '\\': { /* escape sequence */
+        /* \ */
+        case ESCAPESEQ: { /* escape sequence */
             if (pos + 1 >= SIZE(json)) goto _error;
 
             if (! IS_STRING(json)) {
@@ -3193,10 +3275,7 @@ public int string_parse_json(m_string *s, int strict)
             case  't': break;
             case  'u': { /* unicode escape sequence */
                 for (i = 0; i < 4 && ++ pos < SIZE(json); i ++) {
-                    c = json->_data[pos];
-                    if (! ((c >= '0' && c <= '9') ||
-                           (c >= 'A' && c <= 'F') ||
-                           (c >= 'a' && c <= 'f')) ) {
+                    if (~(z = _j[ (c = json->_data[pos]) ]) & DIGIT_HEX) {
                         debug("string_parse_json(): hexadecimal expected.\n");
                         goto _error;
                     }
@@ -3211,12 +3290,15 @@ public int string_parse_json(m_string *s, int strict)
             }
         } break;
 
-        case '\t': /* line breaks and tabs must be escaped in STRING */
-        case '\r':
-        case '\n': if (strict && IS_STRING(json)) goto _error;
-        case  ' ': if (IS_PRIMITIVE(json)) goto _delim; break;
+        /* \t, \r, \n 0x20 */
+        case WHITE: if (strict && IS_STRING(json)) goto _error;
+        case SPACE: if (IS_PRIMITIVE(json)) {
+            if (strict == 2 && value_expected) goto _error;
+            goto _delim;
+        } break;
 
-        case  ':': { /* allowed in OBJECT and STRING */
+        /* : */
+        case COLON: if (! IS_STRING(json)) {
             if (IS_PRIMITIVE(json)) {
                 if (strict) {
                     debug("string_parse_json(): a key must be a string "
@@ -3231,15 +3313,12 @@ public int string_parse_json(m_string *s, int strict)
                 }
             }
 
-            if (! IS_STRING(json)) {
-                if (strict && (value_expected || kv ++)) goto _error;
-                value_expected = 1;
-            }
+            if (strict && (value_expected || kv ++)) goto _error;
+            value_expected = 1;
         } break;
 
-        case  ',': { /* allowed in OBJECT, ARRAY and STRING */
-            if (IS_STRING(json)) break;
-
+        /* , */
+        case COMMA: if (! IS_STRING(json)) {
             if (strict && value_expected) {
                 debug("string_parse_json(): a value is expected.\n");
                 goto _error;
@@ -3271,16 +3350,72 @@ public int string_parse_json(m_string *s, int strict)
             }
         } break;
 
-        default: if (IS_TYPE(json, JSON_STRING | JSON_PRIMITIVE)) break;
+        /* + */
+        case DIGIT_POS: if (! IS_STRING(json) && strict == 2) {
+            if (! IS_PRIMITIVE(json) || ! exp || sign) goto _error;
+            sign = 1; value_expected = 1;
+        } break;
+
+        /* - */
+        case DIGIT_NEG: if (! IS_STRING(json) && strict == 2) {
+            if (sign) goto _error;
+
+            if (! IS_PRIMITIVE(json)) {
+                json = string_add_token(json, pos, SIZE(json));
+                json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
+                pos = 0;
+            } else if (! exp || ! value_expected) goto _error;
+
+            sign = 1; value_expected = 1;
+        } break;
+
+        /* . */
+        case DIGIT_RAD: if (! IS_STRING(json) && strict == 2) {
+            if (! IS_PRIMITIVE(json) || radix) {
+                debug("string_parse_json(): unexpected decimal separator.\n");
+                goto _error;
+            }
+
+            /* a decimal separator cannot be placed right after a minus sign */
+            if (sign && json->_data[pos - 1] == '-') goto _error;
+
+            radix = 1; sign = 0; value_expected = 1;
+        } break;
+
+        case OTHER: if (strict)
+                    if (! IS_STRING(json) || c < 0x20) goto _error;
+
+        default: if (IS_STRING(json)) break;
+
+            if (strict) {
+                if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
+                    if (! value_expected) {
+                        debug("string_parse_json(): unexpected primitive.\n");
+                        goto _error;
+                    }
+                } else if (IS_PRIMITIVE(json)) {
+                    if (strict == 1) break;
+
+                    if (z & DIGIT_NUM) {
+                        if (z & DIGIT_EXP) {
+                            if (exp || (radix && json->_data[pos - 1] == '.'))
+                                goto _error;
+                            exp = 1; sign = 0; value_expected = 1;
+                        } else {
+                            if (! leading_digit)
+                                leading_digit = c;
+                            else if (leading_digit == '0' && ! radix && ! exp)
+                                goto _error;
+                            value_expected = 0;
+                        }
+                        break;
+                    }
+                }
+            } else if (IS_PRIMITIVE(json)) break;
 
             p = (char *) CSTR(json) + pos;
 
-            if (strict && ! value_expected) {
-                if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
-                    debug("string_parse_json(): unexpected primitive.\n");
-                    goto _error;
-                }
-
+            if (strict == 2) {
                 switch (c) {
                 case 'f': if (memcmp(p, "false", MIN(SIZE(json) - pos, 5)))
                                 goto _error; p += 4; break;
@@ -3288,11 +3423,8 @@ public int string_parse_json(m_string *s, int strict)
                                 goto _error; p += 3; break;
                 case 't': if (memcmp(p, "true", MIN(SIZE(json) - pos, 4)))
                                 goto _error; p += 3; break;
-                default: strtod(CSTR(json) + pos, & p);
-                    if (p == CSTR(json) + pos) {
-                        debug("string_parse_json(): invalid primitive.\n");
-                        goto _error;
-                    } else p --;
+                default: if (z & DIGIT_NUM) { leading_digit = c; sign = 0; }
+                         else goto _error;
                 }
             }
 
@@ -3312,6 +3444,7 @@ _token: json->_len = json->_alloc = pos + (1 - i);
             pos += json->_data - json->parent->_data;
             json = json->parent;
         }
+        radix = exp = sign = leading_digit = 0;
     }
 
     return 0;
