@@ -61,10 +61,10 @@ typedef struct m_string {
     size_t _len;
     size_t _alloc;
     uint16_t _flags;
-    uint16_t _parts_alloc;
+    uint32_t _parts_alloc;
 
     /* public (no more than 64k tokens) */
-    uint16_t parts;
+    uint32_t parts;
     struct m_string *token;
     struct m_string *parent;
 } m_string;
