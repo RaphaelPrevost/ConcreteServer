@@ -26,7 +26,7 @@ static void print_tokens(const m_string *s, unsigned int indent)
         printf("(size=%zu)", SIZE(s));
     printf("\n");
 
-    for (i = 0; i < s->parts; i ++) {
+    for (i = 0; i < PARTS(s); i ++) {
         for (j = 0; j < indent; j ++) {
             for (parent = s, k = j; k < indent; k ++) {
                 cur = parent; parent = parent->parent;
@@ -418,7 +418,7 @@ int test_string(void)
         return -1;
     } else printf("(*) Append formatted string %s: SUCCESS\n", CSTR(z));
 
-    if (string_splits(z, "-", 1) == -1 || z->parts < 2) {
+    if (string_splits(z, "-", 1) == -1 || PARTS(z) < 2) {
         printf("(!) Splitting: FAILURE\n");
         z = string_free(z);
         return -1;
