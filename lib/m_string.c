@@ -3211,7 +3211,7 @@ public int string_parse_json(m_string *s, int strict)
         /* ', " */
         case QUOTE_SGL: if (! strict)
         case QUOTE_DBL: {
-            if (IS_PRIMITIVE(json)) goto _error;
+            if (unlikely(IS_PRIMITIVE(json))) goto _error;
 
             if (! IS_STRING(json)) {
                 if (strict && IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
@@ -3292,7 +3292,7 @@ public int string_parse_json(m_string *s, int strict)
 
         /* \t, \r, \n 0x20 */
         case WHITE: if (strict && IS_STRING(json)) goto _error;
-        case SPACE: if (IS_PRIMITIVE(json)) {
+        case SPACE: if (unlikely(IS_PRIMITIVE(json))) {
             if (strict == 2 && value_expected) goto _error;
             goto _delim;
         } break;
@@ -3313,7 +3313,7 @@ public int string_parse_json(m_string *s, int strict)
                 }
             }
 
-            if (strict && (value_expected || kv ++)) goto _error;
+            if (strict && unlikely(value_expected || kv ++)) goto _error;
             value_expected = 1;
         } break;
 
@@ -3340,7 +3340,7 @@ public int string_parse_json(m_string *s, int strict)
                 }
             } else {
                 if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
-                    if (strict && (IS_OBJECT(json) && ! kv --))
+                    if (strict && unlikely(IS_OBJECT(json) && ! kv --))
                         goto _error;
                     value_expected = 1;
                 } else if (strict) {
@@ -3363,7 +3363,7 @@ public int string_parse_json(m_string *s, int strict)
             if (! IS_PRIMITIVE(json)) {
                 json = string_add_token(json, pos, SIZE(json));
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
-                pos = 0;
+                pos = 0; exp = 0; radix = 0; leading_digit = 0;
             } else if (! exp || ! value_expected) goto _error;
 
             sign = 1; value_expected = 1;
@@ -3385,7 +3385,7 @@ public int string_parse_json(m_string *s, int strict)
         case OTHER: if (strict)
                     if (! IS_STRING(json) || c < 0x20) goto _error;
 
-        default: if (IS_STRING(json)) break;
+        default: if (unlikely(IS_STRING(json))) break;
 
             if (strict) {
                 if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
@@ -3423,15 +3423,14 @@ public int string_parse_json(m_string *s, int strict)
                                 goto _error; p += 3; break;
                 case 't': if (memcmp(p, "true", MIN(SIZE(json) - pos, 4)))
                                 goto _error; p += 3; break;
-                default: if (z & DIGIT_NUM) { leading_digit = c; sign = 0; }
-                         else goto _error;
+                default: if (z & DIGIT_NUM) leading_digit = c; else goto _error;
                 }
             }
 
-            value_expected = 0;
+            value_expected = 0; radix = 0; exp = 0; sign = 0;
             json = string_add_token(json, pos, SIZE(json));
             json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
-            if ( (pos = (p - CSTR(json))) ) goto _token;
+            if (unlikely(pos = (p - CSTR(json)))) goto _token;
         }
 
         continue;
@@ -3440,11 +3439,10 @@ _delim: i = 1;
 _token: json->_len = json->_alloc = pos + (1 - i);
         i = 0;
         json->_flags &= ~_STRING_FLAG_ERRORS;
-        if (json->parent) {
+        if (likely(json->parent)) {
             pos += json->_data - json->parent->_data;
             json = json->parent;
         }
-        radix = exp = sign = leading_digit = 0;
     }
 
     return 0;
