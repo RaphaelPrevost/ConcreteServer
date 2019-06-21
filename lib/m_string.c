@@ -172,6 +172,11 @@ static const char _unsafe[256] = {
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, /* 0xff */
 };
 
+/* fast macros to test if at least one byte in a word is < n, or > n, or = 0 */
+#define __zero(x)    (((x) - 0x01010101U) & ~(x) & 0x80808080U)
+#define __less(x, n) (((x) - ~0U / 255 * (n)) & ~(x) & ~0U / 255 * 128)
+#define __more(x, n) ((((x) + ~0U / 255 * (127 - (n))) | (x)) & ~0U / 255 * 128)
+
 /* -------------------------------------------------------------------------- */
 /* 0. Initialization */
 /* -------------------------------------------------------------------------- */
@@ -3120,6 +3125,7 @@ public int string_parse_json(m_string *s, int strict)
     char value_expected = 0, radix = 0, exp = 0, sign = 0, leading_digit = 0;
     char *p = NULL;
     m_string *json = s;
+    uint32_t prefetch = 0;
 
     if (! json) {
         debug("string_parse_json(): bad parameters.\n");
@@ -3226,18 +3232,15 @@ public int string_parse_json(m_string *s, int strict)
                 value_expected = 0; pos = 0;
 
                 if (strict) {
-                    #define __zero(x)    (((x)-0x01010101U)&~(x)&0x80808080U)
-                    #define __less(x, n) (((x)-~0U/255*(n))&~(x)&~0U/255*128)
-                    uint32_t u = *(uint32_t *) (json->_data + pos + 1);
-                    if (__zero(u & 0x1D1D1D1DU)) /* " */
+                    /* optimize for long strings */
+                    prefetch = *(uint32_t *) (json->_data + pos + 1);
+                    if (__zero(prefetch & 0x1D1D1D1DU)) /* " */
                         continue;
-                    if (__zero(u & 0x23232323U)) /* \ */
+                    if (__zero(prefetch & 0x23232323U)) /* \ */
                         continue;
-                    if (__less(u, 0x20)) /* unescaped special chars */
+                    if (__less(prefetch, 0x20)) /* unescaped special chars */
                         continue;
-                    pos += 4;
-                    #undef __zero
-                    #undef __less
+                    pos += MIN(4, SIZE(json) - pos);
                 }
             } else {
                 /* check if the quotes are matching */
@@ -3315,6 +3318,9 @@ public int string_parse_json(m_string *s, int strict)
 
             if (strict && unlikely(value_expected || kv ++)) goto _error;
             value_expected = 1;
+
+            /* skip space */
+            if (likely(*(json->_data + pos + 1) == 0x20)) pos ++;
         } break;
 
         /* , */
@@ -3348,6 +3354,9 @@ public int string_parse_json(m_string *s, int strict)
                     goto _error;
                 }
             }
+
+            /* skip space */
+            if (likely(*(json->_data + pos + 1) == 0x20)) pos ++;
         } break;
 
         /* + */
@@ -3408,6 +3417,15 @@ public int string_parse_json(m_string *s, int strict)
                                 goto _error;
                             value_expected = 0;
                         }
+
+                        /* optimize for large numbers */
+                        prefetch = *(uint32_t *) (json->_data + pos + 1);
+                        if (__more(prefetch, 0x39)) /* > '9' */
+                            continue;
+                        if (__less(prefetch, 0x30)) /* < '0' */
+                            continue;
+                        pos += MIN(4, SIZE(json) - pos);
+
                         break;
                     }
                 }
