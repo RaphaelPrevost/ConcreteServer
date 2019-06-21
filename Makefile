@@ -105,7 +105,7 @@ BUILD    =
 FINAL    = -O2 -pipe
 DEBUG    = -O0 -g -pg -fprofile-generate -fstack-protector -DDEBUG -DDEBUG_SQL
 TRACE    = -O0 -g -pg -fprofile-generate
-FLAGS    = -std=c99 -W -Wall $(BUILD) -Wpointer-arith
+FLAGS    = -std=c11 -W -Wall $(BUILD) -Wpointer-arith
 
 SHARED   =
 LIBFLAGS =
