@@ -2081,12 +2081,10 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
     unsigned int i = 0, j = 0;
     int p = 0;
 
-    #ifndef LARGE_STRING
     if (unlikely(! s || s->parts == 65535)) {
         debug("string_add_token(): cannot add token.\n");
         return NULL;
     }
-    #endif
 
     #ifdef DEBUG
     if (! CSTR(s) || (size_t) end > SIZE(s) || end <= start) {
@@ -2096,15 +2094,13 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
     #endif
 
     if (s->_parts_alloc < s->parts + 1) {
-        #ifdef LARGE_STRING
-        p = (s->_parts_alloc < 65535) ? s->_parts_alloc * 2 + 1 : 2;
-        #else
-        if (s->_parts_alloc < 21845)
-            p = s->_parts_alloc * 2 + 1;
+        /* 1.5 growth factor */
+        if (s->_parts_alloc < 43690)
+            p = (s->_parts_alloc >> 1) + ! (s->_parts_alloc >> 1);
         else p = 65535 - s->_parts_alloc;
-        #endif
 
-        if (! (tokens = realloc(s->token, (s->_parts_alloc + p) * sizeof(*tokens))) ) {
+        tokens = realloc(s->token, (s->_parts_alloc + p) * sizeof(*tokens));
+        if (unlikely(! tokens)) {
             perror(ERR(string_add_token, realloc));
             return NULL;
         }
@@ -2117,10 +2113,10 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
             }
         }
 
-        s->parts ++; s->_parts_alloc += p; s->token = tokens;
-    } else s->parts ++;
+        s->_parts_alloc += p; s->token = tokens;
+    }
 
-    token = LAST_TOKEN(s);
+    s->parts ++; token = LAST_TOKEN(s);
 
     /* the token inherits the parent's flags and adds the "no free" bit */
     token->parent = s;
@@ -3150,8 +3146,8 @@ public int string_parse_json(m_string *s, int strict)
 
     /* check if we should resume parsing */
     if (PARTS(json) && IS_TYPE(LAST_TOKEN(json), JSON_TYPE)) {
-        #ifndef LARGE_STRING
         if (IS_BUFFER(s)) {
+            /* the maximum amount of tokens was reached */
             for (json = LAST_TOKEN(s) ; PARTS(json); json = LAST_TOKEN(json)) {
                 if (PARTS(LAST_TOKEN(json)) == 65535) {
                     json = LAST_TOKEN(json);
@@ -3167,10 +3163,8 @@ public int string_parse_json(m_string *s, int strict)
                     break;
                 }
             }
-        } else
-        #endif
-        if (HAS_ERROR(LAST_TOKEN(json))) {
-            /* restart from the last token (and clear its subtokens) */
+        } else if (HAS_ERROR(LAST_TOKEN(json))) {
+            /* input was incomplete */
             if (PARTS(LAST_TOKEN(json))) json = LAST_TOKEN(json);
             i = CSTR(LAST_TOKEN(json)) - CSTR(json);
             string_free_token(LAST_TOKEN(json)); json->parts --;
@@ -3517,9 +3511,7 @@ _error:
     return -1;
 
 _nomem:
-    #ifndef LARGE_STRING
     s->_flags |= _STRING_FLAG_BUFFER;
-    #endif
     return 1;
 }
 
@@ -3527,16 +3519,24 @@ _nomem:
 #endif
 /* -------------------------------------------------------------------------- */
 
-public void string_free_token(m_string *string)
+static void __free_token(m_string *string)
 {
     unsigned int i = 0;
 
-    if (string && string->token) {
-        /* recursively clean the tokens' tokens, if any */
-        for (i = 0; i < PARTS(string); i ++)
-            string_free_token(& string->token[i]);
+    /* recursively clean the tokens' tokens, if any */
+    for (i = 0; i < PARTS(string); i ++) {
+        if (likely(string->token[i].token))
+            __free_token(string->token + i);
+    }
 
-        free(string->token); string->token = NULL;
+    free(string->token);
+}
+
+public void string_free_token(m_string *string)
+{
+    if (string && string->token) {
+        __free_token(string);
+        string->token = NULL;
         string->_parts_alloc = string->parts = 0;
     }
 }
