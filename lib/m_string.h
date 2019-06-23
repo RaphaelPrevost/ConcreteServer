@@ -55,23 +55,16 @@
 
 /** @defgroup string core::string */
 
-//#define LARGE_STRING
-
 typedef struct m_string {
     /* private */
     char *_data;
     size_t _len;
     size_t _alloc;
     uint16_t _flags;
-    #ifdef LARGE_STRING
-    uint32_t _parts_alloc;
-    uint32_t parts;
-    #else
     uint16_t _parts_alloc;
 
     /* public (no more than 64k tokens) */
     uint16_t parts;
-    #endif
     struct m_string *token;
     struct m_string *parent;
 } m_string;
