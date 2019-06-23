@@ -2081,13 +2081,29 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
     unsigned int i = 0, j = 0;
     int p = 0;
 
-    if (! s || ! CSTR(s) || (size_t) end > SIZE(s) || end <= start) {
+    #ifndef LARGE_STRING
+    if (unlikely(! s || s->parts == 65535)) {
+        debug("string_add_token(): cannot add token.\n");
+        return NULL;
+    }
+    #endif
+
+    #ifdef DEBUG
+    if (! CSTR(s) || (size_t) end > SIZE(s) || end <= start) {
         debug("string_add_token(): bad parameters.\n");
         return NULL;
     }
+    #endif
 
     if (s->_parts_alloc < s->parts + 1) {
+        #ifdef LARGE_STRING
         p = (s->_parts_alloc < 65535) ? s->_parts_alloc * 2 + 1 : 2;
+        #else
+        if (s->_parts_alloc < 21845)
+            p = s->_parts_alloc * 2 + 1;
+        else p = 65535 - s->_parts_alloc;
+        #endif
+
         if (! (tokens = realloc(s->token, (s->_parts_alloc + p) * sizeof(*tokens))) ) {
             perror(ERR(string_add_token, realloc));
             return NULL;
@@ -3133,14 +3149,33 @@ public int string_parse_json(m_string *s, int strict)
     }
 
     /* check if we should resume parsing */
-    if (json->parts && IS_TYPE(LAST_TOKEN(json), JSON_TYPE)) {
-        json = LAST_TOKEN(json);
-        if (json->parts && HAS_ERROR(json)) {
+    if (PARTS(json) && IS_TYPE(LAST_TOKEN(json), JSON_TYPE)) {
+        #ifndef LARGE_STRING
+        if (IS_BUFFER(s)) {
+            for (json = LAST_TOKEN(s) ; PARTS(json); json = LAST_TOKEN(json)) {
+                if (PARTS(LAST_TOKEN(json)) == 65535) {
+                    json = LAST_TOKEN(json);
+
+                    i = CSTR(LAST_TOKEN(json)) - CSTR(json) +
+                        SIZE(LAST_TOKEN(json)) + 1;
+
+                    for (pos = 0; pos < 65535; pos ++)
+                        string_free_token(& json->token[pos]);
+                    json->parts = 0;
+
+                    s->_flags &= ~_STRING_FLAG_BUFFER;
+                    break;
+                }
+            }
+        } else
+        #endif
+        if (HAS_ERROR(LAST_TOKEN(json))) {
             /* restart from the last token (and clear its subtokens) */
+            if (PARTS(LAST_TOKEN(json))) json = LAST_TOKEN(json);
             i = CSTR(LAST_TOKEN(json)) - CSTR(json);
             string_free_token(LAST_TOKEN(json)); json->parts --;
             if (IS_TYPE(json, JSON_OBJECT)) kv = 1;
-        } else { json = json->parent; string_free_token(json); }
+        } else string_free_token(json);
     } else string_free_token(json);
 
     /* skip UTF-8 BOM if present */
@@ -3161,10 +3196,13 @@ public int string_parse_json(m_string *s, int strict)
         case ARR_START: if (! IS_STRING(json)) {
             if (IS_PRIMITIVE(json)) goto _error;
 
-            json = string_add_token(json, pos, SIZE(json));
-            /* prealloc at least 4 tokens */
-            if ( (json->token = malloc(4 * sizeof(*json->token))) )
+            if (unlikely(! (json = string_add_token(json, pos, SIZE(json)))))
+                goto _nomem;
+
+            /* try to prealloc at least 4 tokens */
+            if (likely(json->token = malloc(4 * sizeof(*json->token))))
                 json->_parts_alloc = 4;
+
             json->_flags &= ~JSON_TYPE;
             json->_flags |= (c == '[') ? JSON_ARRAY : JSON_OBJECT;
             json->_flags |= _STRING_FLAG_ERRORS;
@@ -3226,7 +3264,10 @@ public int string_parse_json(m_string *s, int strict)
                         goto _error;
                     }
                 }
+
                 json = string_add_token(json, pos, SIZE(json));
+                if (unlikely(! json)) goto _nomem;
+
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_STRING;
                 json->_flags |= _STRING_FLAG_ERRORS;
                 value_expected = 0; pos = 0;
@@ -3236,11 +3277,11 @@ public int string_parse_json(m_string *s, int strict)
                     prefetch = *(uint32_t *) (json->_data + pos + 1);
                     if (__zero(prefetch & 0x1D1D1D1DU)) /* " */
                         continue;
-                    if (__zero(prefetch & 0x23232323U)) /* \ */
+                    if (unlikely(__zero(prefetch & 0x23232323U))) /* \ */
                         continue;
-                    if (__less(prefetch, 0x20)) /* unescaped special chars */
+                    if (unlikely(__less(prefetch, 0x20))) /* unescaped chars */
                         continue;
-                    pos += MIN(4, SIZE(json) - pos);
+                    pos = MIN(4, SIZE(json) - pos);
                 }
             } else {
                 /* check if the quotes are matching */
@@ -3296,7 +3337,7 @@ public int string_parse_json(m_string *s, int strict)
         /* \t, \r, \n 0x20 */
         case WHITE: if (strict && IS_STRING(json)) goto _error;
         case SPACE: if (unlikely(IS_PRIMITIVE(json))) {
-            if (strict == 2 && value_expected) goto _error;
+            if (strict == JSON_STRICT && value_expected) goto _error;
             goto _delim;
         } break;
 
@@ -3360,17 +3401,18 @@ public int string_parse_json(m_string *s, int strict)
         } break;
 
         /* + */
-        case DIGIT_POS: if (! IS_STRING(json) && strict == 2) {
+        case DIGIT_POS: if (! IS_STRING(json) && strict == JSON_STRICT) {
             if (! IS_PRIMITIVE(json) || ! exp || sign) goto _error;
             sign = 1; value_expected = 1;
         } break;
 
         /* - */
-        case DIGIT_NEG: if (! IS_STRING(json) && strict == 2) {
+        case DIGIT_NEG: if (! IS_STRING(json) && strict == JSON_STRICT) {
             if (sign) goto _error;
 
             if (! IS_PRIMITIVE(json)) {
                 json = string_add_token(json, pos, SIZE(json));
+                if (unlikely(! json)) goto _nomem;
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
                 pos = 0; exp = 0; radix = 0; leading_digit = 0;
             } else if (! exp || ! value_expected) goto _error;
@@ -3379,7 +3421,7 @@ public int string_parse_json(m_string *s, int strict)
         } break;
 
         /* . */
-        case DIGIT_RAD: if (! IS_STRING(json) && strict == 2) {
+        case DIGIT_RAD: if (! IS_STRING(json) && strict == JSON_STRICT) {
             if (! IS_PRIMITIVE(json) || radix) {
                 debug("string_parse_json(): unexpected decimal separator.\n");
                 goto _error;
@@ -3403,7 +3445,7 @@ public int string_parse_json(m_string *s, int strict)
                         goto _error;
                     }
                 } else if (IS_PRIMITIVE(json)) {
-                    if (strict == 1) break;
+                    if (strict == _JSON_RELAX) break;
 
                     if (z & DIGIT_NUM) {
                         if (z & DIGIT_EXP) {
@@ -3433,7 +3475,7 @@ public int string_parse_json(m_string *s, int strict)
 
             p = (char *) CSTR(json) + pos;
 
-            if (strict == 2) {
+            if (strict == JSON_STRICT) {
                 switch (c) {
                 case 'f': if (memcmp(p, "false", MIN(SIZE(json) - pos, 5)))
                                 goto _error; p += 4; break;
@@ -3446,7 +3488,10 @@ public int string_parse_json(m_string *s, int strict)
             }
 
             value_expected = 0; radix = 0; exp = 0; sign = 0;
-            json = string_add_token(json, pos, SIZE(json));
+
+            if (unlikely(! (json = string_add_token(json, pos, SIZE(json)))))
+                goto _nomem;
+
             json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
             if (unlikely(pos = (p - CSTR(json)))) goto _token;
         }
@@ -3470,6 +3515,12 @@ _error:
           c, (json->_data - s->_data) + pos + 1);
     string_free_token(s);
     return -1;
+
+_nomem:
+    #ifndef LARGE_STRING
+    s->_flags |= _STRING_FLAG_BUFFER;
+    #endif
+    return 1;
 }
 
 /* -------------------------------------------------------------------------- */

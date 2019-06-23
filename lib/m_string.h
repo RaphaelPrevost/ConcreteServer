@@ -55,16 +55,23 @@
 
 /** @defgroup string core::string */
 
+//#define LARGE_STRING
+
 typedef struct m_string {
     /* private */
     char *_data;
     size_t _len;
     size_t _alloc;
     uint16_t _flags;
+    #ifdef LARGE_STRING
     uint32_t _parts_alloc;
+    uint32_t parts;
+    #else
+    uint16_t _parts_alloc;
 
     /* public (no more than 64k tokens) */
-    uint32_t parts;
+    uint16_t parts;
+    #endif
     struct m_string *token;
     struct m_string *parent;
 } m_string;
@@ -116,6 +123,11 @@ typedef struct m_search_string {
 #define IS_STRING(x) ((x)->_flags & JSON_STRING)
 #define IS_PRIMITIVE(x) ((x)->_flags & JSON_PRIMITIVE)
 #define IS_TYPE(x, type) ((x)->_flags & (type))
+
+#define JSON_QUIRKS         0x0
+#define _JSON_RELAX         0x1
+#define JSON_STRICT         0x2
+
 #endif
 
 #define STRING_STATIC_INITIALIZER(s, l) \
