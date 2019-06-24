@@ -3130,9 +3130,9 @@ public int string_urlencode(m_string *url, int flags)
 #ifdef _ENABLE_JSON
 /* -------------------------------------------------------------------------- */
 
-public int string_parse_json(m_string *s, int strict)
+public int string_parse_json(m_string *s, int strict, m_json_parser *ctx)
 {
-    unsigned int pos = 0, i = 0, kv = 0;
+    unsigned int pos = 0, i = 0, kv = 0, key = 0;
     unsigned char c = 0, z = 0;
     char value_expected = 0, radix = 0, exp = 0, sign = 0, leading_digit = 0;
     char *p = NULL;
@@ -3183,7 +3183,7 @@ public int string_parse_json(m_string *s, int strict)
         /* { */
         case OBJ_START: if (! IS_STRING(json)) {
             if (strict && IS_OBJECT(json) && ! kv) goto _error;
-            kv = 0;
+            kv = 0; key = 1;
         } else break;
 
         /* [ */
@@ -3201,6 +3201,12 @@ public int string_parse_json(m_string *s, int strict)
             json->_flags |= (c == '[') ? JSON_ARRAY : JSON_OBJECT;
             json->_flags |= _STRING_FLAG_ERRORS;
             value_expected = 1; pos = 0;
+
+            /* parser callback */
+            if (ctx && ctx->init) {
+                if (ctx->init(json->_flags & JSON_TYPE, ctx) == 1)
+                    return 0;
+            }
         } break;
 
         /* } */
@@ -3354,6 +3360,13 @@ public int string_parse_json(m_string *s, int strict)
             if (strict && unlikely(value_expected || kv ++)) goto _error;
             value_expected = 1;
 
+            /* parser callback */
+            if (ctx) {
+                ctx->key.current = CSTR(LAST_TOKEN(json));
+                ctx->key.len = SIZE(LAST_TOKEN(json));
+                key = 0;
+            }
+
             /* skip space */
             if (likely(*(json->_data + pos + 1) == 0x20)) pos ++;
         } break;
@@ -3494,11 +3507,28 @@ public int string_parse_json(m_string *s, int strict)
 
 _delim: i = 1;
 _token: json->_len = json->_alloc = pos + (1 - i);
-        i = 0;
         json->_flags &= ~_STRING_FLAG_ERRORS;
+
+        /* parser callback */
+        if (ctx) {
+            i = json->_flags & JSON_TYPE;
+            if (ctx->exit && (i & (JSON_ARRAY | JSON_OBJECT))) {
+                if (ctx->exit(i, ctx) == 1)
+                    return 0;
+                ctx->key.current = NULL;
+                ctx->key.len = 0;
+            } else if (ctx->data && ! key) {
+                if (ctx->data(i, CSTR(json), SIZE(json), ctx) == 1)
+                    return 0;
+            }
+        }
+
+        i = 0;
+
         if (likely(json->parent)) {
             pos += json->_data - json->parent->_data;
             json = json->parent;
+            key = (IS_OBJECT(json));
         }
     }
 
