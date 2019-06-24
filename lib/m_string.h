@@ -105,6 +105,17 @@ typedef struct m_search_string {
 #endif
 
 #ifdef _ENABLE_JSON
+typedef struct m_json_parser {
+    void *context;
+    struct {
+        const char *current;
+        size_t len;
+    } key;
+    int (*init)(int type, struct m_json_parser *ctx);
+    int (*data)(int type, const char *data, size_t len, struct m_json_parser *ctx);
+    int (*exit)(int type, struct m_json_parser *ctx);
+} m_json_parser;
+
 #define JSON_OBJECT         0x1000
 #define JSON_ARRAY          0x2000
 #define JSON_STRING         0x4000
@@ -1549,13 +1560,14 @@ public int string_urlencode(m_string *url, int flags);
 #ifdef _ENABLE_JSON
 /* -------------------------------------------------------------------------- */
 
-public int string_parse_json(m_string *s, int strict);
+public int string_parse_json(m_string *s, int strict, m_json_parser *ctx);
 
 /**
  * @ingroup string
  * @fn m_string *string_parse_json(m_string *s, int strict)
  * @param s the string to be parsed
  * @param strict boolean - enable or disable strict parsing
+ * @param ctx optional parser context
  * @return -1 if an error occured, 0 otherwise
  *
  * This function creates tokens for each JSON element in the provided string,
