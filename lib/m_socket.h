@@ -620,27 +620,27 @@ public m_socket_queue *socket_queue_free(m_socket_queue *q);
 
 /* -------------------------------------------------------------------------- */
 
-public int socket_queue_push(m_socket_queue *q, uint16_t id);
+public int socket_queue_put(m_socket_queue *q, uint16_t id);
 
 /**
  * @ingroup socket
- * @fn int socket_queue_push(m_socket_queue *q, m_socket *s)
+ * @fn int socket_queue_put(m_socket_queue *q, m_socket *s)
  * @param q a socket queue
  * @param id socket identifier
  * @return 0 if the socket identifier was properly queued, -1 otherwise
  *
  * This function enqueues the given socket identifier in FIFO order.
- * This identifier can be later retrieved using @ref socket_queue_pop()
+ * This identifier can be later retrieved using @ref socket_queue_get()
  *
  */
 
 /* -------------------------------------------------------------------------- */
 
-public uint16_t socket_queue_pop(m_socket_queue *q);
+public uint16_t socket_queue_get(m_socket_queue *q);
 
 /**
  * @ingroup socket
- * @fn uint16_t socket_queue_pop(m_socket_queue *q)
+ * @fn uint16_t socket_queue_get(m_socket_queue *q)
  * @param q a socket queue
  * @return a socket identifier, or 0 if the queue is empty
  *
@@ -693,7 +693,7 @@ private int socket_queue_poll(m_socket_queue *q, m_socket **s,
  * @param timeout a timeout in milliseconds
  * @return either the number of sockets successfully polled, or -1
  *
- * This function will pop all the socket identifiers from the queue, acquire
+ * This function will get all the socket identifiers from the queue, acquire
  * the socket they reference if possible, and store them in the given socket
  * array. The sockets will then be polled and updated with their current
  * state informations. If the function is unable to poll the sockets, or some

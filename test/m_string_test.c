@@ -125,54 +125,54 @@ int test_string(void)
     #ifdef _ENABLE_JSON
     printf("(*) Parsing correct JSON:\n");
     z = string_alloc(good_json, strlen(good_json));
-    string_parse_json(z, 1);
+    string_parse_json(z, JSON_STRICT, NULL);
     print_tokens(z, 0);
     string_free(z);
     printf("(*) Checking if incorrect JSON is rejected:\n");
     for (i = 0; i < bad_json; i ++) {
         printf("(-) %s\n", bad[i]);
         z = string_alloc(bad[i], strlen(bad[i]));
-        if (string_parse_json(z, 1) != -1) {
+        if (string_parse_json(z, JSON_STRICT, NULL) != -1) {
             print_tokens(z, 0);
         }
         z = string_free(z);
     }
     printf("(*) Parsing incomplete JSON:\n");
     z = string_alloc(incomplete_json1, strlen(incomplete_json1));
-    string_parse_json(z, 1);
+    string_parse_json(z, JSON_STRICT, NULL);
     print_tokens(z, 0);
     string_cats(z, incomplete_json2, strlen(incomplete_json2));
-    string_parse_json(z, 1);
+    string_parse_json(z, JSON_STRICT, NULL);
     print_tokens(z, 0);
     z = string_free(z);
 
     printf("(*) Parsing incomplete JSON stream:\n");
     z = string_alloc(json_stream1, strlen(json_stream1));
-    if (string_parse_json(z, 1) == -1)
+    if (string_parse_json(z, JSON_STRICT, NULL) == -1)
         printf("(!) Error!\n");
     print_tokens(z, 0);
     string_cats(z, json_stream2, strlen(json_stream2));
-    string_parse_json(z, 1);
+    string_parse_json(z, JSON_STRICT, NULL);
     print_tokens(z, 0);
     z = string_free(z);
 
     printf("(*) Parsing JSON stream with complete object:\n");
     z = string_alloc(json_stream3, strlen(json_stream3));
-    if (string_parse_json(z, 1) == -1)
+    if (string_parse_json(z, JSON_STRICT, NULL) == -1)
         printf("(!) Error with complete object in the stream!\n");
     print_tokens(z, 0);
     string_cats(z, json_stream4, strlen(json_stream4));
-    string_parse_json(z, 1);
+    string_parse_json(z, JSON_STRICT, NULL);
     print_tokens(z, 0);
     z = string_free(z);
 
     printf("(*) Parsing JSON stream with incomplete string:\n");
     z = string_alloc(incomplete_string1, strlen(incomplete_string1));
-    if (string_parse_json(z, 1) == -1)
+    if (string_parse_json(z, JSON_STRICT, NULL) == -1)
         printf("(!) Error!\n");
     print_tokens(z, 0);
     string_cats(z, incomplete_string2, strlen(incomplete_string2));
-    string_parse_json(z, 1);
+    string_parse_json(z, JSON_STRICT, NULL);
     print_tokens(z, 0);
     z = string_free(z);
     #endif

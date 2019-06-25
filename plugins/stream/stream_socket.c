@@ -139,7 +139,7 @@ private void stream_add_worker(int stream_id, uint16_t worker)
     }
 
     if (! stream_set_status(worker, STREAM_STATUS_WORK))
-        socket_queue_push(_workers[stream_id], worker);
+        socket_queue_put(_workers[stream_id], worker);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -153,7 +153,7 @@ private uint16_t stream_borrow_worker(int stream_id)
         return 0;
     }
 
-    do worker = socket_queue_pop(_workers[stream_id]);
+    do worker = socket_queue_get(_workers[stream_id]);
     while (worker && stream_get_status(worker) != STREAM_STATUS_WORK);
 
     return worker;
@@ -174,43 +174,43 @@ private uint16_t stream_release_worker(int stream_id, uint16_t worker)
     }
 
     if (stream_get_status(worker) == STREAM_STATUS_WORK)
-        socket_queue_push(_workers[stream_id], worker);
+        socket_queue_put(_workers[stream_id], worker);
 
     return 0;
 }
 
 /* -------------------------------------------------------------------------- */
 
-private uint16_t stream_push_connection(int stream_id, uint16_t conn)
+private uint16_t stream_enqueue_connection(int stream_id, uint16_t conn)
 {
     if (conn < 1 || conn >= SOCKET_MAX) {
-        debug("stream_push_connection(): bad parameters.\n");
+        debug("stream_enqueue_connection(): bad parameters.\n");
         return 0;
     }
 
     if (stream_id < 0 || stream_id >= _STREAMS_MAX) {
-        debug("stream_push_connection(): bad parameters.\n");
+        debug("stream_enqueue_connection(): bad parameters.\n");
         return 0;
     }
 
     if (! stream_set_status(conn, STREAM_STATUS_WAIT))
-        socket_queue_push(_pending[stream_id], conn);
+        socket_queue_put(_pending[stream_id], conn);
 
     return 0;
 }
 
 /* -------------------------------------------------------------------------- */
 
-private uint16_t stream_pop_connection(int stream_id)
+private uint16_t stream_dequeue_connection(int stream_id)
 {
     uint16_t conn = 0;
 
     if (stream_id < 0 || stream_id >= _STREAMS_MAX) {
-        debug("stream_pop_connection(): bad parameters.\n");
+        debug("stream_dequeue_connection(): bad parameters.\n");
         return 0;
     }
 
-    do conn = socket_queue_pop(_pending[stream_id]);
+    do conn = socket_queue_get(_pending[stream_id]);
     while (conn && stream_get_status(conn) != STREAM_STATUS_WAIT);
 
     return conn;
@@ -218,35 +218,35 @@ private uint16_t stream_pop_connection(int stream_id)
 
 /* -------------------------------------------------------------------------- */
 
-private uint16_t stream_push_waiting(int stream_id, uint16_t conn)
+private uint16_t stream_enqueue_waiting(int stream_id, uint16_t conn)
 {
     if (conn < 1 || conn >= SOCKET_MAX) {
-        debug("stream_push_waiting(): bad parameters.\n");
+        debug("stream_enqueue_waiting(): bad parameters.\n");
         return 0;
     }
 
     if (stream_id < 0 || stream_id >= _STREAMS_MAX) {
-        debug("stream_push_waiting(): bad parameters.\n");
+        debug("stream_enqueue_waiting(): bad parameters.\n");
         return 0;
     }
 
-    socket_queue_push(_waiting[stream_id], conn);
+    socket_queue_put(_waiting[stream_id], conn);
 
     return 0;
 }
 
 /* -------------------------------------------------------------------------- */
 
-private uint16_t stream_pop_waiting(int stream_id)
+private uint16_t stream_dequeue_waiting(int stream_id)
 {
     uint16_t conn = 0;
 
     if (stream_id < 0 || stream_id >= _STREAMS_MAX) {
-        debug("stream_pop_waiting(): bad parameters.\n");
+        debug("stream_dequeue_waiting(): bad parameters.\n");
         return 0;
     }
 
-    do conn = socket_queue_pop(_waiting[stream_id]);
+    do conn = socket_queue_get(_waiting[stream_id]);
     while (conn && stream_get_status(conn) != STREAM_STATUS_CONN);
 
     return conn;
@@ -254,10 +254,10 @@ private uint16_t stream_pop_waiting(int stream_id)
 
 /* -------------------------------------------------------------------------- */
 
-private m_string *stream_push_packet(uint16_t socket_id, m_string *data)
+private m_string *stream_enqueue_packet(uint16_t socket_id, m_string *data)
 {
     if (socket_id < 1 || socket_id >= SOCKET_MAX || ! data) {
-        debug("stream_push_packet(): bad parameters.\n");
+        debug("stream_enqueue_packet(): bad parameters.\n");
         return NULL;
     }
 
@@ -266,7 +266,7 @@ private m_string *stream_push_packet(uint16_t socket_id, m_string *data)
         if (! _packets[socket_id]) _packets[socket_id] = queue_alloc();
 
         if (_packets[socket_id])
-            queue_push(_packets[socket_id], string_dup(data));
+            queue_put(_packets[socket_id], string_dup(data));
 
     pthread_mutex_unlock(& _packets_lock);
 
@@ -275,18 +275,18 @@ private m_string *stream_push_packet(uint16_t socket_id, m_string *data)
 
 /* -------------------------------------------------------------------------- */
 
-private m_string *stream_pop_packet(uint16_t socket_id)
+private m_string *stream_dequeue_packet(uint16_t socket_id)
 {
     m_string *data = NULL;
 
     if (socket_id < 1 || socket_id >= SOCKET_MAX) {
-        debug("stream_pop_packet(): bad parameters.\n");
+        debug("stream_dequeue_packet(): bad parameters.\n");
         return NULL;
     }
 
     pthread_mutex_lock(& _packets_lock);
 
-        data = queue_pop(_packets[socket_id]);
+        data = queue_get(_packets[socket_id]);
 
     pthread_mutex_unlock(& _packets_lock);
 
@@ -344,7 +344,7 @@ private int stream_get_pipe(int stream_id, uint16_t socket_id)
     }
 
     /* try to get a connection */
-    if ( (worker = stream_pop_connection(stream_id)) ) {
+    if ( (worker = stream_dequeue_connection(stream_id)) ) {
         /* record the pipe */
         stream_set_route(ROUTE_WORKER, socket_id, worker);
 
@@ -353,13 +353,13 @@ private int stream_get_pipe(int stream_id, uint16_t socket_id)
         if (stream_set_status(worker, STREAM_STATUS_PIPE)) return -1;
 
         /* check if there is pending packets and send them directly */
-        while ( (packet = stream_pop_packet(socket_id)) )
+        while ( (packet = stream_dequeue_packet(socket_id)) )
             server_send_string(plugin_get_token(), worker, 0x0, packet);
     }
 
     if (! stream_get_connection(stream_id) && ! worker) {
         /* successfully asked for a connection, but none ready yet */
-        stream_push_waiting(stream_id, socket_id);
+        stream_enqueue_waiting(stream_id, socket_id);
     }
 
     return 0;

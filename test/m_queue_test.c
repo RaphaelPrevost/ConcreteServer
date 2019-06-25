@@ -3,26 +3,26 @@
 
 #define ITEMS 800000
 
-#define push(i) do { queue_push(q, (void *) (uintptr_t) (i)); } while (0)
-#define pop() ((unsigned) queue_pop(q))
+#define enqueue(i) do { queue_put(q, (void *) (uintptr_t) (i)); } while (0)
+#define dequeue() ((unsigned) queue_get(q))
 
 static m_queue *q = NULL;
 
-static void *_push(UNUSED void *dummy)
+static void *_enqueue(UNUSED void *dummy)
 {
     unsigned int i = 0;
 
-    for (i = 1; i < ITEMS; i ++) queue_push(q, (void *) (uintptr_t) i);
+    for (i = 1; i < ITEMS; i ++) queue_put(q, (void *) (uintptr_t) i);
 
     return NULL;
 }
 
-static void *_pop(UNUSED void *dummy)
+static void *_dequeue(UNUSED void *dummy)
 {
     unsigned int i = 0;
 
     for (i = 1; i < ITEMS; i ++) {
-        if (queue_pop(q) != (void *) (uintptr_t) i) {
+        if (queue_get(q) != (void *) (uintptr_t) i) {
             i --; queue_wait(q, 1000);
         }
     }
@@ -32,18 +32,18 @@ static void *_pop(UNUSED void *dummy)
 
 int test_queue(void)
 {
-    pthread_t push, pop;
+    pthread_t enq, deq;
     unsigned int ret = 0;
     clock_t start, stop;
 
     if ( (q = queue_alloc()) == NULL) return -1;
 
-    printf("(-) Concurrent push and pop ("STR(ITEMS)" items).\n");
+    printf("(-) Concurrent enqueue and dequeue ("STR(ITEMS)" items).\n");
 
     start = clock();
-    pthread_create(& push, NULL, _push, NULL);
-    pthread_create(& pop, NULL, _pop, NULL);
-    pthread_join(push, NULL); pthread_join(pop, NULL);
+    pthread_create(& enq, NULL, _enqueue, NULL);
+    pthread_create(& deq, NULL, _dequeue, NULL);
+    pthread_join(enq, NULL); pthread_join(deq, NULL);
     stop = clock();
 
     printf("(-) Time elapsed = ");
@@ -52,29 +52,29 @@ int test_queue(void)
 
     if (queue_empty(q)) printf("(*) Queue empty.\n");
     else {
-        printf("(!) Failed to pop all the items !\n");
+        printf("(!) Failed to dequeue all the items !\n");
         return -1;
     }
 
-    queue_push(q, (void *) 0x8888);
-    ret = (unsigned) queue_pop(q);
+    queue_put(q, (void *) 0x8888);
+    ret = (unsigned) queue_get(q);
     if (ret != 0x8888) {
-        printf("(!) Push/Pop: missing value !\n");
+        printf("(!) Enqueue/Dequeue: missing value !\n");
         return -1;
     }
-    push(0x9999);
-    ret = pop();
+    enqueue(0x9999);
+    ret = dequeue();
     if (ret != 0x9999) {
-        printf("(!) Push/Pop using macros: missing value !\n");
+        printf("(!) Enqueue/Dequeue using macros: missing value !\n");
         return -1;
     }
 
-    printf("(-) Concurrent push and pop ("STR(ITEMS)" items).\n");
+    printf("(-) Concurrent enqueue and dequeue ("STR(ITEMS)" items).\n");
 
     start = clock();
-    pthread_create(& push, NULL, _push, NULL);
-    pthread_create(& pop, NULL, _pop, NULL);
-    pthread_join(push, NULL); pthread_join(pop, NULL);
+    pthread_create(& enq, NULL, _enqueue, NULL);
+    pthread_create(& deq, NULL, _dequeue, NULL);
+    pthread_join(enq, NULL); pthread_join(deq, NULL);
     stop = clock();
 
     printf("(-) Time elapsed = ");
@@ -83,7 +83,7 @@ int test_queue(void)
 
     if (queue_empty(q)) printf("(*) Queue empty.\n");
     else {
-        printf("(!) Failed to pop all the items !\n");
+        printf("(!) Failed to dequeue all the items !\n");
         return -1;
     }
 
