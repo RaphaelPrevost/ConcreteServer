@@ -136,11 +136,11 @@ public void queue_free_nodes(m_queue *queue, void (*free_data)(void *));
 
 /* -------------------------------------------------------------------------- */
 
-public int queue_put(m_queue *queue, void *ptr);
+public int queue_add(m_queue *queue, void *ptr);
 
 /**
  * @ingroup queue
- * @fn int queue_put(m_queue *queue, void *ptr)
+ * @fn int queue_add(m_queue *queue, void *ptr)
  * @param queue a pointer to a queue
  * @param ptr a pointer to some data to enqueue
  * @return -1 if an error occurs, 0 otherwise

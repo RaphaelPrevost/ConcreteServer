@@ -139,7 +139,7 @@ private void stream_add_worker(int stream_id, uint16_t worker)
     }
 
     if (! stream_set_status(worker, STREAM_STATUS_WORK))
-        socket_queue_put(_workers[stream_id], worker);
+        socket_queue_add(_workers[stream_id], worker);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -174,7 +174,7 @@ private uint16_t stream_release_worker(int stream_id, uint16_t worker)
     }
 
     if (stream_get_status(worker) == STREAM_STATUS_WORK)
-        socket_queue_put(_workers[stream_id], worker);
+        socket_queue_add(_workers[stream_id], worker);
 
     return 0;
 }
@@ -194,7 +194,7 @@ private uint16_t stream_enqueue_connection(int stream_id, uint16_t conn)
     }
 
     if (! stream_set_status(conn, STREAM_STATUS_WAIT))
-        socket_queue_put(_pending[stream_id], conn);
+        socket_queue_add(_pending[stream_id], conn);
 
     return 0;
 }
@@ -230,7 +230,7 @@ private uint16_t stream_enqueue_waiting(int stream_id, uint16_t conn)
         return 0;
     }
 
-    socket_queue_put(_waiting[stream_id], conn);
+    socket_queue_add(_waiting[stream_id], conn);
 
     return 0;
 }
@@ -266,7 +266,7 @@ private m_string *stream_enqueue_packet(uint16_t socket_id, m_string *data)
         if (! _packets[socket_id]) _packets[socket_id] = queue_alloc();
 
         if (_packets[socket_id])
-            queue_put(_packets[socket_id], string_dup(data));
+            queue_add(_packets[socket_id], string_dup(data));
 
     pthread_mutex_unlock(& _packets_lock);
 

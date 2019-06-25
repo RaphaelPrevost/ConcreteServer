@@ -61,19 +61,19 @@ static m_socket_queue *_readable = NULL;
 static m_socket_queue *_writable = NULL;
 static m_socket_queue *_incoming = NULL;
 
-#define server_put_blocking(s) \
-do { socket_queue_put(_blocking, SOCKET_ID((s))); } while (0)
-#define server_put_readable(s) \
-do { socket_queue_put(_readable, SOCKET_ID((s))); } while (0)
-#define server_put_writable(s) \
-do { socket_queue_put(_writable, SOCKET_ID((s))); } while (0)
-#define server_put_listener(s) \
-do { socket_queue_put(_incoming, SOCKET_ID((s))); } while (0)
+#define server_enqueue_blocking(s) \
+do { socket_queue_add(_blocking, SOCKET_ID((s))); } while (0)
+#define server_enqueue_readable(s) \
+do { socket_queue_add(_readable, SOCKET_ID((s))); } while (0)
+#define server_enqueue_writable(s) \
+do { socket_queue_add(_writable, SOCKET_ID((s))); } while (0)
+#define server_enqueue_listener(s) \
+do { socket_queue_add(_incoming, SOCKET_ID((s))); } while (0)
 
-#define server_get_blocking() (socket_queue_get(_blocking))
-#define server_get_readable() (socket_queue_get(_readable))
-#define server_get_writable() (socket_queue_get(_writable))
-#define server_get_listener() (socket_queue_get(_incoming))
+#define server_dequeue_blocking() (socket_queue_get(_blocking))
+#define server_dequeue_readable() (socket_queue_get(_readable))
+#define server_dequeue_writable() (socket_queue_get(_writable))
+#define server_dequeue_listener() (socket_queue_get(_incoming))
 
 /* poll locks */
 static pthread_mutex_t _server_blocking = PTHREAD_MUTEX_INITIALIZER;
@@ -230,7 +230,7 @@ public m_reply *server_send_reply(uint16_t sockid, m_reply *r)
     }
 
     /* queue the task */
-    queue_put(_work[sockid], (void *) r);
+    queue_add(_work[sockid], (void *) r);
 
     return NULL;
 }
@@ -313,7 +313,7 @@ static int _server_poll_udp(UNUSED const char *k, UNUSED size_t l, void *value)
     unsigned int id = (long) value;
 
     if (! queue_empty(_work[id])) {
-        socket_queue_put(_writable, id);
+        socket_queue_add(_writable, id);
         return -1;
     }
 
@@ -337,9 +337,9 @@ static void _server_poll(void)
         for (i = 0; i < pending; i ++) {
             if (SOCKET_INCOMING(s[i])) {
                 if ( (new = socket_accept(s[i])) )
-                    server_put_blocking(new);
+                    server_enqueue_blocking(new);
             }
-            socket_release(s[i]); server_put_listener(s[i]);
+            socket_release(s[i]); server_enqueue_listener(s[i]);
         }
     }
 
@@ -356,18 +356,18 @@ static void _server_poll(void)
             }
 
             if (SOCKET_READABLE(s[i])) {
-                socket_release(s[i]); server_put_readable(s[i]);
+                socket_release(s[i]); server_enqueue_readable(s[i]);
                 continue;
             }
 
             if (SOCKET_WRITABLE(s[i]) && ! SOCKET_IDLE(s[i])) {
-                socket_release(s[i]); server_put_writable(s[i]);
+                socket_release(s[i]); server_enqueue_writable(s[i]);
                 continue;
             }
 
 _wait:
             /* the socket is blocking, put it back in the waiting room */
-            socket_release(s[i]); server_put_blocking(s[i]);
+            socket_release(s[i]); server_enqueue_blocking(s[i]);
         }
     }
 
@@ -397,7 +397,7 @@ static m_socket *_server_receive(m_string *buffer)
     int ret = 0;
 
     /* try to get a readable socket */
-    socket_id = server_get_readable();
+    socket_id = server_dequeue_readable();
 
     if (! socket_id || ! (s = socket_acquire(socket_id)) ) return NULL;
 
@@ -494,7 +494,7 @@ static m_socket *_server_receive(m_string *buffer)
 
         if (z) {
             /* replace the server socket by the virtual one */
-            server_put_blocking(s); s = socket_release(s); s = z;
+            server_enqueue_blocking(s); s = socket_release(s); s = z;
         }
     }
     #endif
@@ -552,7 +552,7 @@ static m_socket *_server_receive(m_string *buffer)
 
     /* check if there is pending tasks */
     if (SOCKET_IDLE(s)) {
-        _release: server_put_blocking(s); s = socket_release(s);
+        _release: server_enqueue_blocking(s); s = socket_release(s);
     }
 
     return s;
@@ -569,7 +569,7 @@ static int _server_respond(m_socket *s)
 
     if (! s) {
         /* try to get a writable socket */
-        socket_id = server_get_writable();
+        socket_id = server_dequeue_writable();
 
         if (! socket_id || ! (s = socket_acquire(socket_id)) ) return 0;
     }
@@ -585,7 +585,7 @@ static int _server_respond(m_socket *s)
             goto _release;
         case SOCKET_EDELAY:
             ret = queue_empty(_work[SOCKET_ID(s)]);
-            queue_put(_work[SOCKET_ID(s)], (void *) r);
+            queue_add(_work[SOCKET_ID(s)], (void *) r);
             if (ret) goto _release; else continue;
         case SOCKET_EFATAL:
             if (socket_persist(s) == -1) {
@@ -627,7 +627,7 @@ _release:
                          (void *) (uintptr_t) SOCKET_ID(s));
     else
     #endif
-        server_put_blocking(s);
+        server_enqueue_blocking(s);
 
     s = socket_release(s);
 
@@ -679,11 +679,11 @@ static void _server_listen_cb(m_socket *s)
     if (~s->_flags & SOCKET_UDP)
     #endif
         /* TCP: put the socket in the accept queue */
-        server_put_listener(s);
+        server_enqueue_listener(s);
     #ifdef _ENABLE_UDP
     else {
         /* UDP: handle the socket as a connected client */
-        server_put_blocking(s);
+        server_enqueue_blocking(s);
     }
     #endif
 }
@@ -1386,7 +1386,7 @@ public int server_open_managed_socket(uint32_t token, const char *ip,
 
         ret = SOCKET_ID(sock);
 
-        server_put_blocking(sock);
+        server_enqueue_blocking(sock);
     }
 
     socket_unlock(sock);

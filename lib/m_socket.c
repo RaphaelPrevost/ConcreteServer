@@ -457,7 +457,7 @@ static m_socket *_socket_dereg(m_socket *s)
     if (_socket_closed_hook) _socket_closed_hook(sock);
 
     /* release the id */
-    socket_queue_put(_free_ids, SOCKET_ID(sock));
+    socket_queue_add(_free_ids, SOCKET_ID(sock));
 
     return sock;
 }
@@ -1300,10 +1300,10 @@ public m_socket_queue *socket_queue_free(m_socket_queue *q)
 
 /* -------------------------------------------------------------------------- */
 
-public int socket_queue_put(m_socket_queue *q, uint16_t id)
+public int socket_queue_add(m_socket_queue *q, uint16_t id)
 {
     if (! q || ! id) {
-        debug("socket_queue_put(): bad parameters.\n");
+        debug("socket_queue_add(): bad parameters.\n");
         return -1;
     }
 

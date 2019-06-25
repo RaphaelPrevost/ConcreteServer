@@ -620,11 +620,11 @@ public m_socket_queue *socket_queue_free(m_socket_queue *q);
 
 /* -------------------------------------------------------------------------- */
 
-public int socket_queue_put(m_socket_queue *q, uint16_t id);
+public int socket_queue_add(m_socket_queue *q, uint16_t id);
 
 /**
  * @ingroup socket
- * @fn int socket_queue_put(m_socket_queue *q, m_socket *s)
+ * @fn int socket_queue_add(m_socket_queue *q, m_socket *s)
  * @param q a socket queue
  * @param id socket identifier
  * @return 0 if the socket identifier was properly queued, -1 otherwise
