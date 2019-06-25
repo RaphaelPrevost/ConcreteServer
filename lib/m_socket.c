@@ -407,7 +407,7 @@ static int _socket_reg(m_socket *s, int type)
 
     if (! sockid) {
         /* try to reuse an id */
-        if (! (sockid = socket_queue_pop(_free_ids)) ) {
+        if (! (sockid = socket_queue_get(_free_ids)) ) {
             debug("_socket_reg(): all ids are in use !\n");
             return -1;
         }
@@ -457,7 +457,7 @@ static m_socket *_socket_dereg(m_socket *s)
     if (_socket_closed_hook) _socket_closed_hook(sock);
 
     /* release the id */
-    socket_queue_push(_free_ids, SOCKET_ID(sock));
+    socket_queue_put(_free_ids, SOCKET_ID(sock));
 
     return sock;
 }
@@ -1300,10 +1300,10 @@ public m_socket_queue *socket_queue_free(m_socket_queue *q)
 
 /* -------------------------------------------------------------------------- */
 
-public int socket_queue_push(m_socket_queue *q, uint16_t id)
+public int socket_queue_put(m_socket_queue *q, uint16_t id)
 {
     if (! q || ! id) {
-        debug("socket_queue_push(): bad parameters.\n");
+        debug("socket_queue_put(): bad parameters.\n");
         return -1;
     }
 
@@ -1322,12 +1322,12 @@ public int socket_queue_push(m_socket_queue *q, uint16_t id)
 
 /* -------------------------------------------------------------------------- */
 
-public uint16_t socket_queue_pop(m_socket_queue *q)
+public uint16_t socket_queue_get(m_socket_queue *q)
 {
     uint16_t ret = 0;
 
     if (! q) {
-        debug("socket_queue_push(): bad parameters.\n");
+        debug("socket_queue_get(): bad parameters.\n");
         return -1;
     }
 

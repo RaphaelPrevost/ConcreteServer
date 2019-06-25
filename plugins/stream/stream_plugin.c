@@ -122,8 +122,8 @@ public void plugin_main(uint16_t socket_id, uint16_t ingress_id, m_string *data)
                     stream_add_worker(stream_id, socket_id);
                 } break;
                 case WORKER_OP_READY: { /* new connection, ask for a pipe */
-                    socket_id = stream_push_connection(stream_id, socket_id);
-                    if ( (socket_id = stream_pop_waiting(stream_id)) )
+                    socket_id = stream_enqueue_connection(stream_id, socket_id);
+                    if ( (socket_id = stream_dequeue_waiting(stream_id)) )
                         stream_get_pipe(stream_id, socket_id);
                 } break;
                 default: /* unknown connection */
@@ -134,7 +134,7 @@ public void plugin_main(uint16_t socket_id, uint16_t ingress_id, m_string *data)
             } break;
 
             case ROUTE_PUBLIC: { /* received data from a client */
-                stream_push_packet(socket_id, data);
+                stream_enqueue_packet(socket_id, data);
                 stream_get_pipe(stream_id, socket_id);
                 string_flush(data);
                 return;

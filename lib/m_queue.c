@@ -116,22 +116,22 @@ public void queue_free_nodes(m_queue *queue, void (*free_data)(void *))
     void *ptr = NULL;
 
     if (queue && free_data)
-        while ( (ptr = queue_pop(queue)) ) free_data(ptr);
+        while ( (ptr = queue_get(queue)) ) free_data(ptr);
 }
 
 /* -------------------------------------------------------------------------- */
 
-public int queue_push(m_queue *queue, void *ptr)
+public int queue_put(m_queue *queue, void *ptr)
 {
     _m_node *node = NULL;
 
     if (! queue || ! ptr) {
-        debug("queue_push(): bad parameters.\n");
+        debug("queue_put(): bad parameters.\n");
         return -1;
     }
 
     if (! (node = malloc(sizeof(*node))) ) {
-        debug("queue_push(): out of memory.\n");
+        debug("queue_put(): out of memory.\n");
         return -1;
     }
 
@@ -205,13 +205,13 @@ public void queue_wait(m_queue *q, unsigned int duration)
 
 /* -------------------------------------------------------------------------- */
 
-public void *queue_pop(m_queue *queue)
+public void *queue_get(m_queue *queue)
 {
     _m_node *node = NULL, *next = NULL;
     void *ret = NULL;
 
     if (! queue) {
-        debug("queue_pop(): bad parameters.\n");
+        debug("queue_get(): bad parameters.\n");
         return NULL;
     }
 
@@ -230,12 +230,12 @@ public void *queue_pop(m_queue *queue)
 
 /* -------------------------------------------------------------------------- */
 
-public int queue_unpop(m_queue *queue, void *ptr)
+public int queue_push(m_queue *queue, void *ptr)
 {
     _m_node *node = NULL;
 
     if (! queue || ! ptr) {
-        debug("queue_unpop(): bad parameters.\n");
+        debug("queue_push(): bad parameters.\n");
         return -1;
     }
 

@@ -136,13 +136,13 @@ public void queue_free_nodes(m_queue *queue, void (*free_data)(void *));
 
 /* -------------------------------------------------------------------------- */
 
-public int queue_push(m_queue *queue, void *ptr);
+public int queue_put(m_queue *queue, void *ptr);
 
 /**
  * @ingroup queue
- * @fn int queue_push(m_queue *queue, void *ptr)
+ * @fn int queue_put(m_queue *queue, void *ptr)
  * @param queue a pointer to a queue
- * @param ptr a pointer to some data to push onto the queue
+ * @param ptr a pointer to some data to enqueue
  * @return -1 if an error occurs, 0 otherwise
  *
  * This function stores the given pointer in the tail of the queue.
@@ -180,35 +180,39 @@ public void queue_wait(m_queue *queue, unsigned int duration);
 
 /* -------------------------------------------------------------------------- */
 
-public void *queue_pop(m_queue *queue);
+public void *queue_get(m_queue *queue);
+#define queue_pop(x) queue_get((x))
 
 /**
  * @ingroup queue
- * @fn void *queue_pop(m_queue *queue)
+ * @fn void *queue_get(m_queue *queue)
  * @param queue a pointer to a queue
- * @return a pointer to the last enqueued item or NULL if the queue is empty
+ * @return a pointer to the first enqueued item or NULL if the queue is empty
  *
  * This function returns the first item which was enqueued, or NULL if there
  * is none.
+ *
+ * The @b queue_pop macro is a convenience when using the queue as a
+ * stack (LIFO).
  *
  */
 
 /* -------------------------------------------------------------------------- */
 
-public int queue_unpop(m_queue *queue, void *ptr);
+public int queue_push(m_queue *queue, void *ptr);
 
 /**
  * @ingroup queue
- * @fn int queue_unpop(m_queue *queue, void *ptr)
+ * @fn int queue_push(m_queue *queue, void *ptr)
  * @param queue a pointer to a queue
  * @param ptr a pointer to some data to push onto the queue
  * @return -1 if an error occurs, 0 otherwise
  *
- * This function enqueues back the given item, so it will be returned
- * with the next @ref queue_pop() call.
+ * This function enqueues the given item at the head of the queue, so it will
+ * be returned by the next @ref queue_get() call.
  *
- * @note you can implement a LIFO by using @ref queue_unpop() and
- * @ref queue_pop()
+ * @note you can implement a stack (LIFO) by using @ref queue_push() and the
+ * macro @b queue_pop()
  *
  */
 
