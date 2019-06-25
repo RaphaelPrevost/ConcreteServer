@@ -121,17 +121,17 @@ public void queue_free_nodes(m_queue *queue, void (*free_data)(void *))
 
 /* -------------------------------------------------------------------------- */
 
-public int queue_put(m_queue *queue, void *ptr)
+public int queue_add(m_queue *queue, void *ptr)
 {
     _m_node *node = NULL;
 
     if (! queue || ! ptr) {
-        debug("queue_put(): bad parameters.\n");
+        debug("queue_add(): bad parameters.\n");
         return -1;
     }
 
     if (! (node = malloc(sizeof(*node))) ) {
-        debug("queue_put(): out of memory.\n");
+        debug("queue_add(): out of memory.\n");
         return -1;
     }
 

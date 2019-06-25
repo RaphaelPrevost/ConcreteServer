@@ -3,7 +3,7 @@
 
 #define ITEMS 800000
 
-#define enqueue(i) do { queue_put(q, (void *) (uintptr_t) (i)); } while (0)
+#define enqueue(i) do { queue_add(q, (void *) (uintptr_t) (i)); } while (0)
 #define dequeue() ((unsigned) queue_get(q))
 
 static m_queue *q = NULL;
@@ -12,7 +12,7 @@ static void *_enqueue(UNUSED void *dummy)
 {
     unsigned int i = 0;
 
-    for (i = 1; i < ITEMS; i ++) queue_put(q, (void *) (uintptr_t) i);
+    for (i = 1; i < ITEMS; i ++) queue_add(q, (void *) (uintptr_t) i);
 
     return NULL;
 }
@@ -56,7 +56,7 @@ int test_queue(void)
         return -1;
     }
 
-    queue_put(q, (void *) 0x8888);
+    queue_add(q, (void *) 0x8888);
     ret = (unsigned) queue_get(q);
     if (ret != 0x8888) {
         printf("(!) Enqueue/Dequeue: missing value !\n");
