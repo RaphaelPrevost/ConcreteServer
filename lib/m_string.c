@@ -1858,8 +1858,8 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
 {
     /** @brief replaces separators in a split string by a new separator */
 
-    int p = 0;
-    unsigned int last = 0;
+    int i = 0, p = 0, diff = 0, new_size = 0;
+    unsigned int last = 0, known_good = 0;
 
     if (! string || ! CSTR(string)) {
         debug("string_merges(): bad parameters.\n");
@@ -1879,49 +1879,50 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
     }
 
     /* get the size difference with the previous delimiter length */
-    p = len - (TOKEN_CSTR(string, 1) - TOKEN_END(string, 0));
+    for (i = 0; i < PARTS(string) - 1; i ++) {
+        diff = len - (TSTR(string, i + 1) - TEND(string, i));
+        if (! (p += diff) && ! diff) known_good = i + 1;
+    }
 
-    /* no length difference, just overwrite the old delimiter */
-    if (p == 0) {
-        last = PARTS(string) - 1;
+    new_size = SIZE(string) + p;
+    last = PARTS(string) - 1;
 
+    if (known_good == last) {
+        /* simply overwrite the delimiters */
         while (last -- > 0) memcpy((char *) TEND(string, last), pattern, len);
-
         return 0;
     }
 
-    /* only care if the new delimiter is longer */
-    string_extend(string, SIZE(string) + (p * PARTS(string)));
-
-    last = PARTS(string);
-
     if (p > 0) {
+        string_extend(string, new_size);
+
         /* move every token starting from the end */
-        while (last -- > 0) {
-            memmove((char *) TSTR(string, last) + (last * p),
-                    TSTR(string, last),
-                    TLEN(string, last));
+        while (last -- > known_good) {
+            diff = len - (TSTR(string, last + 1) - TEND(string, last));
+            memmove((char *) TSTR(string, last + 1) + p,
+                    TSTR(string, last + 1),
+                    TLEN(string, last + 1));
+            __move_subtokens(TOKEN(string, last + 1), p, NULL);
             if (len)
-                memcpy((char *) TEND(string, last) + (last * p), pattern, len);
+                memcpy((char *) TSTR(string, last + 1) - len, pattern, len);
+            p -= diff;
         }
+
+        _string_update_size(string, new_size - SIZE(string));
     } else {
         /* move every token from the start */
-        for (last = 0; last < PARTS(string); last ++) {
-            memmove((char *) TSTR(string, last) + (last * p),
-                    TSTR(string, last),
-                    TLEN(string, last));
+        for (i = known_good; i < PARTS(string) - 1; i ++) {
+            diff = len - (TSTR(string, i + 1) - TEND(string, i));
+            memmove((char *) TSTR(string, i + 1) + diff,
+                    TSTR(string, i + 1),
+                    TLEN(string, i + 1));
+            __move_subtokens(TOKEN(string, i + 1), diff, NULL);
             if (len)
-                memcpy((char *) TEND(string, last) + (last * p), pattern, len);
+                memcpy((char *) TSTR(string, i + 1) - len, pattern, len);
         }
+
+        string_dim(string, new_size);
     }
-
-    /* fix the tokens position */
-    for (last = 0; last < PARTS(string); last ++)
-        __move_subtokens(TOKEN(string, last), last * p, NULL);
-
-    /* update the string size and do some cleanup */
-    if (p < 0) string_dim(string, SIZE(string) + ((PARTS(string) - 1) * p));
-    else _string_update_size(string, (PARTS(string) - 1) * p);
 
     return 0;
 }
@@ -2147,7 +2148,7 @@ public int string_push_tokens(m_string *s, const char *strtoken, size_t len)
 {
     size_t slen = 0;
 
-    if (! s || ! strtoken || ! CSTR(s) || ! len) {
+    if (! s || ! strtoken || ! len) {
         debug("string_push_token(): bad parameters.\n");
         return -1;
     }
@@ -2178,6 +2179,10 @@ public m_string *string_suppr_token(m_string *s, unsigned int index)
 
     string_suppr(s, TSTR(s, index) - CSTR(s), TLEN(s, index)); s->parts --;
 
+    if (index == PARTS(s)) {
+        s->_data[SIZE(s)] = '\0';
+    }
+
     return NULL;
 }
 
@@ -2197,6 +2202,26 @@ public m_string *string_pop_token(m_string *s)
 
     string_suppr(s, TSTR(s, 0) - CSTR(s), SIZE(ret));
     memmove(s->token, s->token + 1, -- s->parts * sizeof(*s->token));
+
+    if (! PARTS(s)) s->_len = 0;
+
+    return ret;
+}
+
+/* -------------------------------------------------------------------------- */
+
+public m_string *string_dequeue_token(m_string *s)
+{
+    m_string *ret = NULL;
+
+    if (! s || ! PARTS(s)) {
+        debug("string_dequeue_token(): bad parameters.\n");
+        return NULL;
+    }
+
+    ret = string_suppr_token(s, PARTS(s) - 1);
+
+    if (! PARTS(s)) s->_len = 0;
 
     return ret;
 }
@@ -3167,8 +3192,10 @@ public int string_parse_json(m_string *s, int strict, m_json_parser *ctx)
             /* input was incomplete */
             if (PARTS(LAST_TOKEN(json))) json = LAST_TOKEN(json);
             i = CSTR(LAST_TOKEN(json)) - CSTR(json);
+            /* XXX make sure the opening quotation mark is accounted for */
+            if (IS_STRING(LAST_TOKEN(json))) i --;
             string_free_token(LAST_TOKEN(json)); json->parts --;
-            if (IS_TYPE(json, JSON_OBJECT)) kv = 1;
+            if (IS_OBJECT(json)) kv = 1;
         } else string_free_token(json);
     } else string_free_token(json);
 
@@ -3204,8 +3231,14 @@ public int string_parse_json(m_string *s, int strict, m_json_parser *ctx)
 
             /* parser callback */
             if (ctx && ctx->init) {
+                if (json->parent)
+                    ctx->parent = json->parent->_flags & JSON_TYPE;
+                else ctx->parent = 0;
+
                 if (ctx->init(json->_flags & JSON_TYPE, ctx) == 1)
                     return 0;
+
+                ctx->key.current = NULL; ctx->key.len = 0;
             }
         } break;
 
@@ -3265,31 +3298,31 @@ public int string_parse_json(m_string *s, int strict, m_json_parser *ctx)
                     }
                 }
 
-                json = string_add_token(json, pos, SIZE(json));
+                json = string_add_token(json, pos + 1, SIZE(json));
                 if (unlikely(! json)) goto _nomem;
 
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_STRING;
                 json->_flags |= _STRING_FLAG_ERRORS;
-                value_expected = 0; pos = 0;
+                value_expected = 0; pos = -1;
 
                 if (strict) {
                     /* optimize for long strings */
-                    prefetch = *(uint32_t *) (json->_data + pos + 1);
+                    prefetch = *(uint32_t *) json->_data;
                     if (__zero(prefetch & 0x1D1D1D1DU)) /* " */
                         continue;
                     if (unlikely(__zero(prefetch & 0x23232323U))) /* \ */
                         continue;
                     if (unlikely(__less(prefetch, 0x20))) /* unescaped chars */
                         continue;
-                    pos = MIN(4, SIZE(json) - pos);
+                    pos = MIN(3, SIZE(json));
                 }
             } else {
                 /* check if the quotes are matching */
-                if (json->_data[0] != c) {
+                if (json->_data[-1] != c) {
                     debug("string_parse_json(): mismatched or missing "
                           "quotation mark.\n");
                     goto _error;
-                } else goto _token;
+                } else goto _delim;
             }
         } break;
 
@@ -3299,6 +3332,7 @@ public int string_parse_json(m_string *s, int strict, m_json_parser *ctx)
 
             if (! IS_STRING(json)) {
                 if (! strict && IS_PRIMITIVE(json)) {
+                    /* XXX force conversion to string */
                     json->_flags &= ~JSON_PRIMITIVE;
                     json->_flags |= JSON_STRING;
                 } else {
@@ -3348,7 +3382,12 @@ public int string_parse_json(m_string *s, int strict, m_json_parser *ctx)
                     debug("string_parse_json(): a key must be a string "
                           "enclosed in quotation marks.\n");
                     goto _error;
-                } else { value_expected = 1; goto _delim; }
+                } else {
+                    /* XXX force conversion to string */
+                    json->_flags &= ~JSON_PRIMITIVE;
+                    json->_flags |= JSON_STRING;
+                    value_expected = 1; goto _delim;
+                }
             } else if (IS_ARRAY(json)) {
                 if (strict) {
                     debug("string_parse_json(): key/value pairs are only "
@@ -3512,6 +3551,11 @@ _token: json->_len = json->_alloc = pos + (1 - i);
         /* parser callback */
         if (ctx) {
             i = json->_flags & JSON_TYPE;
+
+            if (json->parent)
+                ctx->parent = json->parent->_flags & JSON_TYPE;
+            else ctx->parent = 0;
+
             if (ctx->exit && (i & (JSON_ARRAY | JSON_OBJECT))) {
                 if (ctx->exit(i, ctx) == 1)
                     return 0;

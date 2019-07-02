@@ -57,16 +57,14 @@
 
 typedef struct m_string {
     /* private */
-    char *_data;
     size_t _len;
-    size_t _alloc;
-    uint16_t _flags;
-    uint16_t _parts_alloc;
-
-    /* public (no more than 64k tokens) */
     uint16_t parts;
+    uint16_t _flags;
+    char *_data;
     struct m_string *token;
     struct m_string *parent;
+    size_t _alloc;
+    uint16_t _parts_alloc;
 } m_string;
 
 typedef struct m_search_string {
@@ -111,6 +109,7 @@ typedef struct m_json_parser {
         const char *current;
         size_t len;
     } key;
+    int parent;
     int (*init)(int type, struct m_json_parser *ctx);
     int (*data)(int type, const char *data, size_t len, struct m_json_parser *ctx);
     int (*exit)(int type, struct m_json_parser *ctx);
@@ -135,9 +134,9 @@ typedef struct m_json_parser {
 #endif
 
 #define STRING_STATIC_INITIALIZER(s, l) \
-{ (char *) (s), (l), (l), \
+{ (l), 0, \
   _STRING_FLAG_STATIC | _STRING_FLAG_ENCAPS | _STRING_FLAG_NALLOC, \
-  0, 0, NULL, NULL \
+  (char *) (s), NULL, NULL, 0, 0 \
 }
 
 /**
@@ -1334,10 +1333,12 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end);
 /* -------------------------------------------------------------------------- */
 
 public int string_push_token(m_string *string, m_string *token);
+#define string_enqueue_token(s, t) string_push_token((s), (t))
 
 /* -------------------------------------------------------------------------- */
 
 public int string_push_tokens(m_string *string, const char *token, size_t len);
+#define string_enqueue_tokens(s, t, l) string_push_tokens((s), (t), (l))
 
 /* -------------------------------------------------------------------------- */
 
@@ -1346,6 +1347,10 @@ public m_string *string_suppr_token(m_string *s, unsigned int index);
 /* -------------------------------------------------------------------------- */
 
 public m_string *string_pop_token(m_string *string);
+
+/* -------------------------------------------------------------------------- */
+
+public m_string *string_dequeue_token(m_string *string);
 
 /* -------------------------------------------------------------------------- */
 #ifdef HAS_PCRE
