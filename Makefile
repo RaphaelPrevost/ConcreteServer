@@ -43,6 +43,7 @@ PROJECT = CONCRETE
 # -D_ENABLE_MYSQL                 : enable MySQL driver
 # -D_ENABLE_SQLITE                : enable SQLite driver
 # -D_ENABLE_HTTP                  : enable native HTTP handling
+# -D_ENABLE_FILE                  : enable the file API
 # -D_ENABLE_UDP                   : allow use of UDP sockets
 # -D_ENABLE_SSL                   : allow use of SSL/TLS secure sockets
 # -D_ENABLE_SERVER                : enable the Mammouth Server
@@ -53,12 +54,20 @@ PROJECT = CONCRETE
 # -D_ENABLE_CONFIG                : XML configuration file
 # -D_USE_BIG_FDS=<int>            : enable the use of more than FD_SETSIZE fds
 
-CONFIG  = -D_ENABLE_SERVER -D_ENABLE_UDP -D_ENABLE_SSL -D_ENABLE_HTTP \
-          -D_ENABLE_RANDOM -D_ENABLE_HASHTABLE -D_ENABLE_TRIE \
-          -D_ENABLE_PCRE -D_ENABLE_JSON \
+CONFIG  = -D_ENABLE_SERVER \
+          -D_ENABLE_UDP \
+          -D_ENABLE_SSL \
+          -D_ENABLE_HTTP \
+          -D_ENABLE_RANDOM \
+          -D_ENABLE_HASHTABLE \
+          -D_ENABLE_TRIE \
+          -D_ENABLE_FILE \
+          -D_ENABLE_PCRE \
+          -D_ENABLE_JSON \
           -D_ENABLE_DB -D_ENABLE_MYSQL -D_ENABLE_SQLITE \
-          -D_ENABLE_CONFIG  \
-          -D_BUILTIN_PLUGIN -D_USE_BIG_FDS=4095
+          -D_ENABLE_CONFIG \
+          -D_BUILTIN_PLUGIN \
+          -D_USE_BIG_FDS=4095
 
 # Plugins configuration flags
 # Available PLGCONF flags:

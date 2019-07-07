@@ -36,7 +36,7 @@
 #include "m_file.h"
 
 /* -------------------------------------------------------------------------- */
-#if defined(_ENABLE_TRIE) && defined(HAS_LIBXML)
+#if defined(_ENABLE_FILE) && defined(_ENABLE_TRIE) && defined(HAS_LIBXML)
 /* -------------------------------------------------------------------------- */
 
 static m_view *default_view = NULL;
@@ -92,7 +92,7 @@ static void _fs_refcount_breaklock(m_file *ref)
 
 /* -------------------------------------------------------------------------- */
 
-static void *_fs_refcount_acquire(void *ptr)
+static void * CALLBACK _fs_refcount_acquire(void *ptr)
 {
     m_file *ref = ptr;
 
@@ -293,7 +293,7 @@ _try_again:
     retry = 0;
 
     /* check if the file exists in the cache */
-    new = trie_findexec(v->_cache, fullpath, _fs_refcount_acquire);
+    new = trie_findexec(v->_cache, fullpath, len, _fs_refcount_acquire);
     if (new) {
         if (~flags & FILE_OPEN_SHARED ||
             new->flags & FILE_PRIVATE ||
@@ -415,7 +415,7 @@ _try_again:
     /* XXX should use different records depending on access rights */
 
     /* try to insert the new record in the cache */
-    if (trie_insert(v->_cache, new->path, new)) {
+    if (trie_insert(v->_cache, new->path, len, new)) {
         debug("_fs_openfile(): cannot insert the new cache record.\n");
         goto _err_hash;
     }
@@ -556,16 +556,18 @@ public int fs_isopened(m_view *v, const char *p, size_t l)
     /** @brief this function checks if a file is already openened */
 
     char fullpath[PATH_MAX];
+    int len = 0;
 
     if (! p || ! l) {
         debug("fs_isopenfile(): bad parameters.\n");
         return 0;
     }
 
-    if (fs_mkpath(& v, p, l, fullpath, sizeof(fullpath)) == -1) return 0;
+    if ( (len = fs_mkpath(& v, p, l, fullpath, sizeof(fullpath))) == -1)
+        return 0;
 
     /* check if the file exists in the cache */
-    return (trie_findexec(v->_cache, fullpath, NULL) != NULL);
+    return (trie_findexec(v->_cache, fullpath, len, NULL) != NULL);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -677,7 +679,7 @@ static int _fs_map(m_view *v, const char *p, size_t l, m_string *data, int r)
     }
 
     /* check if there is a previous mapping */
-    prev = trie_findexec(v->_cache, fullpath, _fs_refcount_acquire);
+    prev = trie_findexec(v->_cache, fullpath, len, _fs_refcount_acquire);
     if (prev) {
         /* check if the previous mapping is physical */
         flags = prev->flags; _fs_refcount_unlock(prev);
@@ -755,7 +757,7 @@ static int _fs_map(m_view *v, const char *p, size_t l, m_string *data, int r)
 
     if (prev) {
         /* replace the old virtual mapping by the new one */
-        prev = trie_update(v->_cache, new->path, new);
+        prev = trie_update(v->_cache, new->path, new->pathlen, new);
 
         if (prev == new) {
             debug("_fs_map(): cannot replace the existing mapping.\n");
@@ -768,7 +770,7 @@ static int _fs_map(m_view *v, const char *p, size_t l, m_string *data, int r)
         }
     } else {
         /* we only create the mapping if it does not already exist */
-        if (trie_insert(v->_cache, new->path, new)) {
+        if (trie_insert(v->_cache, new->path, new->pathlen, new)) {
             debug("_fs_map(): cannot insert the new mapping.\n");
             goto _err_hash;
         }
@@ -869,7 +871,7 @@ public int fs_rename(m_view *v, const char *old, size_t oldlen,
 
     if (! physical) {
         /* get the old mapping data */
-        if (! (f = trie_findexec(v->_cache, oldpath, _fs_refcount_acquire)) ) {
+        if (! (f = trie_findexec(v->_cache, oldpath, oldlen, _fs_refcount_acquire)) ) {
             debug("fs_rename(): mapping not found.\n");
             return -1;
         }
@@ -931,7 +933,7 @@ public int fs_delete(m_view *v, const char *p, size_t l)
             return -1;
         }
     } else {
-        if (! (f = trie_findexec(v->_cache, fullpath, _fs_refcount_acquire)) ) {
+        if (! (f = trie_findexec(v->_cache, fullpath, len, _fs_refcount_acquire)) ) {
             debug("fs_delete(): mapping not found.\n");
             return -1;
         }
@@ -970,7 +972,7 @@ public m_file *fs_closefile(m_file *file)
 
         if (file->_view) {
             /* the file is not orphaned */
-            ret = trie_remove(file->_view->_cache, file->path);
+            ret = trie_remove(file->_view->_cache, file->path, file->pathlen);
         } else ret = file;
 
         if (ret) {

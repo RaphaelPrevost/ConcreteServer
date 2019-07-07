@@ -37,7 +37,7 @@
 
 #define M_FILE_H
 
-#if defined(_ENABLE_TRIE) && defined(HAS_LIBXML)
+#if defined(_ENABLE_FILE) && defined(_ENABLE_TRIE) && defined(HAS_LIBXML)
 
 #include "m_core_def.h"
 #include "m_trie.h"

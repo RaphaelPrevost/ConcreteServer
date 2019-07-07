@@ -53,7 +53,9 @@ typedef struct _m_http {
     char *name;
     char *value;
     size_t len;
+    #ifdef _ENABLE_FILE
     m_file *file;
+    #endif
     off_t offset;
     size_t length;
     struct _m_http *prev;
@@ -93,10 +95,14 @@ public m_http *http_set_var(m_http *h, const char *k, const char *v, size_t l);
 public m_http *http_set_fmt(m_http *h, const char *k, const char *fmt, ...);
 
 /* -------------------------------------------------------------------------- */
+#ifdef _ENABLE_FILE
+/* -------------------------------------------------------------------------- */
 
 public m_http *http_set_file(m_http *h, const char *k, const char *filename,
                              m_file *f, off_t off, size_t len);
 
+/* -------------------------------------------------------------------------- */
+#endif
 /* -------------------------------------------------------------------------- */
 
 public m_string *http_compile(m_http *h, int method, const char *action,

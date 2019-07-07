@@ -119,7 +119,9 @@ public m_http *http_open(void)
     h->name = h->value = NULL;
     h->len = 0;
 
+    #ifdef _ENABLE_FILE
     h->file = NULL;
+    #endif
     h->offset = 0;
     h->length = 0;
 
@@ -157,7 +159,11 @@ public m_http *http_set_var(m_http *h, const char *k, const char *v, size_t l)
     /* only insert at the end of the list */
     while (h->next) h = h->next;
 
-    if (h->name || h->file || ! h->prev) {
+    if (h->name ||
+        #ifdef _ENABLE_FILE
+        h->file ||
+        #endif
+        ! h->prev) {
         if (! (new_part = malloc(sizeof(*new_part))) ) {
             perror(ERR(http_set_var, malloc));
             return h;
@@ -169,10 +175,12 @@ public m_http *http_set_var(m_http *h, const char *k, const char *v, size_t l)
         h->next = new_part;
         new_part->next = NULL;
 
+        #ifdef _ENABLE_FILE
         /* no file */
         new_part->file = NULL;
         new_part->offset = 0;
         new_part->length = 0;
+        #endif
 
         h = new_part;
     }
@@ -202,6 +210,8 @@ public m_http *http_set_fmt(m_http *h, const char *k, const char *fmt, ...)
     return (len > 0) ? http_set_var(h, k, buffer, len) : h;
 }
 
+/* -------------------------------------------------------------------------- */
+#ifdef _ENABLE_FILE
 /* -------------------------------------------------------------------------- */
 
 public m_http *http_set_file(m_http *h, const char *k, const char *filename,
@@ -250,16 +260,21 @@ public m_http *http_set_file(m_http *h, const char *k, const char *filename,
 }
 
 /* -------------------------------------------------------------------------- */
+#endif
+/* -------------------------------------------------------------------------- */
 
 public m_string *http_compile(m_http *h, int method, const char *action,
                               const char *host, size_t inline_file_size)
 {
     m_string *req = NULL, *postdata = NULL;
     m_http *head = NULL;
-    size_t len = 0, addlen = 0;
+    size_t addlen = 0;
+    #ifdef _ENABLE_FILE
+    size_t len = 0;
     int i = 0;
     uint32_t random[10];
     m_random *ctx = NULL;
+    #endif
     m_string *token = NULL, *multipart = NULL;
 
     if (! h || ! method || ! action || ! host) {
@@ -274,6 +289,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
        a multipart request; however, if there is only regular form values,
        it's better to send a shorter x-www-form-urlencoded request */
     while (h->prev) {
+        #ifdef _ENABLE_FILE
         if (h->file && ! multipart) {
             /* generate a random 320 bits boundary token */
             ctx = random_arrayinit((uint32_t *) h, sizeof(*h));
@@ -288,7 +304,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
                                    "boundary=%.*s\r\n",
                                    (int) SIZE(token), CSTR(token));
         }
-
+        #endif
         h = h->prev;
     }
 
@@ -298,7 +314,9 @@ public m_string *http_compile(m_http *h, int method, const char *action,
 
         if (! h->name) break;
 
+        #ifdef _ENABLE_FILE
         if (! h->file) {
+        #endif
             #define BOUNDARY                                  \
             "--%.*s\r\n"                                      \
             "Content-Disposition: form-data; name=\"%s\"\r\n"
@@ -318,6 +336,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
             string_cats(postdata, "\r\n", 2);
 
             #undef BOUNDARY
+        #ifdef _ENABLE_FILE
         } else {
             #define BOUNDARY                                              \
             "--%.*s\r\n"                                                  \
@@ -350,6 +369,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
 
             #undef BOUNDARY
         }
+        #endif
 
         if (h->next) h = h->next; else {
             /* finalize the multipart postdata */
@@ -1082,7 +1102,9 @@ public m_http *http_close(m_http *h)
         prev = h->prev;
         h->_headers = string_free(h->_headers);
         free(h->name); free(h->value);
+        #ifdef _ENABLE_FILE
         h->file = fs_closefile(h->file);
+        #endif
         free(h); h = prev;
     }
 

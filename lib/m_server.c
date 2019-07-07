@@ -115,8 +115,10 @@ public m_reply *server_reply_init(uint16_t flags, uint32_t token)
     new->op = flags;
     new->token = token;
     new->header = new->footer = NULL;
+    #ifdef _ENABLE_FILE
     new->file = NULL;
     new->off = new->len = 0;
+    #endif
 
     return new;
 }
@@ -127,7 +129,9 @@ public m_reply *server_reply_free(m_reply *r)
 {
     if (! r) return NULL;
 
+    #ifdef _ENABLE_FILE
     if (r->file) fs_closefile(r->file);
+    #endif
 
     string_free(r->header);
     string_free(r->footer);
@@ -172,6 +176,8 @@ public int server_reply_setfooter(m_reply *reply, m_string *data)
 }
 
 /* -------------------------------------------------------------------------- */
+#ifdef _ENABLE_FILE
+/* -------------------------------------------------------------------------- */
 
 public int server_reply_setfile(m_reply *reply, m_file *f, off_t o, size_t len)
 {
@@ -188,6 +194,8 @@ public int server_reply_setfile(m_reply *reply, m_file *f, off_t o, size_t len)
     return 0;
 }
 
+/* -------------------------------------------------------------------------- */
+#endif
 /* -------------------------------------------------------------------------- */
 
 #if 0
@@ -275,6 +283,7 @@ static int server_reply_process(m_reply *r, m_socket *s)
 
     r->header = string_free(r->header);
 
+    #ifdef _ENABLE_FILE
     /* file */
     if (r->file) {
         if ( (w = socket_sendfile(s, r->file, & r->off, r->len)) > 0) {
@@ -283,6 +292,7 @@ static int server_reply_process(m_reply *r, m_socket *s)
             else return SOCKET_EAGAIN;
         } else return w;
     }
+    #endif
 
     /* footer */
     if (r->footer) {
@@ -783,10 +793,12 @@ public int server_init(void)
         goto _err_plugin;
     }
 
+    #ifdef _ENABLE_FILE
     if (fs_api_setup() == -1) {
         fprintf(stderr, "server_init(): file API setup failed.\n");
         goto _err_file;
     }
+    #endif
 
     if (pthread_attr_init(& attr) != 0) {
         perror(ERR(server_init, pthread_attr_init));
@@ -881,8 +893,10 @@ _err_udp:
 #endif
     pthread_attr_destroy(& attr);
 _err_attr:
+#ifdef _ENABLE_FILE
     fs_api_cleanup();
 _err_file:
+#endif
     plugin_api_cleanup();
 _err_plugin:
     socket_api_cleanup();
@@ -1636,6 +1650,7 @@ public int server_send_http(uint32_t token, uint16_t sockid, uint16_t flags,
                 return -1;
             }
 
+            #ifdef _ENABLE_FILE
             /* get the matching file in the http request and attach it */
             while (! request->file && request->next)
                 request = request->next;
@@ -1650,6 +1665,7 @@ public int server_send_http(uint32_t token, uint16_t sockid, uint16_t flags,
             reply->off = request->offset;
             reply->len = (request->length) ? request->length :
                          reply->file->len - reply->off;
+            #endif
 
             /* set the footer */
             if (! (footer = string_dup(TOKEN(http, i + 1))) ) {
@@ -1734,7 +1750,9 @@ public void server_fini(void)
     configure_cleanup();
     #endif
 
+    #ifdef _ENABLE_FILE
     fs_api_cleanup();
+    #endif
 
     string_api_cleanup();
 

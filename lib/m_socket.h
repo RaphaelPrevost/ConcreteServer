@@ -499,7 +499,7 @@ public ssize_t socket_write(m_socket *s, const char *data, size_t len);
  */
 
 /* -------------------------------------------------------------------------- */
-#if defined(_ENABLE_TRIE) && defined(HAS_LIBXML)
+#ifdef _ENABLE_FILE
 /* -------------------------------------------------------------------------- */
 
 public ssize_t socket_sendfile(m_socket *out, m_file *in, off_t *off, size_t len);
