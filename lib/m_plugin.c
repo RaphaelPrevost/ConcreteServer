@@ -383,10 +383,12 @@ private char *plugin_getpath(const char *plugin, size_t len)
         return NULL;
     }
 
+    #ifdef _ENABLE_FILE
     if (! fs_isrelativepath(plugin, len)) {
         debug("plugin_getpath(): %s is out of plugin root directory.\n", plugin);
         return NULL;
     }
+    #endif
 
     pthread_rwlock_rdlock(& _plugin_lock);
 

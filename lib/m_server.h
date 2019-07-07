@@ -95,9 +95,11 @@ typedef struct m_reply {
     m_string *header;
     m_string *footer;
 
+    #ifdef _ENABLE_FILE
     m_file *file;
     off_t off;
     size_t len;
+    #endif
 } m_reply;
 
 /* -------------------------------------------------------------------------- */
@@ -250,9 +252,13 @@ public int server_reply_setheader(m_reply *reply, m_string *data);
 public int server_reply_setfooter(m_reply *reply, m_string *data);
 
 /* -------------------------------------------------------------------------- */
+#ifdef _ENABLE_FILE
+/* -------------------------------------------------------------------------- */
 
 public int server_reply_setfile(m_reply *reply, m_file *f, off_t o, size_t len);
 
+/* -------------------------------------------------------------------------- */
+#endif
 /* -------------------------------------------------------------------------- */
 
 public m_reply *server_send_reply(uint16_t sockid, m_reply *r);

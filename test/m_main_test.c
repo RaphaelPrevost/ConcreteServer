@@ -10,7 +10,9 @@ extern int test_hashtable(void);
 #endif
 #ifdef _ENABLE_TRIE
 extern int test_trie(void);
+#ifdef _ENABLE_FILE
 extern int test_fs(void);
+#endif
 #endif
 #ifdef _ENABLE_HTTP
 extern int test_http(void);
@@ -32,7 +34,7 @@ int main(void)
         exit(EXIT_FAILURE);
     } else printf("=== m_string test: SUCCESS ===\n");
 
-    #ifdef _ENABLE_HTTP
+    #if defined(_ENABLE_HTTP) && defined(_ENABLE_FILE)
     if (test_http() == -1) {
         printf("!!! m_http test: FAILURE !!!\n");
         exit(EXIT_FAILURE);
@@ -62,10 +64,12 @@ int main(void)
         exit(EXIT_FAILURE);
     } else printf("=== m_trie test: SUCCESS ===\n");
 
+    #ifdef _ENABLE_FILE
     if (test_fs() == -1) {
         printf("!!! m_file test: FAILURE !!!\n");
         exit(EXIT_FAILURE);
     } else printf("=== m_file test: SUCCESS ===\n");
+    #endif
     #endif
 
     #ifdef _ENABLE_DB

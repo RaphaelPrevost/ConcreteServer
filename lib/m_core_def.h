@@ -237,11 +237,27 @@ public extern char *working_directory;
         #define debug(...) do { } while (0)
     #endif
 #endif
+
 #ifndef UNUSED
     #ifdef __GNUC__
         #define UNUSED __attribute__ ((unused))
     #else
         #define UNUSED
+    #endif
+#endif
+
+#ifndef CALLBACK
+    #ifdef __GNUC__
+        #ifndef __x86_64__
+            #define CALLBACK __attribute__ ((regparm(1)))
+        #else
+            /* x86_64 already uses registers to pass function parameters */
+            #define CALLBACK
+        #endif
+    #else
+        /* XXX the WIN32 __fastcall calling convention uses too many
+           registers to be suitable for callbacks */
+        #define CALLBACK
     #endif
 #endif
 
