@@ -110,9 +110,9 @@ typedef struct m_json_parser {
         size_t len;
     } key;
     int parent;
-    int (*init)(int type, struct m_json_parser *ctx);
-    int (*data)(int type, const char *data, size_t len, struct m_json_parser *ctx);
-    int (*exit)(int type, struct m_json_parser *ctx);
+    int (CALLBACK *init)(int, struct m_json_parser *);
+    int (CALLBACK *data)(int, const char *, size_t, struct m_json_parser *);
+    int (CALLBACK *exit)(int, struct m_json_parser *);
 } m_json_parser;
 
 #define JSON_OBJECT         0x1000
