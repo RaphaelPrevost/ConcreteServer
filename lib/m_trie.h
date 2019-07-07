@@ -77,28 +77,29 @@ public m_trie *trie_alloc(void (*freeval)(void *));
 
 /* -------------------------------------------------------------------------- */
 
-public int trie_insert(m_trie *t, const char *key, void *value);
+public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value);
 
 /* -------------------------------------------------------------------------- */
 
-public void *trie_findexec(m_trie *t, const char *key, void *(*f)(void *));
+public void *trie_findexec(m_trie *t, const char *key, size_t ulen,
+                           void *(CALLBACK *f)(void *));
 
 /* -------------------------------------------------------------------------- */
 
-public void *trie_remove(m_trie *t, const char *key);
+public void *trie_remove(m_trie *t, const char *key, size_t ulen);
 
 /* -------------------------------------------------------------------------- */
 
-public void *trie_update(m_trie *t, const char *key, void *value);
+public void *trie_update(m_trie *t, const char *key, size_t ulen, void *value);
 
 /* -------------------------------------------------------------------------- */
 
-public void trie_foreach(m_trie *t, int (*f)(const char *, void *));
+public void trie_foreach(m_trie *t, int (*f)(const char *, size_t, void *));
 
 /* -------------------------------------------------------------------------- */
 
-public void trie_foreach_prefix(m_trie *t, const char *prefix,
-                                int (*function)(const char *, void *));
+public void trie_foreach_prefix(m_trie *t, const char *prefix, size_t ulen,
+                                int (*function)(const char *, size_t, void *));
 
 /* -------------------------------------------------------------------------- */
 

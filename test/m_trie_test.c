@@ -13,9 +13,9 @@ static int timeout = 0;
 
 /* -------------------------------------------------------------------------- */
 
-static int callback(const char *element, void *arg)
+static int callback(const char *element, size_t len, void *arg)
 {
-    printf("%s %i\n", element, (int) arg);
+    printf("%.*s [size=%zu] = %i\n", len, element, len, (int) arg);
     return 1;
 }
 
@@ -36,6 +36,7 @@ int test_trie(void)
     unsigned int i = 0, j = 0, missing = 0;
     char key[BUFSIZ];
     clock_t start, stop;
+    size_t len = 0;
 
     signal(SIGALRM, _timeout);
 
@@ -48,8 +49,8 @@ int test_trie(void)
     printf("(*) Inserting key-value pairs.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        sprintf(key, _CACHE_KEYFM, i);
-        trie_insert(t, key, (void *) (uintptr_t) i);
+        len = sprintf(key, _CACHE_KEYFM, i); key[len] = 0;
+        trie_insert(t, key, len, (void *) (uintptr_t) i);
     }
     stop = clock();
     printf("(-) Time elapsed = ");
@@ -64,8 +65,8 @@ int test_trie(void)
     printf("(*) Getting back values from keys.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        sprintf(key, _CACHE_KEYFM, i);
-        if ( (j = (unsigned int) trie_findexec(t, key, NULL)) != i) {
+        len = sprintf(key, _CACHE_KEYFM, i); key[len] = 0;
+        if ( (j = (unsigned int) trie_findexec(t, key, len, NULL)) != i) {
             missing ++;
             printf("(!) Key %i is missing ! (found %i instead)\n", i, j);
         }
@@ -76,7 +77,7 @@ int test_trie(void)
     printf(" s\n");
     printf("(-) %i missing keys\n", missing);
 
-    trie_foreach_prefix(t, "800", callback);
+    trie_foreach_prefix(t, "800", strlen("800"), callback);
 
     missing = 0;
 
@@ -84,8 +85,8 @@ int test_trie(void)
     printf("(*) Randomly deleting 100k keys.\n");
     while (! timeout && missing < _CACHE_RNDDL) {
         i = rand() % _CACHE_ITEMS;
-        sprintf(key, _CACHE_KEYFM, i);
-        if (trie_remove(t, key)) missing ++;
+        len = sprintf(key, _CACHE_KEYFM, i);
+        if (trie_remove(t, key, len)) missing ++;
     }
     timeout = 1;
 
@@ -94,8 +95,8 @@ int test_trie(void)
     printf("(*) Replacing all keys values.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        sprintf(key, _CACHE_KEYFM, i);
-        trie_update(t, key, (void *) (uintptr_t) (i + 1) );
+        len = sprintf(key, _CACHE_KEYFM, i);
+        trie_update(t, key, len, (void *) (uintptr_t) (i + 1) );
     }
     stop = clock();
     printf("(-) Time elapsed = ");
@@ -109,8 +110,8 @@ int test_trie(void)
     printf("(*) Removing all the data from the table.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        sprintf(key, _CACHE_KEYFM, i);
-        if ((unsigned int) trie_remove(t, key) != i + 1) missing ++;
+        len = sprintf(key, _CACHE_KEYFM, i);
+        if ((unsigned int) trie_remove(t, key, len) != i + 1) missing ++;
     }
     stop = clock();
     printf("(-) Time elapsed = ");
@@ -123,8 +124,8 @@ int test_trie(void)
     printf("(*) Checking that all the keys have been deleted.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        sprintf(key, _CACHE_KEYFM, i);
-        if ((unsigned int) trie_findexec(t, key, NULL) != i + 1) missing ++;
+        len = sprintf(key, _CACHE_KEYFM, i);
+        if ((unsigned int) trie_findexec(t, key, len, NULL) != i + 1) missing ++;
         else printf("(!) found phantom key %i !\n", i);
     }
     stop = clock();
@@ -134,11 +135,11 @@ int test_trie(void)
     printf("(-) %i missing keys\n", missing);
 
     printf("(*) Overwriting a key.\n");
-    i = (unsigned int) trie_insert(t, key, (void *) 0x888);
+    i = (unsigned int) trie_insert(t, key, len, (void *) 0x888);
     if (i) printf("(!) Key insertion returned 0x%x\n", i);
-    i = (unsigned int) trie_update(t, key, (void *) 0x8989);
+    i = (unsigned int) trie_update(t, key, len, (void *) 0x8989);
     if (i != 0x888) printf("(!) Key overwrite returned 0x%x\n", i);
-    if ( (i = (unsigned int) trie_remove(t, key)) != 0x8989)
+    if ( (i = (unsigned int) trie_remove(t, key, len)) != 0x8989)
         printf("(!) Retrieved key is 0x%x, expected 0x8989.\n", i);
     else
         printf("(*) Value was successfully overwritten.\n");
