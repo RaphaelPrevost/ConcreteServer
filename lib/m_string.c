@@ -1854,6 +1854,27 @@ public int string_split(m_string *string, const m_string *pattern)
 
 /* -------------------------------------------------------------------------- */
 
+static void __bcpy(const char *src, char *dst, size_t len)
+{
+    size_t c = 0;
+
+    src += len;
+    dst += len;
+
+    c = len >> 2;
+
+    if (c) do {
+        src -= 4; dst -= 4;
+        *(uint32_t *) dst = *(uint32_t *) src;
+    } while (-- c);
+
+    c = len & 0x3;
+
+    if (c) do { *-- dst = *-- src; } while (-- c);
+}
+
+/* -------------------------------------------------------------------------- */
+
 public int string_merges(m_string *string, const char *pattern, size_t len)
 {
     /** @brief replaces separators in a split string by a new separator */
@@ -1900,8 +1921,9 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
         for (last = PARTS(string) - 1; last -- > known_good; p -= diff) {
             diff = len - (TSTR(string, last + 1) - TEND(string, last));
 
-            memmove((char *) TSTR(string, last + 1) + p,
-                    TSTR(string, last + 1), TLEN(string, last + 1));
+            __bcpy(TSTR(string, last + 1), (char *) TSTR(string, last + 1) + p,
+                   TLEN(string, last + 1));
+
             __move_subtokens(TOKEN(string, last + 1), p, NULL);
 
             if (likely(len == 1))
@@ -1915,8 +1937,9 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
         for (i = known_good; i < PARTS(string) - 1; i ++) {
             diff = len - (TSTR(string, i + 1) - TEND(string, i));
 
-            memmove((char *) TSTR(string, i + 1) + diff,
-                    TSTR(string, i + 1), TLEN(string, i + 1));
+            memcpy((char *) TSTR(string, i + 1) + diff,
+                   TSTR(string, i + 1), TLEN(string, i + 1));
+
             __move_subtokens(TOKEN(string, i + 1), diff, NULL);
 
             if (likely(len == 1))
@@ -3161,10 +3184,10 @@ public int string_urlencode(m_string *url, int flags)
 
 public int string_parse_json(m_string *s, int strict, m_json_parser *ctx)
 {
-    unsigned int pos = 0, i = 0, kv = 0, key = 0;
+    unsigned int pos = 0, i = 0, kv = 0;
     unsigned char c = 0, z = 0;
-    char value_expected = 0, radix = 0, exp = 0, sign = 0, leading_digit = 0;
-    char *p = NULL;
+    unsigned char key = 0, radix = 0, exp = 0, sign = 0;
+    char *p = NULL, value_expected = 0, leading_digit = 0;
     m_string *json = s, *parent = NULL;
     uint32_t prefetch = 0;
     int callback = 0;
@@ -3580,7 +3603,7 @@ _token: json->_len = json->_alloc = pos + (1 - i);
             if (ctx && callback == 0 && ! key)
                 string_free_token(json);
             json = parent;
-            key = (IS_OBJECT(json));
+            key = (IS_OBJECT(json) > 0);
         } else break;
 
         i = 0;
