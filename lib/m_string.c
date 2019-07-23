@@ -3186,7 +3186,7 @@ public int string_urlencode(m_string *url, int flags)
 
 public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 {
-    unsigned int pos = 0, i = 0, kv = 0;
+    unsigned int pos = 0, i = 0;
     unsigned char c = 0, z = 0;
     char *p = NULL, state = 0, leading_digit = 0;
     m_string *json = s, *parent = NULL;

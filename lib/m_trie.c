@@ -91,13 +91,54 @@ _err_lock:
 
 static uint32_t CALLBACK __msb(uint32_t i)
 {
-    /* returns a byte's most significant bit using a de Bruijn sequence */
+    /* hardware implementation */
+    #if (defined(__GNUC__) && \
+         ((__GNUC__ >= 4) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))) && \
+        (defined(__i386__) || defined(__x86_64__) || defined(__arm__))
 
+    return 1 << (__builtin_clz(i) ^ 31);
+
+    #elif (defined(_MSC_VER) && (_MSC_VER >= 1400)) && \
+          (defined(_M_IX86) || defined(_M_AMD64) || defined(_M_ARM))
+
+    #pragma intrinsic(_BitScanReverse)
+
+    unsigned long idx;
+
+    _BitScanReverse(& idx, (unsigned long) i);
+
+    return 1 << (idx ^ 31);
+
+    #else
+
+    /* portable software implementation (de Bruijn sequence) */
     static const uint8_t seq[] = { 0, 5, 1, 6, 4, 3, 2, 7 };
 
     i |= i >> 1; i |= i >> 2; i |= i >> 4;
 
     return 1 << seq[(uint8_t) (i * 0x1D) >> 5];
+
+    #endif
+}
+
+/* -------------------------------------------------------------------------- */
+
+public int trie_insert_r(m_trie *t, const char *key, size_t ulen, void *value)
+{
+    int ret = 0;
+
+    if (! t) {
+        debug("trie_insert(): bad parameters.\n");
+        return -1;
+    }
+
+    pthread_rwlock_wrlock(t->_lock);
+
+    ret = trie_insert(t, key, ulen, value);
+
+    pthread_rwlock_unlock(t->_lock);
+
+    return ret;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -124,13 +165,10 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
         return -1;
     }
 
-    pthread_rwlock_wrlock(t->_lock);
-
     if (! (p = t->_root) ) {
         /* the tree is empty, allocate a new leaf node */
         if (posix_memalign((void **) & leaf, sizeof(void *), allocsize)) {
             perror(ERR(trie_insert, posix_memalign));
-            pthread_rwlock_unlock(t->_lock);
             return -1;
         }
 
@@ -139,8 +177,6 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
         leaf->key[ulen] = '\0';
 
         t->_root = leaf->key;
-
-        pthread_rwlock_unlock(t->_lock);
 
         return 0;
     }
@@ -173,8 +209,6 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
         }
     }
 
-    pthread_rwlock_unlock(t->_lock);
-
     return 0;
 
 different_byte_found:
@@ -183,7 +217,6 @@ different_byte_found:
 
     if (posix_memalign((void **) & node, sizeof(void *), sizeof(*node))) {
         perror(ERR(trie_insert, posix_memalign));
-        pthread_rwlock_unlock(t->_lock);
         return -1;
     }
 
@@ -193,7 +226,7 @@ different_byte_found:
 
     if (posix_memalign((void **) & leaf, sizeof(void *), allocsize)) {
         perror(ERR(trie_insert, posix_memalign));
-        pthread_rwlock_unlock(t->_lock); posix_memfree(node);
+        posix_memfree(node);
         return -1;
     }
 
@@ -214,8 +247,6 @@ different_byte_found:
     node->child[1 - newdirection] = leaf->key;
     node->child[newdirection] = *wherep;
     *wherep = (void *) (1 + (char *) node);
-
-    pthread_rwlock_unlock(t->_lock);
 
     return 0;
 }
