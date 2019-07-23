@@ -86,7 +86,7 @@ typedef struct m_search_string {
 #define HAS_ERROR(x) ((x)->_flags & _STRING_FLAG_ERRORS)
 #define _STRING_FLAG_BUFFER 0x0040 /* this string is used for buffering */
 #define IS_BUFFER(x) ((x)->_flags & _STRING_FLAG_BUFFER)
-#define _STRING_FLAG_MASKXT 0x001f /* mask extension flags */
+#define _STRING_FLAG_MASKXT 0x001F /* mask extension flags */
 /*                          0x0080    reserved */
 
 #ifdef _ENABLE_HTTP
@@ -1565,7 +1565,7 @@ public int string_urlencode(m_string *url, int flags);
 #ifdef _ENABLE_JSON
 /* -------------------------------------------------------------------------- */
 
-public int string_parse_json(m_string *s, int strict, m_json_parser *ctx);
+public int string_parse_json(m_string *s, char strict, m_json_parser *ctx);
 
 /**
  * @ingroup string
