@@ -75,10 +75,13 @@
 #include <time.h>
 
 #if ! defined(_MSC_VER) || _MSC_VER > 1300
-/* Ancient Microsoft Visual C++ version do not have these */
+/* Microsoft Visual C++ 6.0 is missing these includes */
 #include <unistd.h>
 #include <stdint.h>
 #include <inttypes.h>
+#if _MSC_VER >= 1400
+#include <intrin.h>
+#endif
 #endif
 
 /* specific macros cleanup */

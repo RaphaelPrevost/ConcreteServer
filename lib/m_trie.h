@@ -81,6 +81,10 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value);
 
 /* -------------------------------------------------------------------------- */
 
+public int trie_insert_r(m_trie *t, const char *key, size_t ulen, void *value);
+
+/* -------------------------------------------------------------------------- */
+
 public void *trie_findexec(m_trie *t, const char *key, size_t ulen,
                            void *(CALLBACK *f)(void *));
 
