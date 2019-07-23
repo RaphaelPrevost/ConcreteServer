@@ -89,10 +89,23 @@ _err_lock:
 
 /* -------------------------------------------------------------------------- */
 
+static uint32_t CALLBACK __msb(uint32_t i)
+{
+    /* returns a byte's most significant bit using a de Bruijn sequence */
+
+    static const uint8_t seq[] = { 0, 5, 1, 6, 4, 3, 2, 7 };
+
+    i |= i >> 1; i |= i >> 2; i |= i >> 4;
+
+    return 1 << seq[(uint8_t) (i * 0x1D) >> 5];
+}
+
+/* -------------------------------------------------------------------------- */
+
 public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
 {
     const uint8_t *const ubytes = (void *) key;
-    uint8_t *p = NULL, c = 0, diff = 0;
+    uint8_t *p = NULL, c = 0;
     unsigned int direction = 0, newdirection = 0;
     _m_node *node = NULL, *n = NULL;
     _m_leaf *leaf = NULL;
@@ -132,28 +145,32 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
         return 0;
     }
 
-    wherep = & t->_root;
-
     /* traverse the tree to find where the new node should be inserted */
-    while ((intptr_t) p & 0x1) {
+    for (wherep = & t->_root; (intptr_t) p & 0x1; p = node->child[direction]) {
         node = (void *) (p - 1);
+
         if (likely(node->byte < ulen)) {
             c = ubytes[node->byte];
             direction = (1 + (node->otherbits | c)) >> 8;
-            if (unlikely(! diff) && (diff = c ^ node->val) ) {
-                newbyte = node->byte;
-                wherep = node->child + direction;
-            }
+            if (likely(node->val ^ c)) {
+                newotherbits = node->val ^ c;
+                newotherbits = __msb(newotherbits) ^ 0xFF;
+                if (node->otherbits > newotherbits) {
+                    newbyte = node->byte;
+                    c = node->val;
+                    goto different_byte_found;
+                }
+            } else wherep = node->child + direction;
         } else direction = (1 + node->otherbits) >> 8;
-        p = node->child[direction];
     }
 
-    while (newbyte < ulen) {
-        if (p[newbyte] != ubytes[newbyte]) {
+    for (newbyte = 0; newbyte < ulen; newbyte ++) {
+        if (p[newbyte] ^ ubytes[newbyte]) {
             newotherbits = p[newbyte] ^ ubytes[newbyte];
+            newotherbits = __msb(newotherbits) ^ 0xFF;
+            c = p[newbyte];
             goto different_byte_found;
         }
-        newbyte ++;
     }
 
     pthread_rwlock_unlock(t->_lock);
@@ -162,10 +179,6 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
 
 different_byte_found:
 
-    while (newotherbits & (newotherbits - 1))
-        newotherbits &= newotherbits - 1;
-
-    newotherbits ^= 255; c = p[newbyte];
     newdirection = (1 + (newotherbits | c)) >> 8;
 
     if (posix_memalign((void **) & node, sizeof(void *), sizeof(*node))) {
