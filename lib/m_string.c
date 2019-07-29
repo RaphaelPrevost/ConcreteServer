@@ -91,28 +91,28 @@ static const char _d64[] = {
 
 #ifdef _ENABLE_JSON
 static const unsigned char _j[] = {
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 14, 14, 16, /*  12 */
-    16, 14, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /*  24 */
-    16, 16, 16, 16, 16, 16, 16, 16, 15,  0, 12,  0, /*  36 */
-     0,  0,  0, 12,  0,  0,  0,  7,  4,  6,  8,  0, /*  48 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 13, 13, 15, /*  12 */
+    15, 13, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /*  24 */
+    15, 15, 15, 15, 15, 15, 15, 15, 14,  0, 11,  0, /*  36 */
+     0,  0,  0, 11,  0,  0,  0,  7,  4,  6,  8,  0, /*  48 */
      5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  3,  0, /*  60 */
-     0,  0,  0,  0,  0, 10, 10, 10, 10,  9, 10,  0, /*  72 */
+     0,  0,  0,  0,  0,  0,  0,  0,  0,  9,  0,  0, /*  72 */
      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, /*  84 */
-     0,  0,  0,  0,  0,  0,  0,  1, 13,  2,  0,  0, /*  96 */
-     0, 10, 10, 10, 10,  9, 11,  0,  0,  0,  0,  0, /* 108 */
-     0,  0, 11,  0,  0,  0,  0,  0, 11,  0,  0,  0, /* 120 */
-     0,  0,  0,  1,  0,  2,  0,  0, 16, 16, 16, 16, /* 128 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 140 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 152 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 164 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 176 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 188 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 200 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 212 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 224 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 236 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 248 */
-    16, 16, 16, 16, 16, 16, 16, 16, 16              /* 256 */
+     0,  0,  0,  0,  0,  0,  0,  1, 12,  2,  0,  0, /*  96 */
+     0,  0,  0,  0,  0,  9, 10,  0,  0,  0,  0,  0, /* 108 */
+     0,  0, 10,  0,  0,  0,  0,  0, 10,  0,  0,  0, /* 120 */
+     0,  0,  0,  1,  0,  2,  0,  0, 15, 15, 15, 15, /* 128 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 140 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 152 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 164 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 176 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 188 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 200 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 212 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 224 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 236 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 248 */
+    15, 15, 15, 15, 15, 15, 15, 15, 15              /* 256 */
 };
 
 #define OBJ_START   1 /* {, [ */
@@ -124,14 +124,12 @@ static const unsigned char _j[] = {
 #define DIGIT_POS   7 /* + */
 #define DIGIT_RAD   8 /* . */
 #define DIGIT_EXP   9 /* e, E */
-#define DIGIT_HEX  10 /* A-D, F, a-d */
-#define PRIMITIVE  11 /* n(ull), t(rue) */
-
-#define QUOTE      12 /* ', " */
-#define ESCAPESEQ  13 /* \ */
-#define WHITE      14 /* \n, \r, \t */
-#define SPACE      15 /* 0x20 */
-#define OTHER      16
+#define PRIMITIVE  10 /* n(ull), t(rue) */
+#define QUOTE      11 /* ', " */
+#define ESCAPESEQ  12 /* \ */
+#define WHITE      13 /* \n, \r, \t */
+#define SPACE      14 /* 0x20 */
+#define OTHER      15
 #endif
 
 /* -- sha1 private context -- */
@@ -3243,7 +3241,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
         c = json->_data[pos];
 
-        if (likely(_j[c] < 12) && unlikely(IS_STRING(json))) continue;
+        if (likely(_j[c] < 11) && unlikely(IS_STRING(json))) continue;
 
         p = (char *) CSTR(json) + pos;
 
@@ -3251,7 +3249,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
         /* {, [ */
         case OBJ_START: {
-            if (state & _KEY) {
+            if (unlikely(state & _KEY)) {
                 debug("string_parse_json(): opening bracket where "
                       "a key was expected.\n");
                 goto _error;
@@ -3358,7 +3356,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
         /* , */
         case COMMA: {
-            if (strict && (state & _VAL)) {
+            if (strict && unlikely(state & _VAL)) {
                 debug("string_parse_json(): a value is expected.\n");
                 goto _error;
             }
@@ -3503,12 +3501,6 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             state |= (_EXP | _VAL);
         } break;
 
-        /* a-d, A-D, F */
-        case DIGIT_HEX: if (strict == JSON_STRICT) {
-            debug("string_parse_json(): unexpected hexadecimal digit.\n");
-            goto _error;
-        } break;
-
         /* f, n, t */
         case PRIMITIVE: if (likely(! IS_PRIMITIVE(json))) {
             if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
@@ -3627,7 +3619,10 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
         /* \t, \r, \n, 0x20 */
         case WHITE: if (strict && IS_STRING(json)) goto _error;
         case SPACE: if (unlikely(IS_PRIMITIVE(json))) {
-            if (strict == JSON_STRICT && (state & _VAL)) goto _error;
+            if (state & _VAL) {
+                debug("string_parse_json(): incomplete primitive.\n");
+                goto _error;
+            }
             leading_digit = 0; goto _delim;
         } break;
 
