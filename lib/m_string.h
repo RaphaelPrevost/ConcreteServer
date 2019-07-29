@@ -128,7 +128,6 @@ typedef struct m_json_parser {
 #define IS_TYPE(x, type) ((x)->_flags & (type))
 
 #define JSON_QUIRKS         0x0
-#define _JSON_RELAX         0x1
 #define JSON_STRICT         0x2
 
 #endif
