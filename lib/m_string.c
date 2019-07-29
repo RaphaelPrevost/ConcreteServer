@@ -91,49 +91,47 @@ static const char _d64[] = {
 
 #ifdef _ENABLE_JSON
 static const unsigned char _j[] = {
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 13, 13, 15, /*  12 */
-    15, 13, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /*  24 */
-    15, 15, 15, 15, 15, 15, 15, 15, 14,  0, 11,  0, /*  36 */
-     0,  0,  0, 10,  0,  0,  0, 7,   6,  8,  9,  0, /*  48 */
-    48, 48, 48, 48, 48, 48, 48, 48, 48, 48,  5,  0, /*  60 */
-     0,  0,  0,  0,  0, 32, 32, 32, 32,112, 32,  0, /*  72 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 14, 14, 16, /*  12 */
+    16, 14, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /*  24 */
+    16, 16, 16, 16, 16, 16, 16, 16, 15,  0, 12,  0, /*  36 */
+     0,  0,  0, 12,  0,  0,  0,  7,  4,  6,  8,  0, /*  48 */
+     5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  3,  0, /*  60 */
+     0,  0,  0,  0,  0, 10, 10, 10, 10,  9, 10,  0, /*  72 */
      0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, /*  84 */
-     0,  0,  0,  0,  0,  0,  0,  3, 12,  4,  0,  0, /*  96 */
-     0, 32, 32, 32, 32,112,160,  0,  0,  0,  0,  0, /* 108 */
-     0,  0,128,  0,  0,  0,  0,  0,128,  0,  0,  0, /* 120 */
-     0,  0,  0,  1,  0,  2,  0,  0, 15, 15, 15, 15, /* 128 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 140 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 152 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 164 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 176 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 188 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 200 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 212 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 224 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 236 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, /* 248 */
-    15, 15, 15, 15, 15, 15, 15, 15, 15              /* 256 */
+     0,  0,  0,  0,  0,  0,  0,  1, 13,  2,  0,  0, /*  96 */
+     0, 10, 10, 10, 10,  9, 11,  0,  0,  0,  0,  0, /* 108 */
+     0,  0, 11,  0,  0,  0,  0,  0, 11,  0,  0,  0, /* 120 */
+     0,  0,  0,  1,  0,  2,  0,  0, 16, 16, 16, 16, /* 128 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 140 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 152 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 164 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 176 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 188 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 200 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 212 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 224 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 236 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, /* 248 */
+    16, 16, 16, 16, 16, 16, 16, 16, 16              /* 256 */
 };
 
-#define OBJ_START   1 /* { */
-#define OBJ_CLOSE   2 /* } */
-#define ARR_START   3 /* [ */
-#define ARR_CLOSE   4 /* ] */
-#define COLON       5 /* : */
-#define COMMA       6 /* , */
+#define OBJ_START   1 /* {, [ */
+#define OBJ_CLOSE   2 /* }, ] */
+#define COLON       3 /* : */
+#define COMMA       4 /* , */
+#define DIGIT       5 /* 0-9 */
+#define DIGIT_NEG   6 /* - */
 #define DIGIT_POS   7 /* + */
-#define DIGIT_NEG   8 /* - */
-#define DIGIT_RAD   9 /* . */
-#define QUOTE_SGL  10 /* ' */
-#define QUOTE_DBL  11 /* " */
-#define ESCAPESEQ  12 /* \ */
-#define WHITE      13 /* \t, \r, \n */
-#define SPACE      14 /*  */
-#define OTHER      15
-#define DIGIT_NUM  16 /* 0-9 */
-#define DIGIT_HEX  32 /* A-F, a-f */
-#define DIGIT_EXP  64 /* e E */
-#define BOOL      128 /* t, f, n */
+#define DIGIT_RAD   8 /* . */
+#define DIGIT_EXP   9 /* e, E */
+#define DIGIT_HEX  10 /* A-D, F, a-d */
+#define PRIMITIVE  11 /* n(ull), t(rue) */
+
+#define QUOTE      12 /* ', " */
+#define ESCAPESEQ  13 /* \ */
+#define WHITE      14 /* \n, \r, \t */
+#define SPACE      15 /* 0x20 */
+#define OTHER      16
 #endif
 
 /* -- sha1 private context -- */
@@ -176,6 +174,9 @@ static const char _unsafe[256] = {
 #define __zero(x)    (((x) - 0x01010101U) & ~(x) & 0x80808080U)
 #define __less(x, n) (((x) - ~0U / 255 * (n)) & ~(x) & ~0U / 255 * 128)
 #define __more(x, n) ((((x) + ~0U / 255 * (127 - (n))) | (x)) & ~0U / 255 * 128)
+#define __between(x, m, n) \
+(((~0U / 255 * (127 + (n)) - ((x) & ~0U / 255 * 127)) & ~(x) & \
+ (((x) & ~0U / 255 * 127) + ~0U / 255 * (127 - (m)))) & ~0U / 255 * 128)
 
 /* -------------------------------------------------------------------------- */
 /* 0. Initialization */
@@ -3187,7 +3188,7 @@ public int string_urlencode(m_string *url, int flags)
 public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 {
     unsigned int pos = 0, i = 0;
-    unsigned char c = 0, z = 0;
+    unsigned char c = 0;
     char *p = NULL, state = 0, leading_digit = 0;
     m_string *json = s, *parent = NULL;
     uint32_t prefetch = 0;
@@ -3197,9 +3198,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
     #define _KEY 0x01   /* key expected */
     #define _VAL 0x02   /* value expected */
     #define _SIG 0x04   /* '+' or '-' sign found */
-    #define _RAD 0x08   /* '.' decimal separator (radix) found */
+    #define _RAD 0x08   /* '.' decimal separator (radix point) found */
     #define _EXP 0x10   /* 'e' or 'E' exponent found */
-    #define _DAT 0x20   /* data to parse */
 
     if (! json) {
         debug("string_parse_json(): bad parameters.\n");
@@ -3232,7 +3232,6 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             /* XXX make sure the opening quotation mark is accounted for */
             if (IS_STRING(LAST_TOKEN(json))) i --;
             string_free_token(LAST_TOKEN(json)); json->parts --;
-            //if (IS_OBJECT(json)) kv = 1;
         } else string_free_token(json);
     } else string_free_token(json);
 
@@ -3242,17 +3241,27 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
     for (pos = i; pos < SIZE(json); pos ++) {
 
-        z = _j[ (c = json->_data[pos]) ];
+        c = json->_data[pos];
 
-        if (z < 10 && IS_STRING(json)) continue;
+        if (likely(_j[c] < 12) && unlikely(IS_STRING(json))) continue;
 
-        switch (z) {
+        p = (char *) CSTR(json) + pos;
 
-        /* { */
-        case OBJ_START: if (strict && (state & _KEY)) goto _error;
-                        state |= _KEY;
-        /* [ */
-        case ARR_START: if (likely(! IS_PRIMITIVE(json))) {
+        switch (_j[c]) {
+
+        /* {, [ */
+        case OBJ_START: {
+            if (state & _KEY) {
+                debug("string_parse_json(): opening bracket where "
+                      "a key was expected.\n");
+                goto _error;
+            }
+
+            if ((state & _VAL) == 0 && json->parent) {
+                debug("string_parse_json(): unexpected opening "
+                      "bracket.\n");
+                goto _error;
+            }
 
             if (unlikely(! (json = string_add_token(json, pos, SIZE(json)))))
                 goto _nomem;
@@ -3261,12 +3270,15 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             if (likely(json->token = malloc(4 * sizeof(*json->token))))
                 json->_parts_alloc = 4;
 
-            json->_flags &= ~JSON_TYPE;
-            json->_flags |= (*json->_data == '[') ? JSON_ARRAY : JSON_OBJECT;
-            json->_flags |= _STRING_FLAG_ERRORS;
-            pos = 0;
+            pos = (*p == '{');
 
-            state |= _VAL;
+            json->_flags &= ~JSON_TYPE;
+            json->_flags = (-(pos) & JSON_OBJECT) | (-(! pos) & JSON_ARRAY);
+            json->_flags |= _STRING_FLAG_ERRORS;
+
+            state = (state & ~_KEY) | (-(pos) & _KEY) | _VAL;
+
+            pos = 0;
 
             /* parser callback */
             if (ctx && ctx->init) {
@@ -3279,67 +3291,63 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
                 ctx->key.current = NULL; ctx->key.len = 0;
             }
-        } else goto _error; break;
+        } break;
 
-        /* } */
-        case OBJ_CLOSE: if (strict && (state & _KEY) && json->parts & 0x1)
-                            goto _error;
-                        state &= ~_KEY;
-        /* ] */
-        case ARR_CLOSE: {
-            if (strict && (state & _VAL)) {
-                if (! IS_TYPE(json, JSON_ARRAY | JSON_OBJECT) || json->parts) {
+        /* }, ] */
+        case OBJ_CLOSE: {
+            if (strict) {
+                if ((state & _KEY) && json->parts & 0x1) {
+                    debug("string_parse_json(): a key is expected.\n");
+                    goto _error;
+                }
+
+                if ((state & _VAL) && json->parts) {
                     debug("string_parse_json(): a value is expected.\n");
                     goto _error;
                 }
             }
 
-            state &= ~_VAL;
+            if ((state & _VAL) && ! IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
+                debug("string_parse_json(): a value is expected.\n");
+                goto _error;
+            }
 
-            if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
-                /* check if the brackets are matching */
-                if (*json->_data + 2 != c) {
-                    debug("string_parse_json(): mismatched bracket (%c).\n",
-                          *json->_data);
-                    goto _error;
-                } else goto _token;
-            } else if (IS_PRIMITIVE(json)) {
+            state &= ~(_KEY | _VAL);
+
+            /* NOTE checking in that order helps avoiding a costly stall */
+            if (IS_PRIMITIVE(json)) {
                 if (IS_TYPE(json->parent, JSON_ARRAY | JSON_OBJECT)) {
-                    pos --; goto _token;
+                    pos --; leading_digit = 0; goto _token;
                 }
+            } else if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
+                /* check if the brackets are matching */
+                if (*json->_data == *p - 2) goto _token;
+
+                debug("string_parse_json(): mismatched bracket (%c).\n",
+                      *json->_data);
+                goto _error;
             }
 
             /* a closing bracket must be within an array or object */
-            if (strict) {
-                debug("string_parse_json(): stray closing bracket.\n");
-                goto _error;
-            }
+            debug("string_parse_json(): stray closing bracket.\n");
+            goto _error;
         } break;
 
         /* : */
         case COLON: {
-            if (IS_ARRAY(json)) {
-                if (strict) {
+            if (unlikely((state & (_KEY | _VAL)) != _KEY)) {
+                if (! IS_OBJECT(json))
                     debug("string_parse_json(): key/value pairs are only "
                           "allowed in objects.\n");
-                    goto _error;
-                }
-            } else if (! strict && IS_PRIMITIVE(json)) {
-                /* XXX force conversion to string */
-                json->_flags &= ~JSON_PRIMITIVE;
-                json->_flags |= JSON_STRING;
-                pos --; goto _token;
-            }
+                else debug("string_parse_json(): missing key.\n");
 
-            if (strict && unlikely((state & (_KEY | _VAL)) != _KEY)) {
-                debug("string_parse_json(): missing key.\n");
                 goto _error;
             }
 
             state &= ~_KEY; state |= _VAL;
 
             /* skip space */
-            if (likely(json->_data[pos + 1] == 0x20)) pos ++;
+            if (likely(p[1] == 0x20)) pos ++;
 
             /* parser callback */
             if (ctx) {
@@ -3360,32 +3368,86 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 state |= _VAL;
 
                 /* skip space */
-                if (likely(json->_data[pos + 1] == 0x20)) pos ++;
+                if (likely(p[1] == 0x20)) pos ++;
 
-                continue;
-            } else if (IS_PRIMITIVE(json)) { pos --; goto _token; }
+                break;
+            } else {
+                if (IS_PRIMITIVE(json)) {
+                    pos --; leading_digit = 0;
+                    goto _token;
+                }
 
-            if (strict) {
-                debug("string_parse_json(): comma-separated lists "
-                      "must be enclosed in brackets.\n");
-                goto _error;
+                if (strict) {
+                    debug("string_parse_json(): comma-separated lists "
+                          "must be enclosed in brackets.\n");
+                    goto _error;
+                }
             }
         } break;
 
-        /* + */
-        case DIGIT_POS: if (strict == JSON_STRICT) {
-            if ((state & (_SIG | _EXP | _VAL)) != (_EXP | _VAL)) {
-                debug("string_parse_json(): unexpected plus sign.\n");
-                goto _error;
+        /* 0-9 */
+        case DIGIT: if (likely(leading_digit)) {
+            if (leading_digit == '0') {
+                if ((state & (_RAD | _EXP)) == 0)
+                    goto _error;
+                leading_digit = 1;
             }
-            else state |= (_SIG | _VAL);
+
+            state &= ~_VAL;
+
+            /* optimize for large numbers */
+            prefetch = *(uint32_t *) (p + 1);
+            if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x39))
+                pos += 4;
+        } else {
+            leading_digit = *p;
+
+            if (likely(! IS_PRIMITIVE(json))) {
+                if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
+                    if (state & _KEY) {
+                        debug("string_parse_json(): a key must be a "
+                                "string enclosed in quotation marks.\n");
+                        goto _error;
+                    }
+
+                    if ((state & _VAL) == 0) {
+                        debug("string_parse_json(): unexpected "
+                                "numeric primitive.\n");
+                        goto _error;
+                    }
+                }
+
+                state &= ~(_VAL | _RAD | _EXP | _SIG);
+
+                json = string_add_token(json, pos, SIZE(json));
+                if (unlikely(! json)) goto _nomem;
+
+                json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
+
+                pos = 0;
+            } else state &= ~_VAL;
         } break;
 
         /* - */
-        case DIGIT_NEG: if (strict == JSON_STRICT) {
-            if (! IS_PRIMITIVE(json)) {
+        case DIGIT_NEG: {
+            if (likely(! IS_PRIMITIVE(json))) {
+                if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
+                    if (state & _KEY) {
+                        debug("string_parse_json(): a key must be "
+                              "enclosed in quotation marks.\n");
+                        goto _error;
+                    }
+
+                    if ((state & _VAL) == 0) {
+                        debug("string_parse_json(): unexpected "
+                              "negative primitive.\n");
+                        goto _error;
+                    }
+                }
+
                 json = string_add_token(json, pos, SIZE(json));
                 if (unlikely(! json)) goto _nomem;
+
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
                 pos = 0; state &= ~(_RAD | _EXP); leading_digit = 0;
             } else if ((state & (_SIG | _EXP | _VAL)) != (_EXP | _VAL)) {
@@ -3393,189 +3455,185 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 goto _error;
             }
 
-            state |= (_SIG | _VAL);
+            state |= _SIG;
         } break;
 
+        /* + */
+        case DIGIT_POS: if ((state & (_SIG | _EXP | _VAL)) != (_EXP | _VAL)) {
+                debug("string_parse_json(): unexpected plus sign.\n");
+                goto _error;
+        } else state |= (_SIG | _VAL); break;
+
         /* . */
-        case DIGIT_RAD: if (strict == JSON_STRICT) {
-            if (! IS_PRIMITIVE(json) || (state & (_RAD | _EXP))) {
+        case DIGIT_RAD: {
+            if (unlikely(leading_digit == 0) || (state & (_RAD | _EXP))) {
                 debug("string_parse_json(): unexpected decimal separator.\n");
                 goto _error;
             }
 
-            /* a decimal separator cannot be placed right after a minus sign */
-            if ((state & _SIG) && json->_data[pos - 1] == '-') {
-                debug("string_parse_json(): a numeric value is expected.\n");
+            state &= ~_SIG; state |= _RAD;
+
+            /* optimize for large numbers */
+            prefetch = *(uint32_t *) (p + 1);
+            if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x39)) {
+                pos += 4; break;
+            }
+
+            /* expect a fractional part */
+            state |= _VAL;
+        } break;
+
+        /* e, E */
+        case DIGIT_EXP: {
+            /* exponent cannot be placed right after a radix point */
+            if ((state & _RAD) && p[-1] == '.') {
+                debug("string_parse_json(): a fractional part is expected.\n");
                 goto _error;
             }
 
-            state &= ~_SIG; state |= (_RAD | _VAL);
+            /* NOTE while it would seem more intuitive to check if a previous
+                    exponent was set first, leading_digit may not be in cache
+                    and accessing it below helps avoiding an expensive stall */
+            if ((state & _EXP) || leading_digit == 0) {
+                debug("string_parse_json(): unexpected exponent.\n");
+                goto _error;
+            }
+
+            state &= ~_SIG;
+            state |= (_EXP | _VAL);
         } break;
 
+        /* a-d, A-D, F */
+        case DIGIT_HEX: if (strict == JSON_STRICT) {
+            debug("string_parse_json(): unexpected hexadecimal digit.\n");
+            goto _error;
+        } break;
+
+        /* f, n, t */
+        case PRIMITIVE: if (likely(! IS_PRIMITIVE(json))) {
+            if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
+                if (state & _KEY) {
+                    debug("string_parse_json(): a key must be "
+                          "enclosed in quotation marks.\n");
+                    goto _error;
+                }
+
+                if ((state & _VAL) == 0) {
+                    debug("string_parse_json(): unexpected primitive.\n");
+                    goto _error;
+                }
+            }
+
+            switch (*p) {
+            case 'f': if (memcmp(p + 1, "alse", MIN(SIZE(json) - pos, 4)))
+                            goto _error; p += 4; break;
+            case 'n': if (memcmp(p + 1, "ull", MIN(SIZE(json) - pos, 3)))
+                            goto _error; p += 3; break;
+            case 't': if (memcmp(p + 1, "rue", MIN(SIZE(json) - pos, 3)))
+                            goto _error; p += 3; break;
+            default:  goto _error;
+            }
+
+            state &= ~(_VAL | _RAD | _EXP | _SIG);
+
+            json = string_add_token(json, pos, SIZE(json));
+            if (unlikely(! json)) goto _nomem;
+
+            json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
+
+            pos = p - CSTR(json);
+
+            goto _token;
+        } else goto _error; break;
+
         /* ', " */
-        case QUOTE_SGL: if (! strict)
-        case QUOTE_DBL: {
+        case QUOTE: {
             if (IS_STRING(json)) {
                 /* check if the quotes are matching */
-                if (! strict && json->_data[-1] != c) {
+                if (! strict && json->_data[-1] != json->_data[pos]) {
                     debug("string_parse_json(): mismatched or missing "
                           "quotation mark.\n");
                     goto _error;
                 }
 
                 goto _delim;
-            } else if (likely(! IS_PRIMITIVE(json))) {
-                if (strict && IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
+            } else if (unlikely(IS_PRIMITIVE(json))) goto _error;
+
+            if (strict) {
+                if (json->_data[pos] == '\'') goto _error;
+
+                if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
                     if ((state & _VAL) == 0) {
                         debug("string_parse_json(): unexpected string.\n");
                         goto _error;
                     }
                 }
+            }
 
-                json = string_add_token(json, pos + 1, SIZE(json));
-                if (unlikely(! json)) goto _nomem;
+            json = string_add_token(json, pos + 1, SIZE(json));
+            if (unlikely(! json)) goto _nomem;
 
-                json->_flags &= ~JSON_TYPE;
-                json->_flags |= (JSON_STRING | _STRING_FLAG_ERRORS);
-                state &= ~_VAL; pos = -1;
+            json->_flags &= ~JSON_TYPE;
+            json->_flags |= (JSON_STRING | _STRING_FLAG_ERRORS);
+            state &= ~_VAL; pos = -1;
 
-                if (strict) {
-                    /* optimize for long strings */
-                    prefetch = *(uint32_t *) json->_data;
-                    if (__zero(prefetch ^ 0x22222222U)) /* " */
-                        continue;
-                    if (unlikely(__zero(prefetch ^ 0x5C5C5C5CU))) /* \ */
-                        continue;
-                    if (unlikely(__less(prefetch, 0x20))) /* unescaped chars */
-                        continue;
-                    pos = MIN(3, SIZE(json));
-                }
-            } else goto _error;
+            /* optimize for long strings */
+            prefetch = *(uint32_t *) json->_data;
+            if (__zero(prefetch ^ (~0U / 255 * json->_data[pos])))
+                break; /* " or ' */
+            if (unlikely(__zero(prefetch ^ 0x5C5C5C5CU)))
+                break; /* \ */
+            if (unlikely(__less(prefetch, 0x20)))
+                break; /* unescaped special char */
+            pos = 3;
         } break;
 
         /* \ */
         case ESCAPESEQ: { /* escape sequence */
-            if (pos + 1 >= SIZE(json)) goto _error;
+            int z = 0;
 
             if (! IS_STRING(json)) {
-                if (! strict && IS_PRIMITIVE(json)) {
-                    /* XXX force conversion to string */
-                    json->_flags &= ~JSON_PRIMITIVE;
-                    json->_flags |= JSON_STRING;
-                } else {
-                    debug("string_parse_json(): escape sequences are not "
-                          "allowed in primitives.\n");
-                    goto _error;
-                }
+                debug("string_parse_json(): escape sequences are only "
+                      "allowed in strings.\n");
+                goto _error;
             }
 
             switch (json->_data[++ pos]) {
-            case '\"':
+            case '\"': break;
+            case '\'': z = 1;
+            case  'U': if (strict) goto _error; if (z)
             case  '/':
             case '\\':
             case  'b':
             case  'f':
-            case  'r':
             case  'n':
+            case  'r':
             case  't': break;
-            case  'u': { /* unicode escape sequence */
-                for (i = 0; i < 4 && ++ pos < SIZE(json); i ++) {
-                    if (~(z = _j[ (c = json->_data[pos]) ]) & DIGIT_HEX) {
-                        debug("string_parse_json(): hexadecimal expected.\n");
-                        goto _error;
-                    }
-                }
-                i = 0; pos --;
-            } break;
 
-            case '\'': if (! strict) break;
+            case  'u': { /* unicode escape sequence */
+                prefetch = *(uint32_t *) (json->_data + pos + 1);
+                if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x66))
+                if (likely(! __between(prefetch, 0x46, 0x61)))
+                if (likely(! __zero(prefetch ^ 0x40404040U))) {
+                    pos += 4; break;
+                }
+            }
 
             /* unexpected char */
             default: goto _error;
             }
         } break;
 
-        /* \t, \r, \n 0x20 */
+        /* \t, \r, \n, 0x20 */
         case WHITE: if (strict && IS_STRING(json)) goto _error;
         case SPACE: if (unlikely(IS_PRIMITIVE(json))) {
             if (strict == JSON_STRICT && (state & _VAL)) goto _error;
-            goto _delim;
+            leading_digit = 0; goto _delim;
         } break;
 
-        case OTHER: if (strict)
-                    if (! IS_STRING(json) || c < 0x20) goto _error;
+        case OTHER: if (c < 0x20 || ! IS_STRING(json))
 
-        default: if (unlikely(IS_STRING(json))) break;
-
-            if (strict) {
-                if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
-                    if (state & _KEY) {
-                        debug("string_parse_json(): a key must be a string "
-                              "enclosed in quotation marks.\n");
-                        goto _error;
-                    }
-
-                    if ((state & _VAL) == 0) {
-                        debug("string_parse_json(): unexpected primitive.\n");
-                        goto _error;
-                    }
-                } else if (IS_PRIMITIVE(json)) {
-                    if (strict == _JSON_RELAX) break;
-
-                    if (likely(z & DIGIT_NUM)) {
-                        if (z & DIGIT_EXP) {
-                            if (state & _EXP) goto _error;
-
-                            if ((state & _RAD) && json->_data[pos - 1] == '.')
-                                goto _error;
-
-                            state |= (_EXP | _VAL);
-                            state &= ~_SIG;
-                        } else {
-                            if (! leading_digit) leading_digit = c;
-                            else if (leading_digit == '0') {
-                                if ((state & (_RAD | _EXP)) == 0)
-                                    goto _error;
-                                leading_digit = 1;
-                            }
-                            state &= ~_VAL;
-                        }
-
-                        /* optimize for large numbers */
-                        prefetch = *(uint32_t *) (json->_data + pos + 1);
-                        if (__less(prefetch, 0x30)) /* < '0' */
-                            continue;
-                        if (__more(prefetch, 0x39)) /* > '9' */
-                            continue;
-                        pos += MIN(4, SIZE(json) - pos);
-
-                        continue;
-                    }
-                }
-            } else if (IS_PRIMITIVE(json)) break;
-
-            p = (char *) CSTR(json) + pos;
-
-            if (strict == JSON_STRICT) {
-                if (likely(z & DIGIT_NUM)) leading_digit = *p;
-                else switch (*p) {
-                case 'f': if (memcmp(p + 1, "alse", MIN(SIZE(json) - pos, 4)))
-                                goto _error; p += 4; break;
-                case 'n': if (memcmp(p + 1, "ull", MIN(SIZE(json) - pos, 3)))
-                                goto _error; p += 3; break;
-                case 't': if (memcmp(p + 1, "rue", MIN(SIZE(json) - pos, 3)))
-                                goto _error; p += 3; break;
-                default:  goto _error;
-                }
-            }
-
-            state &= ~(_VAL | _RAD | _EXP | _SIG);
-
-            if (unlikely(! (json = string_add_token(json, pos, SIZE(json)))))
-                goto _nomem;
-
-            json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
-            if (unlikely(pos = (p - CSTR(json)))) goto _token;
+        default: goto _error;
         }
 
         continue;
