@@ -124,7 +124,7 @@ static const unsigned char _j[] = {
 #define DIGIT_POS   7 /* + */
 #define DIGIT_RAD   8 /* . */
 #define DIGIT_EXP   9 /* e, E */
-#define PRIMITIVE  10 /* n(ull), t(rue) */
+#define PRIMITIVE  10 /* f(alse), n(ull), t(rue) */
 #define QUOTE      11 /* ', " */
 #define ESCAPESEQ  12 /* \ */
 #define WHITE      13 /* \n, \r, \t */
@@ -3183,6 +3183,14 @@ public int string_urlencode(m_string *url, int flags)
 #ifdef _ENABLE_JSON
 /* -------------------------------------------------------------------------- */
 
+/* tokenizer states */
+#define _KEY 0x01   /* key expected */
+#define _VAL 0x02   /* value expected */
+#define _SIG 0x04   /* '+' or '-' sign found */
+#define _RAD 0x08   /* '.' decimal separator (radix point) found */
+#define _EXP 0x10   /* 'e' or 'E' exponent found */
+#define _BUG 0x20   /* only used in quirks mode */
+
 public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 {
     unsigned int pos = 0, i = 0;
@@ -3191,13 +3199,6 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
     m_string *json = s, *parent = NULL;
     uint32_t prefetch = 0;
     int callback = 0;
-
-    /* tokenizer states */
-    #define _KEY 0x01   /* key expected */
-    #define _VAL 0x02   /* value expected */
-    #define _SIG 0x04   /* '+' or '-' sign found */
-    #define _RAD 0x08   /* '.' decimal separator (radix point) found */
-    #define _EXP 0x10   /* 'e' or 'E' exponent found */
 
     if (! json) {
         debug("string_parse_json(): bad parameters.\n");
@@ -3247,6 +3248,9 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
         switch (_j[c]) {
 
+        case 0: if (strict) goto _error;
+                goto _quirk;
+
         /* {, [ */
         case OBJ_START: {
             if (unlikely(state & _KEY)) {
@@ -3271,7 +3275,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             pos = (*p == '{');
 
             json->_flags &= ~JSON_TYPE;
-            json->_flags = (-(pos) & JSON_OBJECT) | (-(! pos) & JSON_ARRAY);
+            json->_flags |= (-(pos) & JSON_OBJECT) | (-(! pos) & JSON_ARRAY);
             json->_flags |= _STRING_FLAG_ERRORS;
 
             state = (state & ~_KEY) | (-(pos) & _KEY) | _VAL;
@@ -3334,6 +3338,16 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
         /* : */
         case COLON: {
             if (unlikely((state & (_KEY | _VAL)) != _KEY)) {
+
+                /* QUIRK unquoted keys */
+                if (! strict && IS_PRIMITIVE(json)) {
+                    pos --; leading_digit = 0;
+                    state |= _KEY; state &= ~_BUG;
+                    json->_flags &= ~JSON_TYPE;
+                    json->_flags |= JSON_STRING;
+                    goto _token;
+                }
+
                 if (! IS_OBJECT(json))
                     debug("string_parse_json(): key/value pairs are only "
                           "allowed in objects.\n");
@@ -3403,14 +3417,25 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             if (likely(! IS_PRIMITIVE(json))) {
                 if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
                     if (state & _KEY) {
+                        /* QUIRK unquoted keys */
+                        if (! strict) {
+                            json = string_add_token(json, pos, SIZE(json));
+                            if (unlikely(! json)) goto _nomem;
+
+                            json->_flags &= ~JSON_TYPE;
+                            json->_flags |= JSON_PRIMITIVE;
+                            pos = 0; state &= ~(_KEY | _VAL); state |= _BUG;
+                            break;
+                        }
+
                         debug("string_parse_json(): a key must be a "
-                                "string enclosed in quotation marks.\n");
+                              "string enclosed in quotation marks.\n");
                         goto _error;
                     }
 
                     if ((state & _VAL) == 0) {
                         debug("string_parse_json(): unexpected "
-                                "numeric primitive.\n");
+                              "numeric primitive.\n");
                         goto _error;
                     }
                 }
@@ -3477,8 +3502,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 pos += 4; break;
             }
 
-            /* expect a fractional part */
-            state |= _VAL;
+            /* QUIRK omitted fractional part */
+            state |= (-(strict) & _VAL);
         } break;
 
         /* e, E */
@@ -3493,6 +3518,20 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                     exponent was set first, leading_digit may not be in cache
                     and accessing it below helps avoiding an expensive stall */
             if ((state & _EXP) || leading_digit == 0) {
+                /* QUIRK unquoted keys */
+                if (! strict) {
+                    if (state & _KEY) {
+                        json = string_add_token(json, pos, SIZE(json));
+                        if (unlikely(! json)) goto _nomem;
+
+                        json->_flags &= ~JSON_TYPE;
+                        json->_flags |= JSON_PRIMITIVE;
+                        pos = 0; state &= ~(_KEY | _VAL); state |= _BUG;
+                        break;
+                    } else if ((state & _BUG) && (IS_PRIMITIVE(json)))
+                        break;
+                }
+
                 debug("string_parse_json(): unexpected exponent.\n");
                 goto _error;
             }
@@ -3505,6 +3544,17 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
         case PRIMITIVE: if (likely(! IS_PRIMITIVE(json))) {
             if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
                 if (state & _KEY) {
+                    /* QUIRK unquoted keys */
+                    if (! strict) {
+                        json = string_add_token(json, pos, SIZE(json));
+                        if (unlikely(! json)) goto _nomem;
+
+                        json->_flags &= ~JSON_TYPE;
+                        json->_flags |= JSON_PRIMITIVE;
+                        pos = 0; state &= ~(_KEY | _VAL); state |= _BUG;
+                        break;
+                    }
+
                     debug("string_parse_json(): a key must be "
                           "enclosed in quotation marks.\n");
                     goto _error;
@@ -3518,11 +3568,11 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             switch (*p) {
             case 'f': if (memcmp(p + 1, "alse", MIN(SIZE(json) - pos, 4)))
-                            goto _error; p += 4; break;
+                          goto _error; p += 4; break;
             case 'n': if (memcmp(p + 1, "ull", MIN(SIZE(json) - pos, 3)))
-                            goto _error; p += 3; break;
+                          goto _error; p += 3; break;
             case 't': if (memcmp(p + 1, "rue", MIN(SIZE(json) - pos, 3)))
-                            goto _error; p += 3; break;
+                          goto _error; p += 3; break;
             default:  goto _error;
             }
 
@@ -3536,23 +3586,19 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             pos = p - CSTR(json);
 
             goto _token;
-        } else goto _error; break;
+        } else if (state & _BUG) break; goto _error; /* QUIRK unquoted keys */
 
         /* ', " */
         case QUOTE: {
             if (IS_STRING(json)) {
                 /* check if the quotes are matching */
-                if (! strict && json->_data[-1] != json->_data[pos]) {
-                    debug("string_parse_json(): mismatched or missing "
-                          "quotation mark.\n");
-                    goto _error;
-                }
-
+                if (json->_data[-1] != json->_data[pos])
+                    break;
                 goto _delim;
             } else if (unlikely(IS_PRIMITIVE(json))) goto _error;
 
             if (strict) {
-                if (json->_data[pos] == '\'') goto _error;
+                if (unlikely(json->_data[pos] == '\'')) goto _error;
 
                 if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
                     if ((state & _VAL) == 0) {
@@ -3592,8 +3638,14 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             switch (json->_data[++ pos]) {
             case '\"': break;
+
+            /* QUIRK escaped single quotes, CRLF and capital U
+                     unicode escape sequences */
+            case '\r':
+            case '\n':
             case '\'': z = 1;
             case  'U': if (strict) goto _error; if (z)
+
             case  '/':
             case '\\':
             case  'b':
@@ -3623,12 +3675,102 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 debug("string_parse_json(): incomplete primitive.\n");
                 goto _error;
             }
+            /* QUIRK unquoted keys */
+            json->_flags = (json->_flags & ~JSON_TYPE) |
+                           (-(state & _BUG) & JSON_STRING) |
+                           (-(! (state & _BUG)) & JSON_PRIMITIVE);
+            state = (state & ~_KEY) | (-(IS_STRING(json) > 0) & _KEY);
+            state &= ~_BUG;
             leading_digit = 0; goto _delim;
         } break;
 
         case OTHER: if (c < 0x20 || ! IS_STRING(json))
 
         default: goto _error;
+
+_quirk: if (likely(c < 0x7F)) {
+            /* QUIRK comments */
+            if (*p == '/') {
+                if (IS_PRIMITIVE(json)) {
+                    leading_digit = 0; pos --;
+                    if (state & _BUG) {
+                        state |= _KEY; state &= ~_BUG;
+                        json->_flags &= ~JSON_TYPE;
+                        json->_flags |= JSON_STRING;
+                    }
+                    goto _token;
+                }
+
+                if (*++ p == '/') {
+                    do {
+                        prefetch = *(uint32_t *) p;
+                        if (__zero(prefetch ^ 0x0A0A0A0AU)) {
+                            while (*p ++ != 0x0A);
+                            break;
+                        }
+                        p += 4;
+                    } while (p < CSTR(json) + SIZE(json));
+                } else if (*p ++ == '*') {
+                    do {
+                        prefetch = *(uint32_t *) p;
+                        if (__zero(prefetch ^ 0x2A2A2A2AU)) {
+                            while (*p ++ != 0x2A);
+                            if (*p == '/') break;
+                        } else p += 4;
+                    } while (p < CSTR(json) + SIZE(json));
+                }
+
+                if ((p - CSTR(json)) - pos > 2) {
+                    pos = p - CSTR(json); break;
+                } else goto _error;
+            }
+
+            /* QUIRK unquoted keys */
+            if (state & _KEY) {
+                json = string_add_token(json, pos, SIZE(json));
+                if (unlikely(! json)) goto _nomem;
+
+                json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
+                pos = 0; state &= ~(_KEY | _VAL); state |= _BUG;
+                break;
+            } else if ((state & _BUG) && (IS_PRIMITIVE(json)))
+                break;
+
+            /* QUIRK hexadecimal numbers */
+            if (json->_data[pos] == 'x') {
+                if (leading_digit != '0' || ++ pos > 2) goto _error;
+
+                do {
+                    prefetch = *(uint32_t *) (json->_data + pos);
+                    if (__less(prefetch, 0x30) || __more(prefetch, 0x66))
+                        break;
+                    if (__between(prefetch, 0x46, 0x61))
+                        break;
+                    if (__zero(prefetch ^ 0x40404040U))
+                        break;
+                    pos += 4;
+                } while (pos < 18); /* 64 bits */
+
+                /* check the next characters */
+                while (pos < 18) {
+                    if (json->_data[pos] < 0x30 || json->_data[pos] > 0x66)
+                        break;
+                    if (json->_data[pos] > 0x46 && json->_data[pos] < 0x61)
+                        break;
+                    if (json->_data[pos] == 0x40)
+                        break;
+                    pos ++;
+                }
+
+                /* '0x' without digits is not allowed */
+                if (-- pos == 1) goto _error;
+
+                break;
+            }
+
+            goto _error;
+        }
+
         }
 
         continue;
@@ -3669,12 +3811,6 @@ _token: json->_len = json->_alloc = pos + (1 - i);
 
     return 0;
 
-    #undef _KEY
-    #undef _VAL
-    #undef _SIG
-    #undef _RAD
-    #undef _EXP
-
 _error:
     debug("string_parse_json(): illegal character \'%c\' at %i.\n",
           c, (json->_data - s->_data) + pos + 1);
@@ -3685,6 +3821,13 @@ _nomem:
     s->_flags |= _STRING_FLAG_BUFFER;
     return 1;
 }
+
+#undef _KEY
+#undef _VAL
+#undef _SIG
+#undef _RAD
+#undef _EXP
+#undef _BUG
 
 /* -------------------------------------------------------------------------- */
 #endif

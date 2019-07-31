@@ -127,8 +127,8 @@ typedef struct m_json_parser {
 #define IS_PRIMITIVE(x) ((x)->_flags & JSON_PRIMITIVE)
 #define IS_TYPE(x, type) ((x)->_flags & (type))
 
-#define JSON_QUIRKS         0x0
-#define JSON_STRICT         0x2
+#define JSON_QUIRKS         0
+#define JSON_STRICT         1
 
 #endif
 
@@ -1568,17 +1568,30 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx);
 
 /**
  * @ingroup string
- * @fn m_string *string_parse_json(m_string *s, int strict)
+ * @fn m_string *string_parse_json(m_string *s, int strict, m_json_parser *ctx)
  * @param s the string to be parsed
  * @param strict boolean - enable or disable strict parsing
  * @param ctx optional parser context
  * @return -1 if an error occured, 0 otherwise
  *
- * This function creates tokens for each JSON element in the provided string,
- * according to RFC 7159. If strict parsing is disabled, invalid JSON input
- * will be accepted and tokenized as best as possible. Strict parsing will
- * reject badly structured JSON but is purposefully lax toward JSON primitives
- * in order to be maximally compatible.
+ * This function creates tokens for each JSON element in the provided string.
+ *
+ * In STRICT mode, the function rigorously follows RFC 7159 and will reject
+ * any non-compliant or malformed input.
+ *
+ * In QUIRKS mode, the function loosely follows the JSON5 guidelines and will
+ * accept several popular extensions to the JSON specification:
+ * - unquoted keys in objects (ECMAScript 5.1 IdentifierName),
+ * - single quoted strings,
+ * - single- and multi-line comments,
+ * - unsigned hexadecimal numbers,
+ * - real numbers without fractional part (e.g.: 123. ) (ActionScript3),
+ * - extra commas and missing values in objects and arrays,
+ * - escaped and unescaped tabs and CRLF in strings.
+ * Unsupported:
+ * - leading decimal point,
+ * - leading plus sign,
+ * - NaN, Infinity, -Infinity.
  *
  * The function is designed to handle streaming and partial input. If several
  * JSON messages are concatenated, each will be parsed as distinct tokens.
