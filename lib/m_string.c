@@ -3717,7 +3717,7 @@ _quirk: if (likely(c < 0x7F)) {
                         uint32_t prefetch = *(uint32_t *) p;
                         if (__zero(prefetch ^ 0x0A0A0A0AU)) {
                             while (*p ++ != 0x0A);
-                            break;
+                            p --; break;
                         }
                         p += 4;
                     } while (p < CSTR(json) + SIZE(json));
