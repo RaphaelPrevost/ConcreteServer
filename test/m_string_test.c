@@ -57,6 +57,7 @@ int test_string(void)
     const char *json_stream2 = ": \"partial stream part\"}]]]]";
     const char *json_stream3 = "{\"a\": [1, true] }";
     const char *json_stream4 = "{\"b\": [0, false] }";
+    const char *json5 = "{ // single-line comment\nunquoted_key: 'single quoted string w/ nested \"double quoted string\"',\n'single quoted key'/* multi-line\ncomment */: \"stray CRLF\\\n\tunescaped tab\",\"hex\": [0xA, 0xBAD, 0xc0ffee, 0x00000000064B175]/* max 64 bits */,\n\"no fractional part\": 123.,\n, \"trailing commas in object\":\n[\"and\",,\"in array\", ],\n}";
     const char *incomplete_string1 = "\"incomplete, ";
     const char *incomplete_string2 = "string\"";
     unsigned int bad_json = 22;
@@ -173,6 +174,13 @@ int test_string(void)
     print_tokens(z, 0);
     string_cats(z, incomplete_string2, strlen(incomplete_string2));
     string_parse_json(z, JSON_STRICT, NULL);
+    print_tokens(z, 0);
+    z = string_free(z);
+
+    printf("(*) Parsing JSON5 extensions in QUIRKS mode:\n");
+    z = string_alloc(json5, strlen(json5));
+    if (string_parse_json(z, JSON_QUIRKS, NULL) == -1)
+        printf("(!) Error!\n");
     print_tokens(z, 0);
     z = string_free(z);
     #endif
