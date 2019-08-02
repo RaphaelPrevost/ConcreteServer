@@ -3193,11 +3193,10 @@ public int string_urlencode(m_string *url, int flags)
 
 public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 {
-    unsigned int pos = 0, i = 0;
+    unsigned int pos = 0;
     unsigned char c = 0;
     char *p = NULL, state = 0, leading_digit = 0;
     m_string *json = s, *parent = NULL;
-    uint32_t prefetch = 0;
     int callback = 0;
 
     if (! json) {
@@ -3209,15 +3208,17 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
     if (PARTS(json) && IS_TYPE(LAST_TOKEN(json), JSON_TYPE)) {
         if (IS_BUFFER(s)) {
             /* the maximum amount of tokens was reached */
-            for (json = LAST_TOKEN(s) ; PARTS(json); json = LAST_TOKEN(json)) {
+            for (json = LAST_TOKEN(s); PARTS(json); json = LAST_TOKEN(json)) {
                 if (PARTS(LAST_TOKEN(json)) == 65535) {
+                    int i = 0;
+
                     json = LAST_TOKEN(json);
 
-                    i = CSTR(LAST_TOKEN(json)) - CSTR(json) +
-                        SIZE(LAST_TOKEN(json)) + 1;
+                    pos = CSTR(LAST_TOKEN(json)) - CSTR(json) +
+                          SIZE(LAST_TOKEN(json)) + 1;
 
-                    for (pos = 0; pos < 65535; pos ++)
-                        string_free_token(& json->token[pos]);
+                    for (i = 0; i < 65535; i ++)
+                        string_free_token(json->token + i);
                     json->parts = 0;
 
                     s->_flags &= ~_STRING_FLAG_BUFFER;
@@ -3227,18 +3228,23 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
         } else if (HAS_ERROR(LAST_TOKEN(json))) {
             /* input was incomplete */
             if (PARTS(LAST_TOKEN(json))) json = LAST_TOKEN(json);
-            i = CSTR(LAST_TOKEN(json)) - CSTR(json);
+
+            pos = CSTR(LAST_TOKEN(json)) - CSTR(json);
             /* XXX make sure the opening quotation mark is accounted for */
-            if (IS_STRING(LAST_TOKEN(json))) i --;
+            if (IS_STRING(LAST_TOKEN(json))) pos --;
+
             string_free_token(LAST_TOKEN(json)); json->parts --;
+
+            state = -(IS_OBJECT(json) && ! IS_STRING(LAST_TOKEN(json))) & _KEY;
+            state |= _VAL;
         } else string_free_token(json);
     } else string_free_token(json);
 
     /* skip UTF-8 BOM if present */
-    if (! memcmp(CSTR(json) + i, "\xEF\xBB\xBF", MIN(SIZE(json) - i, 3)))
-        i += 3;
+    if (! memcmp(CSTR(json) + pos, "\xEF\xBB\xBF", MIN(SIZE(json) - pos, 3)))
+        pos += 3;
 
-    for (pos = i; pos < SIZE(json); pos ++) {
+    for ( ; pos < SIZE(json); pos ++) {
 
         c = json->_data[pos];
 
@@ -3265,8 +3271,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 goto _error;
             }
 
-            if (unlikely(! (json = string_add_token(json, pos, SIZE(json)))))
-                goto _nomem;
+            json = string_add_token(json, pos, SIZE(json));
+            if (unlikely(! json)) goto _nomem;
 
             /* try to prealloc at least 4 tokens */
             if (likely(json->token = malloc(4 * sizeof(*json->token))))
@@ -3351,7 +3357,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 if (! IS_OBJECT(json))
                     debug("string_parse_json(): key/value pairs are only "
                           "allowed in objects.\n");
-                else debug("string_parse_json(): missing key.\n");
+                else debug("string_parse_json(): missing or malformed key.\n");
 
                 goto _error;
             }
@@ -3407,10 +3413,11 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             state &= ~_VAL;
 
-            /* optimize for large numbers */
-            prefetch = *(uint32_t *) (p + 1);
-            if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x39))
-                pos += 4;
+            {   /* optimize for large numbers */
+                uint32_t prefetch = *(uint32_t *) (p + 1);
+                if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x39))
+                    pos += 4;
+            }
         } else {
             leading_digit = *p;
 
@@ -3496,10 +3503,11 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             state &= ~_SIG; state |= _RAD;
 
-            /* optimize for large numbers */
-            prefetch = *(uint32_t *) (p + 1);
-            if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x39)) {
-                pos += 4; break;
+            {   /* optimize for large numbers */
+                uint32_t prefetch = *(uint32_t *) (p + 1);
+                if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x39)) {
+                    pos += 4; break;
+                }
             }
 
             /* QUIRK omitted fractional part */
@@ -3608,22 +3616,25 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 }
             }
 
-            json = string_add_token(json, pos + 1, SIZE(json));
-            if (unlikely(! json)) goto _nomem;
+            if (likely(pos + 1 < SIZE(json))) {
+                json = string_add_token(json, pos + 1, SIZE(json));
+                if (unlikely(! json)) goto _nomem;
 
-            json->_flags &= ~JSON_TYPE;
-            json->_flags |= (JSON_STRING | _STRING_FLAG_ERRORS);
-            state &= ~_VAL; pos = -1;
+                json->_flags &= ~JSON_TYPE;
+                json->_flags |= (JSON_STRING | _STRING_FLAG_ERRORS);
+                state &= ~_VAL; pos = -1;
+            } else return 0; /* EOF */
 
-            /* optimize for long strings */
-            prefetch = *(uint32_t *) json->_data;
-            if (__zero(prefetch ^ (~0U / 255 * json->_data[pos])))
-                break; /* " or ' */
-            if (unlikely(__zero(prefetch ^ 0x5C5C5C5CU)))
-                break; /* \ */
-            if (unlikely(__less(prefetch, 0x20)))
-                break; /* unescaped special char */
-            pos = 3;
+            {   /* optimize for long strings */
+                uint32_t prefetch = *(uint32_t *) json->_data;
+                if (__zero(prefetch ^ (~0U / 255 * json->_data[pos])))
+                    break; /* " or ' */
+                if (unlikely(__zero(prefetch ^ 0x5C5C5C5CU)))
+                    break; /* \ */
+                if (unlikely(__less(prefetch, 0x20)))
+                    break; /* unescaped special char */
+                pos = 3;
+            }
         } break;
 
         /* \ */
@@ -3655,7 +3666,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             case  't': break;
 
             case  'u': { /* unicode escape sequence */
-                prefetch = *(uint32_t *) (json->_data + pos + 1);
+                uint32_t prefetch = *(uint32_t *) (json->_data + pos + 1);
                 if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x66))
                 if (likely(! __between(prefetch, 0x46, 0x61)))
                 if (likely(! __zero(prefetch ^ 0x40404040U))) {
@@ -3703,7 +3714,7 @@ _quirk: if (likely(c < 0x7F)) {
 
                 if (*++ p == '/') {
                     do {
-                        prefetch = *(uint32_t *) p;
+                        uint32_t prefetch = *(uint32_t *) p;
                         if (__zero(prefetch ^ 0x0A0A0A0AU)) {
                             while (*p ++ != 0x0A);
                             break;
@@ -3712,7 +3723,7 @@ _quirk: if (likely(c < 0x7F)) {
                     } while (p < CSTR(json) + SIZE(json));
                 } else if (*p ++ == '*') {
                     do {
-                        prefetch = *(uint32_t *) p;
+                        uint32_t prefetch = *(uint32_t *) p;
                         if (__zero(prefetch ^ 0x2A2A2A2AU)) {
                             while (*p ++ != 0x2A);
                             if (*p == '/') break;
@@ -3741,7 +3752,7 @@ _quirk: if (likely(c < 0x7F)) {
                 if (leading_digit != '0' || ++ pos > 2) goto _error;
 
                 do {
-                    prefetch = *(uint32_t *) (json->_data + pos);
+                    uint32_t prefetch = *(uint32_t *) (json->_data + pos);
                     if (__less(prefetch, 0x30) || __more(prefetch, 0x66))
                         break;
                     if (__between(prefetch, 0x46, 0x61))
@@ -3775,26 +3786,27 @@ _quirk: if (likely(c < 0x7F)) {
 
         continue;
 
-_delim: i = 1;
-_token: json->_len = json->_alloc = pos + (1 - i);
+_delim: json->_len = json->_alloc = pos;
+_token: if (likely(json->_len != pos))
+        json->_len = json->_alloc = pos + 1;
         json->_flags &= ~_STRING_FLAG_ERRORS;
         parent = json->parent;
 
         /* parser callback */
         if (ctx) {
-            i = json->_flags & JSON_TYPE;
+            int type = json->_flags & JSON_TYPE;
 
             if (parent)
                 ctx->parent = parent->_flags & JSON_TYPE;
             else ctx->parent = 0;
 
-            if (ctx->exit && (i & (JSON_ARRAY | JSON_OBJECT))) {
-                callback = ctx->exit(i, ctx);
+            if (ctx->exit && (type & (JSON_ARRAY | JSON_OBJECT))) {
+                callback = ctx->exit(type, ctx);
                 if (callback == 1) return 0;
                 ctx->key.current = NULL;
                 ctx->key.len = 0;
             } else if (ctx->data && (state & _KEY) == 0) {
-                callback = ctx->data(i, CSTR(json), SIZE(json), ctx);
+                callback = ctx->data(type, CSTR(json), SIZE(json), ctx);
                 if (callback == 1) return 0;
             }
         }
@@ -3805,8 +3817,6 @@ _token: json->_len = json->_alloc = pos + (1 - i);
                 string_free_token(json);
             json = parent;
         } else break;
-
-        i = 0;
     }
 
     return 0;
