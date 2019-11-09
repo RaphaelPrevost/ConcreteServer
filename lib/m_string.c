@@ -851,9 +851,14 @@ public int string_mbyte(m_string *string)
 public size_t string_convs(const char *src, size_t srclen, const char *src_enc,
                            char *dst, size_t dstlen, const char *dst_enc)
 {
-    char buffer[BUFSIZ];
+    char buffer[BUFSIZ], *out = dst;
     size_t inlen = srclen, outlen = dstlen;
-    char *in = (char *) src, *out = dst;
+    #ifdef __APPLE__
+    #if ! defined(MAC_OS_X_VERSION_10_5) && ! defined(__MAC_10_5)
+    const /* SUSv2 definition */
+    #endif
+    #endif
+    char *in = (char *) src;
     iconv_t conv;
     size_t allocsize = 0;
 
@@ -897,9 +902,14 @@ _err_conv:
 
 public int string_conv(m_string *s, const char *src_enc, const char *dst_enc)
 {
-    char buffer[BUFSIZ];
+    char buffer[BUFSIZ], *out = buffer;
     size_t inlen = 0, outlen = sizeof(buffer);
-    char *in = NULL, *out = buffer;
+    #ifdef __APPLE__
+    #if ! defined(MAC_OS_X_VERSION_10_5) && ! defined(__MAC_10_5)
+    const /* SUSv2 definition */
+    #endif
+    #endif
+    char *in = NULL;
     iconv_t conv;
     size_t allocsize = 0;
 

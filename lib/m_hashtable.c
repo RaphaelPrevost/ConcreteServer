@@ -114,24 +114,6 @@ static uint32_t _hash(const char *data, size_t len, uint32_t initval)
     uint32_t a, b, c;                         /* internal state */
     union { const void *ptr; size_t i; } u;   /* needed for Mac Powerbook G4 */
 
-    #if (defined(__BYTE_ORDER) && defined(__LITTLE_ENDIAN) && \
-         __BYTE_ORDER == __LITTLE_ENDIAN) || \
-        (defined(i386) || defined(__i386__) || defined(__i486__) || \
-         defined(__i586__) || defined(__i686__) || defined(__x86_64__) || \
-         defined(vax) || defined(MIPSEL))
-        #define HASH_LITTLE_ENDIAN 1
-        #define HASH_BIG_ENDIAN 0
-    #elif (defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) && \
-           __BYTE_ORDER == __BIG_ENDIAN) || \
-          (defined(sparc) || defined(POWERPC) || defined(mc68000) || \
-           defined(sel))
-        #define HASH_LITTLE_ENDIAN 0
-        #define HASH_BIG_ENDIAN 1
-    #else
-        #define HASH_LITTLE_ENDIAN 0
-        #define HASH_BIG_ENDIAN 0
-    #endif
-
     #define rot(x, k) (((x) << (k)) | ((x) >> (32 - (k))))
 
     #define mix(a, b, c) \
@@ -160,7 +142,7 @@ static uint32_t _hash(const char *data, size_t len, uint32_t initval)
 
     u.ptr = data;
 
-    #if (HASH_LITTLE_ENDIAN)
+    #ifdef LITTLE_ENDIAN_HOST
     if ((u.i & 0x3) == 0) {
         const uint32_t *k = (const uint32_t *) data; /* read 32-bit chunks */
         #ifdef DEBUG
@@ -267,8 +249,45 @@ static uint32_t _hash(const char *data, size_t len, uint32_t initval)
             case 0 : return c; /* zero length requires no mixing */
         }
 
+    } else { /* need to read the key one byte at a time */
+        const uint8_t *k = (const uint8_t *) data;
+
+        /* all but the last block: affect some 32 bits of (a, b, c) */
+        while (len > 12) {
+            a += k[0];
+            a += ((uint32_t) k[1]) << 8;
+            a += ((uint32_t) k[2]) << 16;
+            a += ((uint32_t) k[3]) << 24;
+            b += k[4];
+            b += ((uint32_t) k[5]) << 8;
+            b += ((uint32_t) k[6]) << 16;
+            b += ((uint32_t) k[7]) << 24;
+            c += k[8];
+            c += ((uint32_t) k[9]) << 8;
+            c += ((uint32_t) k[10]) << 16;
+            c += ((uint32_t) k[11]) << 24;
+            mix(a, b, c);
+            len -= 12; k += 12;
+        }
+
+        /* - last block: affect all 32 bits of (c) */
+        switch(len) {
+            case 12: c += ((uint32_t) k[11]) << 24;
+            case 11: c += ((uint32_t) k[10]) << 16;
+            case 10: c += ((uint32_t) k[9]) << 8;
+            case 9 : c += k[8];
+            case 8 : b += ((uint32_t) k[7]) << 24;
+            case 7 : b += ((uint32_t) k[6]) << 16;
+            case 6 : b += ((uint32_t) k[5]) << 8;
+            case 5 : b += k[4];
+            case 4 : a += ((uint32_t) k[3]) << 24;
+            case 3 : a += ((uint32_t) k[2]) << 16;
+            case 2 : a += ((uint32_t) k[1]) << 8;
+            case 1 : a += k[0]; break;
+            case 0 : return c;
+        }
     }
-    #else
+    #elif defined(BIG_ENDIAN_HOST)
     if ((u.i & 0x3) == 0) {
         const uint32_t *k = (const uint32_t *) data; /* read 32-bit chunks */
         #ifdef DEBUG
@@ -322,46 +341,47 @@ static uint32_t _hash(const char *data, size_t len, uint32_t initval)
 
         #endif /* !VALGRIND */
 
-    }
-    #endif
-    else { /* need to read the key one byte at a time */
+    } else { /* need to read the key one byte at a time */
         const uint8_t *k = (const uint8_t *) data;
 
         /* all but the last block: affect some 32 bits of (a, b, c) */
         while (len > 12) {
-            a += k[0];
-            a += ((uint32_t) k[1]) << 8;
-            a += ((uint32_t) k[2]) << 16;
-            a += ((uint32_t) k[3]) << 24;
-            b += k[4];
-            b += ((uint32_t) k[5]) << 8;
-            b += ((uint32_t) k[6]) << 16;
-            b += ((uint32_t) k[7]) << 24;
-            c += k[8];
-            c += ((uint32_t) k[9]) << 8;
-            c += ((uint32_t) k[10]) << 16;
-            c += ((uint32_t) k[11]) << 24;
+            a += ((uint32_t) k[0]) << 24;
+            a += ((uint32_t) k[1]) << 16;
+            a += ((uint32_t) k[2]) <<  8;
+            a += ((uint32_t) k[3]);
+            b += ((uint32_t) k[4]) << 24;
+            b += ((uint32_t) k[5]) << 16;
+            b += ((uint32_t) k[6]) <<  8;
+            b += ((uint32_t) k[7]);
+            c += ((uint32_t) k[8]) << 24;
+            c += ((uint32_t) k[9]) << 16;
+            c += ((uint32_t) k[10]) << 8;
+            c += ((uint32_t) k[11]);
             mix(a, b, c);
             len -= 12; k += 12;
         }
 
         /* - last block: affect all 32 bits of (c) */
         switch(len) {
-            case 12: c += ((uint32_t) k[11]) << 24;
-            case 11: c += ((uint32_t) k[10]) << 16;
-            case 10: c += ((uint32_t) k[9]) << 8;
-            case 9 : c += k[8];
-            case 8 : b += ((uint32_t) k[7]) << 24;
-            case 7 : b += ((uint32_t) k[6]) << 16;
-            case 6 : b += ((uint32_t) k[5]) << 8;
-            case 5 : b += k[4];
-            case 4 : a += ((uint32_t) k[3]) << 24;
-            case 3 : a += ((uint32_t) k[2]) << 16;
-            case 2 : a += ((uint32_t) k[1]) << 8;
-            case 1 : a += k[0]; break;
+            case 12: c += k[11];
+            case 11: c += ((uint32_t) k[10]) << 8;
+            case 10: c += ((uint32_t) k[9]) << 16;
+            case 9 : c += ((uint32_t) k[8]) << 24;
+            case 8 : b += k[7];
+            case 7 : b += ((uint32_t) k[6]) <<  8;
+            case 6 : b += ((uint32_t) k[5]) << 16;
+            case 5 : b += ((uint32_t) k[4]) << 24;
+            case 4 : a += k[3];
+            case 3 : a += ((uint32_t) k[2]) << 8;
+            case 2 : a += ((uint32_t) k[1]) << 16;
+            case 1 : a += ((uint32_t) k[0]) << 24; break;
             case 0 : return c;
         }
     }
+    #else
+    #error unable to detect endianness
+    #endif
 
     final(a, b, c);
 

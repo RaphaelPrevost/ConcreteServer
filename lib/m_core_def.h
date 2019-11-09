@@ -74,6 +74,20 @@
 #include <pthread.h>
 #include <time.h>
 
+/* check system endianness */
+#if (defined(__BYTE_ORDER) && defined(__LITTLE_ENDIAN) && \
+     __BYTE_ORDER == __LITTLE_ENDIAN) || \
+    (defined(__i386) || defined(__x86_64__) || defined(__ia64) || \
+     defined(_M_IX86) || defined(_M_X64) || defined(_M_IA64) || \
+     defined(__ARMEL__) || defined(_M_ARM) || defined(__MIPSEL__))
+    #define LITTLE_ENDIAN_HOST
+#elif (defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) && \
+       __BYTE_ORDER == __BIG_ENDIAN) || \
+      (defined(__sparc) || defined(__powerpc__) || defined(__ppc__) || \
+       defined(__mc68000) || defined(__ARMEB__) || defined(__MIPSEB__))
+    #define BIG_ENDIAN_HOST
+#endif
+
 #if ! defined(_MSC_VER) || _MSC_VER > 1300
 /* Microsoft Visual C++ 6.0 is missing these includes */
 #include <unistd.h>
@@ -97,6 +111,7 @@
     #define format(f, v) __attribute__ ((format(printf, (f), (v))))
     #ifdef DEBUG
         #define private
+        #ifndef __APPLE__
         #include <execinfo.h>
         #define backtrace()                                 \
         do {                                                \
@@ -115,8 +130,15 @@
                                                             \
             free (strings);                                 \
         } while (0);
+        #else
+        #define backtrace()
+        #endif
     #else
+        #ifndef __APPLE__
         #define private __attribute__((visibility("internal")))
+        #else
+        #define private __attribute__((visibility("hidden")))
+        #endif
         #define backtrace()
     #endif
     #define public
@@ -251,7 +273,7 @@ public extern char *working_directory;
 
 #ifndef CALLBACK
     #ifdef __GNUC__
-        #ifndef __x86_64__
+        #ifdef __i386
             #define CALLBACK __attribute__ ((regparm(1)))
         #else
             /* x86_64 already uses registers to pass function parameters */
