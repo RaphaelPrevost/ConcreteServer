@@ -43,9 +43,8 @@
  * @var _plugin
  *
  * This private array contains all the dynamic shared objects loaded in
- * the Mammouth server. Many of the plugin related functions use it
- * for direct access, but it must NEVER be tampered with without
- * proper locking.
+ * the Concrete Server. Many of the plugin related functions use it for
+ * direct access, and it must NEVER be tampered with without proper locking.
  *
  * An acquired plugin is always readlocked, so as to prevent the destruction
  * of a plugin while it is in use; plugin destruction requires writelocking
@@ -53,7 +52,7 @@
  *
  */
 
-static pthread_rwlock_t _plugin_lock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_rwlock_t _plugin_lock;
 static m_plugin *_plugin[PLUGIN_MAX + 1];
 
 /** @var _plugin_path
@@ -70,6 +69,11 @@ static size_t _plugin_path_len = 0;
 
 private int plugin_api_setup(void)
 {
+    if (pthread_rwlock_init(& _plugin_lock, NULL) == -1) {
+        perror(ERR(plugin_api_setup, pthread_rwlock_init));
+        return -1;
+    }
+
     return 0;
 }
 
@@ -564,6 +568,8 @@ private void plugin_api_cleanup(void)
     for (i = 1; i <= PLUGIN_MAX; i ++) plugin_close(_plugin[i]);
 
     free(_plugin_path);
+
+    pthread_rwlock_destroy(& _plugin_lock);
 }
 
 /* -------------------------------------------------------------------------- */

@@ -53,12 +53,12 @@ static char route_stream[INGRESS_MAX];
 static char worker_stream[SOCKET_MAX];
 
 /* MASTER: socket pairs */
-static pthread_rwlock_t _master_lock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_rwlock_t _master_lock;
 static uint16_t _public_to_worker[SOCKET_MAX];
 static uint16_t _worker_to_public[SOCKET_MAX];
 
 /* WORKER: socket pairs */
-static pthread_rwlock_t _worker_lock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_rwlock_t _worker_lock;
 static uint16_t _server_to_master[SOCKET_MAX];
 static uint16_t _master_to_server[SOCKET_MAX];
 
@@ -70,6 +70,16 @@ private int stream_router_init(void)
     const char *port = NULL;
     int master = 0;
     int i = 0, s = 0, iid = 0, ret = 0;
+
+    if (pthread_rwlock_init(& _master_lock, NULL) == -1) {
+        perror(ERR(stream_router_init, pthread_rwlock_init));
+        return -1;
+    }
+
+    if (pthread_rwlock_init(& _worker_lock, NULL) == -1) {
+        perror(ERR(stream_router_init, pthread_rwlock_init));
+        goto _err_lock;
+    }
 
     if (stream_personality() & PERSONALITY_MASTER) {
 
@@ -84,7 +94,7 @@ private int stream_router_init(void)
 
             if (ret == -1) {
                 fprintf(stderr, "Stream: cannot listen to port %s.\n", port);
-                return -1;
+                goto _err_init;
             }
 
             /* workers' end */
@@ -97,7 +107,7 @@ private int stream_router_init(void)
 
             if (ret == -1) {
                 fprintf(stderr, "Stream: cannot listen to port %s.\n", port);
-                return -1;
+                goto _err_init;
             }
         } /* STREAMS */
     } /* MASTER */
@@ -117,7 +127,7 @@ private int stream_router_init(void)
             if (master == -1) {
                 fprintf(stderr, "Stream[%i]: connection to Master "
                         "(%s:%s) failed.\n", i, host, port);
-                return -1;
+                goto _err_init;
             }
 
             worker_stream[master] = i;
@@ -129,6 +139,13 @@ private int stream_router_init(void)
     }
 
     return 0;
+
+_err_init:
+    pthread_rwlock_destroy(& _worker_lock);
+_err_lock:
+    pthread_rwlock_destroy(& _master_lock);
+
+    return -1;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -277,6 +294,8 @@ private uint16_t stream_get_egress(uint16_t socket_id, uint16_t ingress_id)
 
 private void stream_router_fini(void)
 {
+    pthread_rwlock_destroy(& _worker_lock);
+    pthread_rwlock_destroy(& _master_lock);
 }
 
 /* -------------------------------------------------------------------------- */

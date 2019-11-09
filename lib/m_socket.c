@@ -48,7 +48,7 @@ static m_socket_queue *_free_ids = NULL;
  *
  */
 
-static pthread_rwlock_t _socket_lock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_rwlock_t _socket_lock;
 static m_socket *_socket[SOCKET_MAX];
 
 /* hooks */
@@ -82,13 +82,23 @@ static ssize_t _socket_ssl_read(m_socket *s, char *out, size_t len);
 
 public int socket_api_setup(void)
 {
+    if (pthread_rwlock_init(& _socket_lock, NULL) == -1) {
+        perror(ERR(socket_api_setup, pthread_rwlock_init));
+        return -1;
+    }
+
     #ifdef _ENABLE_SSL
     SSL_library_init();
     SSL_load_error_strings();
     OpenSSL_add_all_algorithms();
     atexit(_socket_ssl_fini);
     #endif
-    _free_ids = socket_queue_alloc();
+
+    if (! (_free_ids = socket_queue_alloc()) ) {
+        pthread_rwlock_destroy(& _socket_lock);
+        return -1;
+    }
+
     return 0;
 }
 
@@ -1525,6 +1535,8 @@ public void socket_api_cleanup(void)
     for (i = 0; i < SOCKET_MAX; i ++) if (_socket[i]) socket_close(_socket[i]);
 
     _free_ids = socket_queue_free(_free_ids);
+
+    pthread_rwlock_destroy(& _socket_lock);
 }
 
 /* -------------------------------------------------------------------------- */
