@@ -398,7 +398,7 @@ extern double rnd_prod(double, double), rnd_quot(double, double);
 #define Kmax 15
 
 #ifdef __cplusplus
-extern "C" char *__dtoa(double d, int mode, int ndigits,
+extern "C" char *_m_dtoa(double d, int mode, int ndigits,
 			int *decpt, int *sign, char **rve);
 #endif
 
@@ -492,7 +492,7 @@ nrv_alloc(const char *s, char **rve, int n)
 	}
 
  void
-__freedtoa(char *s)
+_m_freedtoa(char *s)
 {
 	Bigint *b = (Bigint *)((int *)s - 1);
 	b->maxwds = 1 << (b->k = *(int*)b);
@@ -1199,7 +1199,7 @@ quorem(Bigint *b, Bigint *S)
  */
 
  char *
-__dtoa(double _d, int mode, int ndigits, int *decpt, int *sign, char **rve)
+_m_dtoa(double _d, int mode, int ndigits, int *decpt, int *sign, char **rve)
 {
  /*	Arguments ndigits, decpt, sign are similar to those
 	of ecvt and fcvt; trailing zeros are suppressed from

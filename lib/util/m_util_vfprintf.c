@@ -127,8 +127,8 @@ static int _write_float(char *out, size_t len, const u_char *b, int flags);
 #define    BUF        (MAXEXP+MAXFRACT+1)    /* + decimal point */
 #define    DEFPREC        6
 
-extern char *__dtoa(double, int, int, int *, int *, char **);
-extern void  __freedtoa(char *);
+extern char *_m_dtoa(double, int, int, int *, int *, char **);
+extern void  _m_freedtoa(char *);
 static char *cvt(double, int, int, int *, int *, int, int *);
 static int exponent(char *, int, int);
 
@@ -149,31 +149,31 @@ static int exponent(char *, int, int);
 /*
  * Flags used during conversion.
  */
-#define    ALT        0x0001        /* alternate form */
-#define    HEXPREFIX    0x0002        /* add 0x or 0X prefix */
-#define    LADJUST        0x0004        /* left adjustment */
-#define    LONGDBL        0x0008        /* long double; unimplemented */
-#define    LONGINT        0x0010        /* long integer */
-#define    LLONGINT    0x0020        /* long long integer */
-#define    SHORTINT    0x0040        /* short integer */
-#define    ZEROPAD        0x0080        /* zero (as opposed to blank) pad */
-#define FPT        0x0100        /* Floating point number */
-#define PTRINT        0x0200        /* (unsigned) ptrdiff_t */
-#define SIZEINT        0x0400        /* (signed) size_t */
-#define CHARINT        0x0800        /* 8 bit integer */
-#define MAXINT        0x1000        /* largest integer size (intmax_t) */
+#define ALT         0x0001        /* alternate form */
+#define HEXPREFIX   0x0002        /* add 0x or 0X prefix */
+#define LADJUST     0x0004        /* left adjustment */
+#define LONGDBL     0x0008        /* long double; unimplemented */
+#define LONGINT     0x0010        /* long integer */
+#define LLONGINT    0x0020        /* long long integer */
+#define SHORTINT    0x0040        /* short integer */
+#define ZEROPAD     0x0080        /* zero (as opposed to blank) pad */
+#define FPT         0x0100        /* Floating point number */
+#define PTRINT      0x0200        /* (unsigned) ptrdiff_t */
+#define SIZEINT     0x0400        /* (signed) size_t */
+#define CHARINT     0x0800        /* 8 bit integer */
+#define MAXINT      0x1000        /* largest integer size (intmax_t) */
 
 /* -- Concrete Server extensions -- */
 
-#define BINARY      0x002000  /* b: binary type, system endian */
-#define BIG         0x004000  /* B: force big endian */
-#define LITTLE      0x008000  /* bb: force little endian */
-#define TRUNK       0x010000  /* t,T: truncate binary (get lower/higher bytes) */
-#define HIBYTES     0x020000  /* tH: truncate and get higher bytes */
-#define LOBYTES     0x040000  /* tL: truncate and get lower bytes */
-#define ALIGN       0x080000  /* ta: truncate and align to the integer boundaries */
+#define BINARY      0x002000      /* b: binary type, system endian */
+#define BIG         0x004000      /* B: force big endian */
+#define LITTLE      0x008000      /* bb: force little endian */
+#define TRUNCAT     0x010000      /* t,T: truncate */
+#define HIBYTES     0x020000      /* tH: truncate and get higher bytes */
+#define LOBYTES     0x040000      /* tL: truncate and get lower bytes */
+#define ALIGNED     0x080000      /* ta: align to the integer boundaries */
 #ifdef _ENABLE_HTTP
-#define URL         0x100000  /* url: urlencode the given string */
+#define URL         0x100000      /* url: urlencode the given string */
 #endif
 
 /* -- End of Concrete Server extensions -- */
@@ -450,7 +450,7 @@ reswitch:    switch (ch) {
 
         case 'L':
             /* -- Concrete Server extensions -- */
-            if (flags & TRUNK) {
+            if (flags & TRUNCAT) {
                 flags &= ~HIBYTES;
                 flags |= LOBYTES;
             }
@@ -506,27 +506,27 @@ reswitch:    switch (ch) {
             flags |= BIG;
             goto rflag;
         case 't':
-            if (flags & BINARY && (~flags & TRUNK) ) {
-                flags |= TRUNK;
+            if (flags & BINARY && (~flags & TRUNCAT) ) {
+                flags |= TRUNCAT;
                 flags |= LOBYTES;
             } else {
                 flags |= PTRINT;
             }
             goto rflag;
         case 'T':
-            flags |= TRUNK;
+            flags |= TRUNCAT;
             flags |= HIBYTES;
             goto rflag;
         case 'H':
-            if (flags & TRUNK) {
+            if (flags & TRUNCAT) {
                 flags &= ~LOBYTES;
                 flags |= HIBYTES;
             }
             goto rflag;
         case 'a':
-            if ( (flags & BINARY) && (flags & TRUNK) ) {
+            if ( (flags & BINARY) && (flags & TRUNCAT) ) {
                 /* align the truncated value on the integer boundaries */
-                flags |= ALIGN;
+                flags |= ALIGNED;
             }
             goto rflag;
         /* -- End of Concrete Server extensions -- */
@@ -620,7 +620,7 @@ reswitch:    switch (ch) {
 
             flags |= FPT;
             if (dtoaresult)
-                __freedtoa(dtoaresult);
+                _m_freedtoa(dtoaresult);
             dtoaresult = cp = cvt(_double, prec, flags, &softsign,
                 &expt, ch, &ndig);
             if (ch == 'g' || ch == 'G') {
@@ -973,7 +973,7 @@ done:
 finish:
 #ifdef FLOATING_POINT
     if (dtoaresult)
-        __freedtoa(dtoaresult);
+        _m_freedtoa(dtoaresult);
 #endif
     if (argtable != NULL && argtable != statargtable) {
         munmap(argtable, argtablesiz);
@@ -1389,7 +1389,7 @@ static char *cvt(double value, int ndigits, int flags, int *sign,
         mode = 2;        /* ndigits significant digits */
     }
 
-    digits = __dtoa(value, mode, ndigits, decpt, sign, &rve);
+    digits = _m_dtoa(value, mode, ndigits, decpt, sign, &rve);
     if ((ch != 'g' && ch != 'G') || flags & ALT) {/* Print trailing zeros */
         bp = digits + ndigits;
         if (ch == 'f') {
@@ -1465,7 +1465,7 @@ static int _write_int(char *out, size_t len, const u_char *b,
     /* if we don't have a buffer (dry run) simply return the size */
     if (! out) return intsize;
 
-    if (w && (flags & TRUNK)) {
+    if (w && (flags & TRUNCAT)) {
         if (
             (sys_endian == 1 && (flags & HIBYTES)) ||
             (sys_endian == 0 && (flags & LOBYTES))
@@ -1476,7 +1476,7 @@ static int _write_int(char *out, size_t len, const u_char *b,
 
         /* alignment was requested */
         if (
-            (flags & ALIGN) &&
+            (flags & ALIGNED) &&
             (
              ( (flags & LITTLE) && (flags & HIBYTES) ) ||
              ( (flags & BIG) && (flags & LOBYTES) )

@@ -112,9 +112,9 @@ PLUGINS = $(shell find plugins/* -type d | grep -v .svn)
 
 BUILD    =
 FINAL    = -O2 -pipe
-DEBUG    = -O0 -g -pg -fprofile-generate -fstack-protector -DDEBUG -DDEBUG_SQL
+DEBUG    = -O0 -g -DDEBUG -DDEBUG_SQL
 TRACE    = -O0 -g -pg -fprofile-generate
-FLAGS    = -std=c11 -W -Wall $(BUILD) -Wpointer-arith
+FLAGS    = -std=c99 -W -Wall $(BUILD) -Wpointer-arith
 
 SHARED   =
 LIBFLAGS =
@@ -144,6 +144,7 @@ HAS_SQLITE   = $(shell ls /usr/include/sqlite3.h 2> /dev/null)
 HAS_LIBMAGIC = $(shell ls /usr/include/magic.h 2> /dev/null)
 HAS_ICONV    = $(shell ls /usr/include/iconv.h 2> /dev/null)
 ARCH         = $(shell uname -m)
+LIBEXT       = so
 
 # GCC options
 ifeq ($(CC),gcc)
@@ -271,7 +272,8 @@ ifeq ($(HAS_DL), /usr/include/dlfcn.h)
 # Mac OS >= 10.3
 LIBS   += -ldl
 SHARED += -dynamiclib
-PLUGIN += -bundle -undefined dynamic_lookup
+PLUGIN += -mmacosx-version-min=10.3 -bundle -undefined dynamic_lookup
+LIBEXT = dylib
 else
 # Mac OS 10.2
 SHARED += -bundle
@@ -334,12 +336,14 @@ testfinal: BUILD = $(FINAL)
 $(BIN): CFLAGS = $(FLAGS)
 $(BIN): $(OBJBIN) lib$(LIB)
 	@echo "LD: $(BIN)"
-	@$(CC) $(CFLAGS) $(CONFIG) $(OBJBIN) -L. -l$(LIB) -o $(BIN)
+	@$(CC) $(CFLAGS) $(CONFIG) $(OBJBIN) -L. -l$(LIB) \
+	-o $(BIN)
 
 lib$(LIB): CFLAGS = $(FLAGS) $(LIBFLAGS)
 lib$(LIB): $(OBJLIB)
-	@echo "LD: lib$(LIB).so"
-	@$(CC) $(SHARED) $(CFLAGS) $(CONFIG) $(OBJLIB) $(LIBS) -o lib$(LIB).so
+	@echo "LD: lib$(LIB).$(LIBEXT)"
+	@$(CC) $(SHARED) $(CFLAGS) $(CONFIG) $(OBJLIB) $(LIBS) \
+	-o lib$(LIB).$(LIBEXT)
 
 $(OBJTEST): lib$(LIB)
 
@@ -374,8 +378,9 @@ install: plugin
 
 clean:
 	@echo "CLEAN"
-	@rm -f $(BIN) lib$(LIB).so $(PLG).so $(OBJBIN) $(OBJLIB) $(OBJPLG) *~ \
-	$(OBJTEST) $(OBJPROF) lib/*~ lib/util/*~ lib/ports/*~ test/*~ test.out \
+	@rm -f $(BIN) lib$(LIB).$(LIBEXT) $(PLG).so \
+	$(OBJBIN) $(OBJLIB) $(OBJPLG) $(OBJTEST) $(OBJPROF) \
+	*~ lib/*~ lib/util/*~ lib/ports/*~ test/*~ test.out \
 	plugins/*.so plugins/*/*~ lib/*.o lib/util/*.o lib/ports/*.o test/*.o \
 	*.d lib/*.d lib/util/*.d lib/ports/*.d test/*.d plugins/*/*.d
 

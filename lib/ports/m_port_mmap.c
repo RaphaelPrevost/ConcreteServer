@@ -279,6 +279,22 @@ public int get_page_size(void)
 }
 
 /* -------------------------------------------------------------------------- */
+#ifdef __APPLE__
+/* -------------------------------------------------------------------------- */
+
+#if ! defined(MAC_OS_X_VERSION_10_6) && ! defined(__MAC_10_6)
+
+public int posix_memalign(void **p, size_t alignment, size_t size)
+{
+    /* malloc returns 16-byte aligned memory addresses on OS X */
+    return ( (*p = malloc(size)) ) ? 0 : -1;
+}
+
+#endif
+
+/* -------------------------------------------------------------------------- */
+#endif
+/* -------------------------------------------------------------------------- */
 
 public void posix_memfree(void *memblock)
 {

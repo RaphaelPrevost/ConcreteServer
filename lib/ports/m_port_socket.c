@@ -186,7 +186,7 @@ private size_t socket_sendfile_lowlevel(int out, int in, off_t *off, size_t len)
 }
 
 /* -------------------------------------------------------------------------- */
-#elif defined (__APPLE__)
+#elif defined(MAC_OS_X_VERSION_10_5) || defined(__MAC_10_5)
 /* -------------------------------------------------------------------------- */
 
 private size_t socket_sendfile_lowlevel(int out, int in, off_t *off, size_t len)
