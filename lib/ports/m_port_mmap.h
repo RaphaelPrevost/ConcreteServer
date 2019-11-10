@@ -56,14 +56,6 @@
     #define private
 #endif
 
-#ifndef unused
-    #ifdef __GNUC__
-        #define unused __attribute__ ((unused))
-    #else
-        #define unused
-    #endif
-#endif
-
 #ifndef off_t
     #ifdef _off_t
         #define off_t _off_t
@@ -100,7 +92,7 @@ public int posix_memalign(void **p, size_t alignment, size_t size);
 
 public void *mmap(void *start, size_t len, int prot, int flags, int fd,
                   off_t offset                                         );
-public int munmap(void *start, unused size_t _dummy);
+public int munmap(void *start, UNUSED size_t _dummy);
 
 /* -------------------------------------------------------------------------- */
 
@@ -118,16 +110,21 @@ public int munmap(void *start, unused size_t _dummy);
 #define MAP_ANON MAP_ANONYMOUS
 #endif
 
+#ifndef MAP_POPULATE
+#define MAP_POPULATE 0x0    /* Linux-specific optimization */
+#endif
+
 #if ! defined(_SC_PAGESIZE) && defined(_SC_PAGE_SIZE)
 #define _SC_PAGESIZE _SC_PAGE_SIZE
 #endif
 
 /* -------------------------------------------------------------------------- */
-#ifdef __APPLE__ /* OS X lacked posix_memalign() before Snow Leopard */
+#ifdef __APPLE__
 /* -------------------------------------------------------------------------- */
 
 #if ! defined(MAC_OS_X_VERSION_10_6) && ! defined(__MAC_10_6)
-public int posix_memalign(void **p, size_t alignment, size_t size);
+/* OS X lacked posix_memalign() before Snow Leopard */
+public int posix_memalign(void **p, UNUSED size_t alignment, size_t size);
 #endif
 
 /* -------------------------------------------------------------------------- */

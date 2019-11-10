@@ -184,7 +184,7 @@ public void *mmap(void *start, size_t len, int prot, int flags, int fd,
 
 /* -------------------------------------------------------------------------- */
 
-public int munmap(void *start, unused size_t _dummy)
+public int munmap(void *start, UNUSED size_t _dummy)
 {
     /*
       This is a minimal implementation of the *NIX munmap syscall for WIN32.
@@ -255,7 +255,7 @@ public void *shm_attach(const char *name, size_t size)
 
 /* -------------------------------------------------------------------------- */
 
-public void shm_detach(void *start, unused size_t _dummy)
+public void shm_detach(void *start, UNUSED size_t _dummy)
 {
     /* we already dropped the reference of the map object, just unmap it */
     UnmapViewOfFile(start);
@@ -263,7 +263,7 @@ public void shm_detach(void *start, unused size_t _dummy)
 
 /* -------------------------------------------------------------------------- */
 
-public void shm_free(unused const char *_name, void *start, unused size_t _dummy)
+public void shm_free(UNUSED const char *_name, void *start, UNUSED size_t _dummy)
 {
     /* we already dropped the reference of the map object, just unmap it */
     UnmapViewOfFile(start);
@@ -284,7 +284,7 @@ public int get_page_size(void)
 
 #if ! defined(MAC_OS_X_VERSION_10_6) && ! defined(__MAC_10_6)
 
-public int posix_memalign(void **p, size_t alignment, size_t size)
+public int posix_memalign(void **p, UNUSED size_t alignment, size_t size)
 {
     /* malloc returns 16-byte aligned memory addresses on OS X */
     return ( (*p = malloc(size)) ) ? 0 : -1;

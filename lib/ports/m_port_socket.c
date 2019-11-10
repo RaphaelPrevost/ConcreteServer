@@ -375,7 +375,7 @@ public void freeaddrinfo(struct addrinfo *res)
 #define AF_UNIX 0x0
 #endif
 
-public int socketpair(unused int d, unused int t, unused int p, int sv[2])
+public int socketpair(UNUSED int d, UNUSED int t, UNUSED int p, int sv[2])
 {
     SOCKET s = INVALID_SOCKET;
     struct sockaddr_in addr;
@@ -641,7 +641,7 @@ public int socket_recvfd(int sock)
                 /* This should really never happen */
                 if (h)
                   fprintf(stderr,
-                    "%s:%d: protocol failure: %zd %d %d\n",
+                    "%s:%d: protocol failure: %d %d %d\n",
                     __FILE__, __LINE__,
                     h->cmsg_len,
                     h->cmsg_level, h->cmsg_type);

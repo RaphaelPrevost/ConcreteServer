@@ -141,8 +141,8 @@ static struct addrinfo *socket_addr(int *flags, const char *ip, const char *pt)
 /* -------------------------------------------------------------------------- */
 
 #ifndef _ENABLE_CONFIG
-static int password_cb(char *buf, int len, unused int rwflag,
-                       unused void *userdata                 )
+static int password_cb(char *buf, int len, UNUSED int rwflag,
+                       UNUSED void *userdata                 )
 {
     #ifndef _SSLPWD
     #define _SSLPWD "password"

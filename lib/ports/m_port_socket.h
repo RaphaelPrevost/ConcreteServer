@@ -137,7 +137,7 @@
 
 /* -------------------------------------------------------------------------- */
 
-public int socketpair(unused int d, unused int t, unused int p, int sv[2]);
+public int socketpair(UNUSED int d, UNUSED int t, UNUSED int p, int sv[2]);
 
 /* -------------------------------------------------------------------------- */
 

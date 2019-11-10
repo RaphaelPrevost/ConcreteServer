@@ -106,6 +106,14 @@
 #undef likely
 #undef unlikely
 
+#ifndef UNUSED
+    #ifdef __GNUC__
+        #define UNUSED __attribute__ ((unused))
+    #else
+        #define UNUSED
+    #endif
+#endif
+
 #ifdef __GNUC__
     /* specific macros */
     #define format(f, v) __attribute__ ((format(printf, (f), (v))))
@@ -260,14 +268,6 @@ public extern char *working_directory;
         #define debug(__VA_ARGS__) do { } while (0)
     #else
         #define debug(...) do { } while (0)
-    #endif
-#endif
-
-#ifndef UNUSED
-    #ifdef __GNUC__
-        #define UNUSED __attribute__ ((unused))
-    #else
-        #define UNUSED
     #endif
 #endif
 
