@@ -3637,7 +3637,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             {   /* optimize for long strings */
                 uint32_t prefetch = *(uint32_t *) json->_data;
-                if (__zero(prefetch ^ (~0U / 255 * json->_data[pos])))
+                if (__zero(prefetch ^ (~0U / 255 * json->_data[(int) pos])))
                     break; /* " or ' */
                 if (unlikely(__zero(prefetch ^ 0x5C5C5C5CU)))
                     break; /* \ */
