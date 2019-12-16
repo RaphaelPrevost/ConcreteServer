@@ -151,9 +151,12 @@ ifeq ($(CC),gcc)
 ifeq ($(GCC_ALIASED),gcc)
 FINAL   += -finline -mpreferred-stack-boundary=4 -minline-all-stringops
 FLAGS   += -findirect-inlining -posix
-# disable some warnings
-ifeq ($(GCC_MAJ), 6)
+# disable some judgemental warnings
+ifeq ($(shell test $(GCC_MAJ) -ge 6; echo $$?),0)
 FLAGS += -Wno-misleading-indentation
+ifeq ($(shell test $(GCC_MAJ) -ge 7; echo $$?),0)
+FLAGS += -Wno-implicit-fallthrough
+endif
 endif
 endif
 endif
