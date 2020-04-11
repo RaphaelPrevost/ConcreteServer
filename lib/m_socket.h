@@ -110,20 +110,20 @@
 #define _SOCKET_E 0x0020    /* an error occured on this socket */
 #define _SOCKET_R 0x0040    /* the socket is readable */
 #define _SOCKET_W 0x0080    /* the socket is writable */
-#define _SOCKET_X 0x0100    /* exceptional condition pending on this socket */
 
 #define SOCKET_HASERROR(s)  ((s)->_state & _SOCKET_E)
 #define SOCKET_READABLE(s)  ((s)->_state & _SOCKET_R)
 #define SOCKET_WRITABLE(s)  ((s)->_state & _SOCKET_W)
-#define SOCKET_OOB_DATA(s)  ((s)->_state & _SOCKET_X)
 #define SOCKET_INCOMING     SOCKET_READABLE
+#define SOCKET_OUTGOING(s)  ((s)->_state & _SOCKET_C)
 
 /* hooks */
 #define _HOOK_LISTEN  0x01
 #define _HOOK_ACCEPT  0x02
 #define _HOOK_OPENED  0x04
-#define _HOOK_URGENT  0x08
-#define _HOOK_CLOSED  0x10
+#define _HOOK_REINIT  0x08
+#define _HOOK_URGENT  0x10
+#define _HOOK_CLOSED  0x20
 
 /* enable SOCKET_UDP only if _ENABLE_UDP is set */
 #ifndef _ENABLE_UDP

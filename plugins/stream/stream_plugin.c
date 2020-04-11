@@ -173,6 +173,10 @@ public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event,
         stream_set_status(socket_id, STREAM_STATUS_CONN);
     } break;
 
+    case PLUGIN_EVENT_SOCKET_RECONNECTION: {
+        debug("Stream: reconnecting.\n");
+    } break;
+
     case PLUGIN_EVENT_OUTGOING_CONNECTION: {
         stream_set_status(socket_id, STREAM_STATUS_CONN);
         if (stream_personality() & PERSONALITY_WORKER) {
@@ -191,15 +195,20 @@ public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event,
         stream_drop_packets(socket_id);
     } break;
 
+    case PLUGIN_EVENT_REQUEST_NOTSENDABLE: {
+        debug("Stream: cannot send heartbeat!\n");
+    } break;
+
     case PLUGIN_EVENT_REQUEST_TRANSMITTED: {
-        debug("Seding heartbeat...\n");
+        debug("Stream: sending heartbeat.\n");
         if (stream_heartbeat(socket_id) == -1)
-            debug("Failed to send heartbeat\n");
+            debug("Stream: failed to send heartbeat.\n");
     } break;
 
     case PLUGIN_EVENT_OUT_OF_BAND_MESSAGE: {
         m_string *message = event_data;
-        debug("Received OOB message: %.*s", SIZE(message), CSTR(message));
+        uint32_t packet = htonl(string_fetch_uint32(message));
+        debug("Stream: received OOB message: 0x%x\n", packet);
     } break;
 
     case PLUGIN_EVENT_SERVER_SHUTTINGDOWN:

@@ -280,7 +280,9 @@ static int server_reply_process(m_reply *r, m_socket *s)
 
     /* header */
     if (r->header) {
-        w = socket_write(s, CSTR(r->header), SIZE(r->header));
+        if (r->op & SERVER_TRANS_OOB)
+            w = socket_oob_write(s, CSTR(r->header), SIZE(r->header));
+        else w = socket_write(s, CSTR(r->header), SIZE(r->header));
         if (w < (ssize_t) SIZE(r->header)) {
             if (w > 0) {
                 debug("server_reply_process(): partial header write.\n");
@@ -373,7 +375,10 @@ static void _server_poll(void)
                 if (~s[i]->_flags & SOCKET_CLIENT) {
                     socket_release(s[i]); s[i] = socket_close(s[i]);
                     continue;
-                } else goto _wait;
+                } else if (! SOCKET_OUTGOING(s[i])) {
+                    socket_persist(s[i]);
+                    goto _wait;
+                }
             }
 
             if (SOCKET_READABLE(s[i])) {
@@ -748,20 +753,56 @@ static int _server_opened_cb(m_socket *s)
 
 /* -------------------------------------------------------------------------- */
 
+static int _server_reinit_cb(m_socket *s)
+{
+    m_plugin *p = NULL;
+    m_reply *r = NULL;
+    int notified = 0;
+
+    /* flush the work queue */
+    if (_work[SOCKET_ID(s)]) {
+        while ( (r = queue_get(_work[SOCKET_ID(s)])) ) {
+            if (r->op & SERVER_TRANS_ACK) {
+                /* notify the plugin if there is requests that could
+                   not be transmitted before the reconnection */
+                if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
+                    if (p->plugin_intr)
+                        p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
+                                       PLUGIN_EVENT_REQUEST_NOTSENDABLE, NULL);
+                    plugin_release(p);
+                }
+            }
+            r = server_reply_free(r);
+        }
+        _work[SOCKET_ID(s)] = queue_free(_work[SOCKET_ID(s)]);
+    }
+
+    /* ensure the fragmentation buffer is clean */
+    _frag[SOCKET_ID(s)] = string_free(_frag[SOCKET_ID(s)]);
+
+    if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
+        /* notify the plugin that the socket needs to be reinitialized */
+        if (p->plugin_intr)
+            p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
+                           PLUGIN_EVENT_SOCKET_RECONNECTION, NULL);
+        plugin_release(p);
+    }
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+
 static int _server_urgent_cb(m_socket *s)
 {
-    char buffer[65535];
+    char buffer[1024];
     ssize_t len = 0;
     m_plugin *p = NULL;
     m_string *m = NULL;
 
     /* try to read the OOB data */
-    if ( (len = socket_oob_read(s, buffer, sizeof(buffer))) <= 0) {
-        debug("Failed to read OOB data\n");
+    if ( (len = socket_oob_read(s, buffer, sizeof(buffer))) <= 0)
         return (len == SOCKET_EAGAIN) ? 0 : -1;
-    }
-
-    debug("Read OOB data: %.*s\n", len, buffer);
 
     m = string_encaps(buffer, len);
 
@@ -869,6 +910,7 @@ public int server_init(void)
     if ( (socket_hook(_HOOK_LISTEN, _server_listen_cb) == -1) ||
          (socket_hook(_HOOK_ACCEPT, _server_accept_cb) == -1) ||
          (socket_hook(_HOOK_OPENED, _server_opened_cb) == -1) ||
+         (socket_hook(_HOOK_REINIT, _server_reinit_cb) == -1) ||
          (socket_hook(_HOOK_URGENT, _server_urgent_cb) == -1) ||
          (socket_hook(_HOOK_CLOSED, _server_closed_cb) == -1)) {
         fprintf(stderr, "server_init(): failed to hook the socket API.\n");

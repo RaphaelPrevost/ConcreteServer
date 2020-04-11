@@ -55,6 +55,7 @@ static m_socket *_socket[SOCKET_MAX];
 static int (*_socket_listen_hook)(m_socket *) = NULL;
 static int (*_socket_accept_hook)(m_socket *) = NULL;
 static int (*_socket_opened_hook)(m_socket *) = NULL;
+static int (*_socket_reinit_hook)(m_socket *) = NULL;
 static int (*_socket_urgent_hook)(m_socket *) = NULL;
 static int (*_socket_closed_hook)(m_socket *) = NULL;
 
@@ -1229,6 +1230,9 @@ private int socket_persist(m_socket *s)
     /* prepare the socket for a reconnection attempt */
     s->_state |= (_SOCKET_E | _SOCKET_C);
 
+    /* HOOK */
+    if (_socket_reinit_hook) _socket_reinit_hook(s);
+
     return 0;
 }
 
@@ -1285,6 +1289,7 @@ private int socket_hook(int hook, int (*fn)(m_socket *s))
         case _HOOK_LISTEN: _socket_listen_hook = fn; break;
         case _HOOK_ACCEPT: _socket_accept_hook = fn; break;
         case _HOOK_OPENED: _socket_opened_hook = fn; break;
+        case _HOOK_REINIT: _socket_reinit_hook = fn; break;
         case _HOOK_URGENT: _socket_urgent_hook = fn; break;
         case _HOOK_CLOSED: _socket_closed_hook = fn; break;
         default: return -1;
@@ -1517,7 +1522,7 @@ private int socket_queue_poll(m_socket_queue *q, m_socket **s,
         }
 
         /* clear the socket state, except for W */
-        s[i]->_state &= ~(_SOCKET_E | _SOCKET_R | _SOCKET_X);
+        s[i]->_state &= ~(_SOCKET_E | _SOCKET_R);
 
         #if ! defined(_USE_BIG_FDS) || ! defined(HAS_POLL) || defined(WIN32)
         if (s[i]->_fd >= FD_SETSIZE) {
