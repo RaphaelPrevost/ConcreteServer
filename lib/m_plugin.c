@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -210,7 +210,7 @@ private int plugin_open(const char *path, const char *name)
        ) goto _err_dlget;
 
     /* optional symbol, plugin interrupt handler */
-    p->plugin_intr = (void (*)(uint16_t, uint16_t, int))
+    p->plugin_intr = (void (*)(uint16_t, uint16_t, int, void *))
                       dlfunc(p->_handle, "plugin_intr");
 
     #ifdef WIN32
@@ -301,6 +301,7 @@ private void plugin_call(const char* name, int call, ...)
     uint16_t ingress_id = 0;
     m_string *buffer = NULL;
     unsigned int event = 0;
+    void *event_data = NULL;
     va_list ap;
 
     /* check if the name matches an existing plugin */
@@ -329,8 +330,10 @@ private void plugin_call(const char* name, int call, ...)
         socket_id = va_arg(ap, int);
         ingress_id = va_arg(ap, int);
         event = va_arg(ap, int);
+        event_data = va_arg(ap, void *);
         /* plugin_intr is optional */
-        if (p->plugin_intr) p->plugin_intr(socket_id, ingress_id, event);
+        if (p->plugin_intr)
+            p->plugin_intr(socket_id, ingress_id, event, event_data);
     } break;
 
     }
@@ -552,7 +555,8 @@ private void plugin_api_shutdown(void)
 
         for (i = 0; i < PLUGIN_MAX; i ++) {
             if (_plugin[i] && _plugin[i]->plugin_intr) {
-                _plugin[i]->plugin_intr(0, 0, PLUGIN_EVENT_SERVER_SHUTTINGDOWN);
+                _plugin[i]->plugin_intr(0, 0,
+                                        PLUGIN_EVENT_SERVER_SHUTTINGDOWN, NULL);
             }
         }
 

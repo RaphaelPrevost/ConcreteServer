@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Wamigo Daemon                                                              *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -145,7 +145,8 @@ public void plugin_fini(void);
 /* OPTIONAL PLUGIN CALLBACKS */
 /* -------------------------------------------------------------------------- */
 
-public void plugin_intr(uint16_t id, uint16_t ingress_id, unsigned int event);
+public void plugin_intr(uint16_t id, uint16_t ingress_id, unsigned int event,
+                        void *event_data);
 
 /**
  * @ingroup plugin

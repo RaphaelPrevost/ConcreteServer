@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -107,20 +107,23 @@
 #define _SOCKET_I 0x0008    /* inbound connection (accept()'ed socket) */
 #define _SOCKET_O 0x0010    /* outbound connection (connect()'ed socket) */
 
-#define _SOCKET_E 0x0020    /* and error occured with this socket */
+#define _SOCKET_E 0x0020    /* an error occured on this socket */
 #define _SOCKET_R 0x0040    /* the socket is readable */
 #define _SOCKET_W 0x0080    /* the socket is writable */
+#define _SOCKET_X 0x0100    /* exceptional condition pending on this socket */
 
 #define SOCKET_HASERROR(s)  ((s)->_state & _SOCKET_E)
 #define SOCKET_READABLE(s)  ((s)->_state & _SOCKET_R)
 #define SOCKET_WRITABLE(s)  ((s)->_state & _SOCKET_W)
+#define SOCKET_OOB_DATA(s)  ((s)->_state & _SOCKET_X)
 #define SOCKET_INCOMING     SOCKET_READABLE
 
 /* hooks */
 #define _HOOK_LISTEN  0x01
 #define _HOOK_ACCEPT  0x02
 #define _HOOK_OPENED  0x04
-#define _HOOK_CLOSED  0x08
+#define _HOOK_URGENT  0x08
+#define _HOOK_CLOSED  0x10
 
 /* enable SOCKET_UDP only if _ENABLE_UDP is set */
 #ifndef _ENABLE_UDP
@@ -566,23 +569,27 @@ public m_socket *socket_close(m_socket *s);
 
 /* -------------------------------------------------------------------------- */
 
-private int socket_hook(int hook, void (*fn)(m_socket *s));
+private int socket_hook(int hook, int (*fn)(m_socket *s));
 
 /**
  * @ingroup socket
- * @fn int socket_hook(int hook, void (*fn)(m_socket *s))
+ * @fn int socket_hook(int hook, int (*fn)(m_socket *s))
  * @param hook the call to hook
  * @param fn the callback
  * @return 0 if all went fine, -1 otherwise
  *
  * This function allows to hook a callback to some socket API functions. The
- * callback must accept a pointer to a m_socket structure, and not return
- * anything back.
+ * callback must accept a pointer to a m_socket structure, and return 0 if
+ * successful, -1 if an error occurs.
  *
  * The callback will only be called if the hooked call is successfull.
  *
- * Currently, only socket_listen(), socket_connect() and socket_close()
- * are supported, with the _HOOK_LIS, _HOOK_CON and _HOOK_DES consts.
+ * Currently, the following hooks are supported:
+ * - _HOOK_LISTEN: called by socket_listen() when a socket is listening
+ * - _HOOK_ACCEPT: called by socket_accept() when a socket is accepted
+ * - _HOOK_OPENED: called by socket_connect() when a connection is established
+ * - _HOOK_URGENT: called by socket_queue_poll() to handle OOB messages
+ * - _HOOK_CLOSED: called by socket_close() when a socket is destroyed
  *
  */
 

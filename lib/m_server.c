@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -186,6 +186,11 @@ public int server_reply_setfile(m_reply *reply, m_file *f, off_t o, size_t len)
         return -1;
     }
 
+    if (reply->op & SERVER_TRANS_OOB) {
+        debug("server_reply_setfile(): cannot send file out of band.\n");
+        return -1;
+    }
+
     if (reply->file) fs_closefile(reply->file);
     reply->file = f;
     reply->off = o;
@@ -198,21 +203,27 @@ public int server_reply_setfile(m_reply *reply, m_file *f, off_t o, size_t len)
 #endif
 /* -------------------------------------------------------------------------- */
 
-#if 0
-static int _task_setdelay(_m_task *t, unsigned int nsec)
+public int server_reply_setdelay(m_reply *reply, unsigned int nsec)
 {
-    struct timeval tv;
+    struct timespec ts;
 
-    /* delay >= 1 hour is not accepted */
-    if (! t || nsec >= 3600) return -1;
+    if (! reply || ! nsec) {
+        debug("server_reply_setdelay(): bad parameters.\n");
+        return -1;
+    }
 
-    gettimeofday(& tv, NULL);
+    if (nsec > 3600) {
+        debug("server_reply_setdelay(): delay cannot exceed one hour.");
+        return -1;
+    }
 
-    t->timer = tv.tv_sec; t->delay = nsec;
+    monotonic_timer(& ts);
+
+    reply->timer = ts.tv_sec;
+    reply->delay = nsec;
 
     return 0;
 }
-#endif
 
 /* -------------------------------------------------------------------------- */
 
@@ -612,9 +623,10 @@ static int _server_respond(m_socket *s)
 
         /* the task was completed, notify the plugin if necessary */
         if ( (r->op & SERVER_TRANS_ACK) && (p = plugin_acquire(PLUGIN_ID(s))) ) {
+            /* TODO allow request tagging ? */
             if (p->plugin_intr)
                 p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                               PLUGIN_EVENT_REQUEST_TRANSMITTED);
+                               PLUGIN_EVENT_REQUEST_TRANSMITTED, NULL);
             plugin_release(p);
         }
 
@@ -683,7 +695,7 @@ static void *_server_loop(UNUSED void *dummy)
 /* Socket API callbacks */
 /* -------------------------------------------------------------------------- */
 
-static void _server_listen_cb(m_socket *s)
+static int _server_listen_cb(m_socket *s)
 {
     #ifdef _ENABLE_UDP
     if (~s->_flags & SOCKET_UDP)
@@ -696,11 +708,13 @@ static void _server_listen_cb(m_socket *s)
         server_enqueue_blocking(s);
     }
     #endif
+
+    return 0;
 }
 
 /* -------------------------------------------------------------------------- */
 
-static void _server_accept_cb(m_socket *s)
+static int _server_accept_cb(m_socket *s)
 {
     m_plugin *p = NULL;
 
@@ -708,14 +722,16 @@ static void _server_accept_cb(m_socket *s)
     if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
         if (p->plugin_intr)
             p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                           PLUGIN_EVENT_INCOMING_CONNECTION);
+                           PLUGIN_EVENT_INCOMING_CONNECTION, NULL);
         plugin_release(p);
     }
+
+    return 0;
 }
 
 /* -------------------------------------------------------------------------- */
 
-static void _server_opened_cb(m_socket *s)
+static int _server_opened_cb(m_socket *s)
 {
     m_plugin *p = NULL;
 
@@ -723,14 +739,48 @@ static void _server_opened_cb(m_socket *s)
     if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
         if (p->plugin_intr)
             p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                           PLUGIN_EVENT_OUTGOING_CONNECTION);
+                           PLUGIN_EVENT_OUTGOING_CONNECTION, NULL);
         plugin_release(p);
     }
+
+    return 0;
 }
 
 /* -------------------------------------------------------------------------- */
 
-static void _server_closed_cb(m_socket *s)
+static int _server_urgent_cb(m_socket *s)
+{
+    char buffer[65535];
+    ssize_t len = 0;
+    m_plugin *p = NULL;
+    m_string *m = NULL;
+
+    /* try to read the OOB data */
+    if ( (len = socket_oob_read(s, buffer, sizeof(buffer))) <= 0) {
+        debug("Failed to read OOB data\n");
+        return (len == SOCKET_EAGAIN) ? 0 : -1;
+    }
+
+    debug("Read OOB data: %.*s\n", len, buffer);
+
+    m = string_encaps(buffer, len);
+
+    /* notify the plugin */
+    if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
+        if (p->plugin_intr)
+            p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
+                           PLUGIN_EVENT_OUT_OF_BAND_MESSAGE, m);
+        plugin_release(p);
+    }
+
+    string_free(m);
+
+    return 0;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static int _server_closed_cb(m_socket *s)
 {
     m_plugin *p = NULL;
     m_reply *r = NULL;
@@ -739,7 +789,7 @@ static void _server_closed_cb(m_socket *s)
         /* notify the plugin that the socket is about to be closed */
         if (p->plugin_intr)
             p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                           PLUGIN_EVENT_SOCKET_DISCONNECTED);
+                           PLUGIN_EVENT_SOCKET_DISCONNECTED, NULL);
         plugin_release(p);
     }
 
@@ -757,6 +807,8 @@ static void _server_closed_cb(m_socket *s)
     if (s->_flags & SOCKET_UDP)
         hashtable_remove(_UDP, (char *) s->info->ai_addr, s->info->ai_addrlen);
     #endif
+
+    return 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -817,6 +869,7 @@ public int server_init(void)
     if ( (socket_hook(_HOOK_LISTEN, _server_listen_cb) == -1) ||
          (socket_hook(_HOOK_ACCEPT, _server_accept_cb) == -1) ||
          (socket_hook(_HOOK_OPENED, _server_opened_cb) == -1) ||
+         (socket_hook(_HOOK_URGENT, _server_urgent_cb) == -1) ||
          (socket_hook(_HOOK_CLOSED, _server_closed_cb) == -1)) {
         fprintf(stderr, "server_init(): failed to hook the socket API.\n");
         goto _err_hook;

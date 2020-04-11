@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -56,7 +56,7 @@ typedef struct m_plugin {
     /* public */
     int (*plugin_init)(uint32_t, int, char **);
     void (*plugin_main)(uint16_t, uint16_t, m_string *);
-    void (*plugin_intr)(uint16_t, uint16_t, int);
+    void (*plugin_intr)(uint16_t, uint16_t, int, void *);
     void *(*plugin_suspend)(unsigned int *);
     int (*plugin_restore)(unsigned int, void *);
     void (*plugin_fini)(void);
@@ -75,7 +75,8 @@ typedef struct m_plugin {
 #define PLUGIN_EVENT_OUTGOING_CONNECTION 0x02
 #define PLUGIN_EVENT_SOCKET_DISCONNECTED 0x04
 #define PLUGIN_EVENT_REQUEST_TRANSMITTED 0x08
-#define PLUGIN_EVENT_SERVER_SHUTTINGDOWN 0x10
+#define PLUGIN_EVENT_OUT_OF_BAND_MESSAGE 0x10
+#define PLUGIN_EVENT_SERVER_SHUTTINGDOWN 0x20
 
 /* -------------------------------------------------------------------------- */
 

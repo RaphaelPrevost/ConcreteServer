@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -74,7 +74,8 @@
 #define STREAM_STATUS_PIPE 0x10
 
 #define WORKER_OP_HELLO    0x31108055
-#define WORKER_OP_READY    0x1D0DA10B
+#define WORKER_OP_READY    0x1E75D017
+#define WORKER_OP_ALIVE    0xFEE1600D
 #define MASTER_OP_HIRED    0xA600D10B
 
 /* -------------------------------------------------------------------------- */
@@ -170,7 +171,8 @@ public void plugin_fini(void);
 /* OPTIONAL PLUGIN CALLBACKS */
 /* -------------------------------------------------------------------------- */
 
-public void plugin_intr(uint16_t id, uint16_t ingress_id, int event);
+public void plugin_intr(uint16_t id, uint16_t ingress_id, int event,
+                        void *event_data);
 
 /**
  * @ingroup plugin
@@ -178,6 +180,7 @@ public void plugin_intr(uint16_t id, uint16_t ingress_id, int event);
  * @param id connection identifier
  * @param ingress_id ingress identifier
  * @param event event code
+ * @param event_data pointer to event-specific data
  *
  * This function is called by the server whenever an event occurs on
  * a connection; e.g. the connection has just been established, broken,
@@ -207,6 +210,7 @@ private void stream_config_fini(void);
 /* -------------------------------------------------------------------------- */
 
 private int stream_router_init(void);
+private int stream_heartbeat(int socket_id);
 private int stream_get_id(int hint, int personality);
 private void stream_set_route(int type, uint16_t s0, uint16_t s1);
 private int stream_get_route(int ingress);

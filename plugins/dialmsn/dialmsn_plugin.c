@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Dialflirt Messenger                                                        *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -751,7 +751,8 @@ _err_nonfatal:
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_intr(uint16_t id, UNUSED uint16_t ingress, unsigned int event)
+public void plugin_intr(uint16_t id, UNUSED uint16_t ingress, unsigned int event,
+                        UNUSED void *event_data)
 {
     switch (event) {
 

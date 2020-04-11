@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -76,6 +76,9 @@
 /** TRANSmission ACKnowledgment: this flag instructs the server to notify the
                                  plugin when the flagged message is sent. */
 #define SERVER_TRANS_ACK     0x0002
+/** TRANSmission Out Of Band: this flag instructs the server to send the message
+                              out of band. */
+#define SERVER_TRANS_OOB     0x0004
 
 /* in server context, the reserved bits of the socket id hold the plugin id */
 #define PLUGIN_ID(s) _RESERVED(s)
@@ -259,6 +262,10 @@ public int server_reply_setfile(m_reply *reply, m_file *f, off_t o, size_t len);
 
 /* -------------------------------------------------------------------------- */
 #endif
+/* -------------------------------------------------------------------------- */
+
+public int server_reply_setdelay(m_reply *reply, unsigned int nsec);
+
 /* -------------------------------------------------------------------------- */
 
 public m_reply *server_send_reply(uint16_t sockid, m_reply *r);

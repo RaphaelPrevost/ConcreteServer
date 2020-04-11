@@ -130,6 +130,9 @@ private int stream_router_init(void)
                 goto _err_init;
             }
 
+            if (stream_heartbeat(master) == -1)
+                fprintf(stderr, "Stream[%i]: failed to send heartbeat.\n", i);
+
             worker_stream[master] = i;
 
             /* allocate the ingress ids for the pipes */
@@ -145,6 +148,35 @@ _err_init:
 _err_lock:
     pthread_rwlock_destroy(& _master_lock);
 
+    return -1;
+}
+
+/* -------------------------------------------------------------------------- */
+
+private int stream_heartbeat(int socket_id)
+{
+    m_reply *reply = NULL;
+    m_string *data = NULL;
+
+    reply = server_reply_init(SERVER_TRANS_ACK | SERVER_TRANS_OOB,
+                              plugin_get_token());
+    if (! reply) goto _err_rep;
+
+    if (! (data = string_fmt(NULL, "%bB4u", WORKER_OP_ALIVE)) ) goto _err_fmt;
+
+    if (server_reply_setheader(reply, data) == -1) goto _err_set;
+
+    if (server_reply_setdelay(reply, 1) == -1) goto _err_set;
+
+    reply = server_send_reply(socket_id, reply);
+
+    return 0;
+
+_err_set:
+    string_free(data);
+_err_fmt:
+    server_reply_free(reply);
+_err_rep:
     return -1;
 }
 

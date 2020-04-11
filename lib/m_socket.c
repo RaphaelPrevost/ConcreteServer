@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -52,10 +52,11 @@ static pthread_rwlock_t _socket_lock;
 static m_socket *_socket[SOCKET_MAX];
 
 /* hooks */
-static void (*_socket_listen_hook)(m_socket *) = NULL;
-static void (*_socket_accept_hook)(m_socket *) = NULL;
-static void (*_socket_opened_hook)(m_socket *) = NULL;
-static void (*_socket_closed_hook)(m_socket *) = NULL;
+static int (*_socket_listen_hook)(m_socket *) = NULL;
+static int (*_socket_accept_hook)(m_socket *) = NULL;
+static int (*_socket_opened_hook)(m_socket *) = NULL;
+static int (*_socket_urgent_hook)(m_socket *) = NULL;
+static int (*_socket_closed_hook)(m_socket *) = NULL;
 
 #ifdef _ENABLE_SSL
 
@@ -794,6 +795,20 @@ public int socket_connect(m_socket *s)
         /* use non-blocking i/o */
         if (ioctl(s->_fd, FIONBIO, & enabled) == -1)
             serror(ERR(socket_open, ioctl));
+
+        /* enable keep alive for TCP sockets */
+        #ifdef _ENABLE_UDP
+        if (~s->_flags & SOCKET_UDP) {
+        #endif
+            if (setsockopt(s->_fd,
+                           SOL_SOCKET,
+                           SO_KEEPALIVE,
+                           (char *) & enabled,
+                           sizeof(enabled)) == -1)
+                serror(ERR(socket_open, setsockopt));
+        #ifdef _ENABLE_UDP
+        }
+        #endif
     }
 
     ret = connect(s->_fd, s->info->ai_addr, s->info->ai_addrlen);
@@ -992,12 +1007,12 @@ _err_alloc:
 
 /* -------------------------------------------------------------------------- */
 
-public ssize_t socket_write(m_socket *s, const char *data, size_t len)
+static ssize_t _socket_write(m_socket *s, const char *data, size_t len, int flags)
 {
     ssize_t ret = 0;
 
     if (! s || ! data || ! len) {
-        debug("socket_write(): bad parameters.\n");
+        debug("_socket_write(): bad parameters.\n");
         return SOCKET_EPARAM;
     }
 
@@ -1020,24 +1035,38 @@ public ssize_t socket_write(m_socket *s, const char *data, size_t len)
     ret = sendto(s->_fd,
                  data,
                  len,
-                 0x0,
+                 flags,
                  s->info->ai_addr,
                  s->info->ai_addrlen);
 
     if (ret == -1) {
-        serror(ERR(socket_write, sendto));
-
-        if (ERRNO == EINTR || ERRNO == EAGAIN || ERRNO == ESPIPE) {
-            /* the socket is blocked, we need to poll before another attempt */
+        if (ERRNO == EINTR || ERRNO == EAGAIN) {
             s->_state &= ~_SOCKET_W;
-            return SOCKET_EAGAIN;
-        } else return SOCKET_EFATAL;
+            ret =  SOCKET_EAGAIN;
+        } else ret =  SOCKET_EFATAL;
 
+        serror(ERR(_socket_write, sendto));
+
+        return ret;
     } else if (ret == 0) return SOCKET_ECLOSE;
 
     s->_tx += ret;
 
     return ret;
+}
+
+/* -------------------------------------------------------------------------- */
+
+public ssize_t socket_write(m_socket *s, const char *data, size_t len)
+{
+    return _socket_write(s, data, len, 0x0);
+}
+
+/* -------------------------------------------------------------------------- */
+
+public ssize_t socket_oob_write(m_socket *s, const char *data, size_t len)
+{
+    return _socket_write(s, data, len, MSG_OOB);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1112,13 +1141,16 @@ public ssize_t socket_sendfile(m_socket *out, m_file *in, off_t *off, size_t len
 #endif
 /* -------------------------------------------------------------------------- */
 
-public ssize_t socket_read(m_socket *s, char *out, size_t len)
+static ssize_t _socket_read(m_socket *s, char *out, size_t len, int flags)
 {
     ssize_t ret = 0;
     struct sockaddr *addr = NULL;
     socklen_t *addrlen = NULL;
 
-    if (! s || ! out || ! len) return SOCKET_EPARAM;
+    if (! s || ! out || ! len) {
+        debug("_socket_read(): bad parameters.\n");
+        return SOCKET_EPARAM;
+    }
 
     #ifdef _ENABLE_SSL
     if (s->_flags & SOCKET_SSL) return _socket_ssl_read(s, out, len);
@@ -1142,19 +1174,43 @@ public ssize_t socket_read(m_socket *s, char *out, size_t len)
     }
     #endif
 
-    ret = recvfrom(s->_fd, out, len, 0x0, addr, addrlen);
+    ret = recvfrom(s->_fd, out, len, flags, addr, addrlen);
 
     if (ret == -1) {
-        serror(ERR(socket_read, recvfrom));
-        if (ERRNO == EINTR || ERRNO == EAGAIN || ERRNO == ESPIPE)
-            return SOCKET_EAGAIN;
+        if (ERRNO == EINTR || ERRNO == EAGAIN)
+            ret = SOCKET_EAGAIN;
         else
-            return SOCKET_EFATAL;
+            ret = SOCKET_EFATAL;
+
+        serror(ERR(_socket_read, recvfrom));
+
+        return ret;
     } else if (ret == 0) return SOCKET_ECLOSE;
 
     s->_rx += ret;
 
     return ret;
+}
+
+/* -------------------------------------------------------------------------- */
+
+public ssize_t socket_read(m_socket *s, char *out, size_t len)
+{
+    return _socket_read(s, out, len, 0x0);
+}
+
+/* -------------------------------------------------------------------------- */
+
+public ssize_t socket_oob_read(m_socket *s, char *out, size_t len)
+{
+    return _socket_read(s, out, len, MSG_OOB);
+}
+
+/* -------------------------------------------------------------------------- */
+
+public ssize_t socket_peek(m_socket *s, char *out, size_t len)
+{
+    return _socket_read(s, out, len, MSG_PEEK);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1221,7 +1277,7 @@ public m_socket *socket_close(m_socket *s)
 
 /* -------------------------------------------------------------------------- */
 
-private int socket_hook(int hook, void (*fn)(m_socket *s))
+private int socket_hook(int hook, int (*fn)(m_socket *s))
 {
     if (! hook || ! fn) return -1;
 
@@ -1229,6 +1285,7 @@ private int socket_hook(int hook, void (*fn)(m_socket *s))
         case _HOOK_LISTEN: _socket_listen_hook = fn; break;
         case _HOOK_ACCEPT: _socket_accept_hook = fn; break;
         case _HOOK_OPENED: _socket_opened_hook = fn; break;
+        case _HOOK_URGENT: _socket_urgent_hook = fn; break;
         case _HOOK_CLOSED: _socket_closed_hook = fn; break;
         default: return -1;
     }
@@ -1460,7 +1517,7 @@ private int socket_queue_poll(m_socket_queue *q, m_socket **s,
         }
 
         /* clear the socket state, except for W */
-        s[i]->_state &= ~(_SOCKET_E | _SOCKET_R);
+        s[i]->_state &= ~(_SOCKET_E | _SOCKET_R | _SOCKET_X);
 
         #if ! defined(_USE_BIG_FDS) || ! defined(HAS_POLL) || defined(WIN32)
         if (s[i]->_fd >= FD_SETSIZE) {
@@ -1474,7 +1531,7 @@ private int socket_queue_poll(m_socket_queue *q, m_socket **s,
         if (~s[i]->_state & _SOCKET_W) FD_SET(s[i]->_fd, & w);
         fdmax = (fdmax < s[i]->_fd) ? s[i]->_fd : fdmax;
         #else
-        set[i].fd = s[i]->_fd; set[i].events = POLLIN | POLLERR;
+        set[i].fd = s[i]->_fd; set[i].events = POLLIN | POLLERR | POLLPRI;
         if (~s[i]->_state & _SOCKET_W) set[i].events |= POLLOUT;
         #endif
     }
@@ -1503,21 +1560,28 @@ private int socket_queue_poll(m_socket_queue *q, m_socket **s,
     /* update the sockets state */
     for (i = 0; i < n; i ++) {
         #if ! defined(_USE_BIG_FDS) || ! defined(HAS_POLL) || defined(WIN32)
-        /* an error occured, close the socket */
-        if (FD_ISSET(s[i]->_fd, & e)) s[i]->_state |= _SOCKET_E;
         if (FD_ISSET(s[i]->_fd, & r)) s[i]->_state |= _SOCKET_R;
         if (FD_ISSET(s[i]->_fd, & w)) s[i]->_state |= _SOCKET_W;
+        if (FD_ISSET(s[i]->_fd, & e))
         #else
         if (set[i].revents & POLLERR) s[i]->_state |= _SOCKET_E;
-        if (set[i].revents & POLLIN) s[i]->_state |= _SOCKET_R;
+        if (set[i].revents & POLLIN)  s[i]->_state |= _SOCKET_R;
         if (set[i].revents & POLLOUT) s[i]->_state |= _SOCKET_W;
+        if (set[i].revents & POLLPRI)
         #endif
+        /* HOOK handle out of band messages */
+        {
+            if (_socket_urgent_hook) {
+                if (_socket_urgent_hook(s[i]) == -1)
+                    s[i]->_state |= _SOCKET_E;
+            }
+        }
     }
 
     return n;
 
 _err_poll:
-    /* XXX we must be very careful to unlock ALL the sockets here */
+    /* XXX be very careful to unlock ALL the sockets here */
     while (n --) socket_release(s[n]); ret = -1;
 _empty_queue:
     pthread_mutex_unlock(& q->_tail_lock);

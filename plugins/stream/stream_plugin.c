@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -162,7 +162,8 @@ public void plugin_main(uint16_t socket_id, uint16_t ingress_id, m_string *data)
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event)
+public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event,
+                        void *event_data)
 {
     uint16_t egress = 0;
 
@@ -190,8 +191,16 @@ public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event)
         stream_drop_packets(socket_id);
     } break;
 
-    case PLUGIN_EVENT_REQUEST_TRANSMITTED:
-        /* request sent */ break;
+    case PLUGIN_EVENT_REQUEST_TRANSMITTED: {
+        debug("Seding heartbeat...\n");
+        if (stream_heartbeat(socket_id) == -1)
+            debug("Failed to send heartbeat\n");
+    } break;
+
+    case PLUGIN_EVENT_OUT_OF_BAND_MESSAGE: {
+        m_string *message = event_data;
+        debug("Received OOB message: %.*s", SIZE(message), CSTR(message));
+    } break;
 
     case PLUGIN_EVENT_SERVER_SHUTTINGDOWN:
         /* server shutting down */ break;
