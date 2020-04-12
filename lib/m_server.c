@@ -756,21 +756,13 @@ static int _server_opened_cb(m_socket *s)
 static int _server_reinit_cb(m_socket *s)
 {
     m_plugin *p = NULL;
-    m_reply *r = NULL;
-    int notified = 0;
+    m_reply *r = NULL, *retransmit = NULL;
 
     /* flush the work queue */
     if (_work[SOCKET_ID(s)]) {
         while ( (r = queue_get(_work[SOCKET_ID(s)])) ) {
-            if (r->op & SERVER_TRANS_ACK) {
-                /* notify the plugin if there is requests that could
-                   not be transmitted before the reconnection */
-                if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
-                    if (p->plugin_intr)
-                        p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                                       PLUGIN_EVENT_REQUEST_NOTSENDABLE, NULL);
-                    plugin_release(p);
-                }
+            if (r->op & SERVER_TRANS_ACK && ! retransmit) {
+                retransmit = r; r = NULL;
             }
             r = server_reply_free(r);
         }
@@ -781,10 +773,16 @@ static int _server_reinit_cb(m_socket *s)
     _frag[SOCKET_ID(s)] = string_free(_frag[SOCKET_ID(s)]);
 
     if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
-        /* notify the plugin that the socket needs to be reinitialized */
-        if (p->plugin_intr)
+        if (p->plugin_intr) {
+            /* notify the plugin that the socket needs to be reinitialized */
             p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
                            PLUGIN_EVENT_SOCKET_RECONNECTION, NULL);
+            /* return the first failed response to the plugin for examination
+               or retransmission */
+            if (retransmit)
+                p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
+                               PLUGIN_EVENT_REQUEST_NOTSENDABLE, retransmit);
+        }
         plugin_release(p);
     }
 

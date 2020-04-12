@@ -75,7 +75,7 @@
 
 #define WORKER_OP_HELLO    0x31108055
 #define WORKER_OP_READY    0x1E75D017
-#define WORKER_OP_ALIVE    0xFEE1600D
+#define WORKER_OP_ALIVE    0x1A
 #define MASTER_OP_HIRED    0xA600D10B
 
 /* -------------------------------------------------------------------------- */

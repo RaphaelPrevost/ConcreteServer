@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -609,7 +609,7 @@ public int string_to_uint64(const m_string *string, uint64_t *out)
     /** @brief convert a binary string to an integer */
 
     if (! string || ! out || ! CSTR(string) || SIZE(string) < sizeof(*out)) {
-        debug("string_to_uint32(): bad parameters.\n");
+        debug("string_to_uint64(): bad parameters.\n");
         return -1;
     }
 

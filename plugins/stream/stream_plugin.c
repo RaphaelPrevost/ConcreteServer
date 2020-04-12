@@ -173,10 +173,7 @@ public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event,
         stream_set_status(socket_id, STREAM_STATUS_CONN);
     } break;
 
-    case PLUGIN_EVENT_SOCKET_RECONNECTION: {
-        debug("Stream: reconnecting.\n");
-    } break;
-
+    case PLUGIN_EVENT_SOCKET_RECONNECTION: /* FALLTHRU */
     case PLUGIN_EVENT_OUTGOING_CONNECTION: {
         stream_set_status(socket_id, STREAM_STATUS_CONN);
         if (stream_personality() & PERSONALITY_WORKER) {
@@ -196,7 +193,10 @@ public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event,
     } break;
 
     case PLUGIN_EVENT_REQUEST_NOTSENDABLE: {
-        debug("Stream: cannot send heartbeat!\n");
+        /* retransmit failed heartbeat */
+        m_reply *r = event_data;
+        debug("Stream: retransmit failed heartbeat.\n");
+        r = server_send_reply(socket_id, r);
     } break;
 
     case PLUGIN_EVENT_REQUEST_TRANSMITTED: {
@@ -207,7 +207,7 @@ public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event,
 
     case PLUGIN_EVENT_OUT_OF_BAND_MESSAGE: {
         m_string *message = event_data;
-        uint32_t packet = htonl(string_fetch_uint32(message));
+        uint8_t packet = string_fetch_uint8(message);
         debug("Stream: received OOB message: 0x%x\n", packet);
     } break;
 

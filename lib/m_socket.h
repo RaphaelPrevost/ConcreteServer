@@ -487,7 +487,7 @@ public ssize_t socket_write(m_socket *s, const char *data, size_t len);
  * @fn ssize_t socket_write(m_socket *s, const char *data, size_t len)
  * @param s the socket
  * @param data the data to send
- * @param len the lenght of the data
+ * @param len the length of the data
  * @return specific error codes, see below
  *
  * @note This is a private function, it should not be called from a plugin.
@@ -498,6 +498,26 @@ public ssize_t socket_write(m_socket *s, const char *data, size_t len);
  * SOCKET_ECLOSE: the connection is down
  * SOCKET_EAGAIN: recoverable error, retry the call
  * SOCKET_EFATAL: fatal error
+ *
+ */
+
+/* -------------------------------------------------------------------------- */
+
+public ssize_t socket_oob_write(m_socket *s, const char *data, size_t len);
+
+/**
+ * @ingroup socket
+ * @fn ssize_t socket_oob_write(m_socket *s, const char *data, size_t len)
+ * @param s the socket
+ * @param data the data to send
+ * @param len the length of the data
+ * @return specific error codes, see @ref socket_write()
+ *
+ * @note This is a private function, it should not be called from a plugin.
+ *
+ * This function sends data out-of-band using the TCP "urgent data" feature.
+ * Please note that this mechanism only allow to portably send one byte of
+ * data (if you write more, only the last byte may be read on the other side).
  *
  */
 
@@ -532,6 +552,47 @@ public ssize_t socket_read(m_socket *s, char *out, size_t len);
  * SOCKET_ECLOSE: the connection is down
  * SOCKET_EAGAIN: recoverable error, retry the call
  * SOCKET_EFATAL: fatal error
+ *
+ */
+
+/* -------------------------------------------------------------------------- */
+
+public ssize_t socket_peek(m_socket *s, char *out, size_t len);
+
+/**
+ * @ingroup socket
+ * @fn ssize_t socket_peek(m_socket *s, char *out, size_t len)
+ * @param s the socket
+ * @param out the buffer to copy the data read in
+ * @param len the size of the buffer
+ * @return specific error code, see @ref socket_read()
+ *
+ * @note This is a private function, it should not be called from a plugin.
+ *
+ * This function reads the incoming data from the socket exactly like
+ * @ref socket_read() but does not remove them from the socket buffer.
+ *
+ */
+
+/* -------------------------------------------------------------------------- */
+
+public ssize_t socket_oob_read(m_socket *s, char *out, size_t len);
+
+/**
+ * @ingroup socket
+ * @fn ssize_t socket_oob_read(m_socket *s, char *out, size_t len)
+ * @param s the socket
+ * @param out the buffer to copy the data read in
+ * @param len the size of the buffer
+ * @return specific error code, see @ref socket_read()
+ *
+ * @note This is a private function, it should not be called from a plugin.
+ *
+ * This function reads out-of-band data. Sometimes, even if out-of-band data
+ * are available on the socket, pending regular data must be read first.
+ * In that case, this function will return SOCKET_EAGAIN and you can try
+ * using @ref socket_read() to read the pending regular data before calling
+ * this function again.
  *
  */
 
