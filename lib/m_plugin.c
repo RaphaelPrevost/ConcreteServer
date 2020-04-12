@@ -507,7 +507,11 @@ private m_plugin *plugin_acquire(unsigned int id)
     pthread_rwlock_rdlock(& _plugin_lock);
 
         /* lock the plugin to avoid its destruction while in use */
-        if ( (p = _plugin[id]) ) pthread_rwlock_rdlock(p->_lock);
+        if ( (p = _plugin[id]) ) {
+            /* XXX plugins cannot be acquired before or during initialization */
+            if (p->_status == -1) p = NULL;
+            else pthread_rwlock_rdlock(p->_lock);
+        }
 
     pthread_rwlock_unlock(& _plugin_lock);
 
