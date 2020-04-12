@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -570,6 +570,7 @@ public m_cache *cache_alloc(void (*freeval)(void *))
 _err_size:
     free(h->_bucket);
     free(h->_basket);
+    pthread_rwlock_destroy(h->_lock);
 _err_init:
     free(h->_lock);
 _err_lock:

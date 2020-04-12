@@ -865,7 +865,7 @@ public int server_init(void)
     /* greeting message ! */
     fprintf(stderr, "\nConcrete Server\n");
     fprintf(stderr, "version "CONCRETE_VERSION" ["__DATE__"]\n");
-    fprintf(stderr, "Copyright (c) 2005-2019 ");
+    fprintf(stderr, "Copyright (c) 2005-2020 ");
     fprintf(stderr, "Raphael Prevost, all rights reserved.\n\n");
     fprintf(stderr, "Concrete: starting engine.\n");
 

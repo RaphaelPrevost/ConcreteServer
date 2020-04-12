@@ -153,7 +153,10 @@ private int plugin_open(const char *path, const char *name)
         goto _err_malloc;
     }
 
-    pthread_rwlock_init(p->_lock, NULL);
+    if (pthread_rwlock_init(p->_lock, NULL) == -1) {
+        perror(ERR(plugin_open, pthread_rwlock_init));
+        goto _err_lock;
+    }
 
     /* acquire the plugin to ensure ownership */
     pthread_rwlock_wrlock(p->_lock);
@@ -234,6 +237,8 @@ _err_dlsym:
 _err_dlopen:
     _plugin_dereg(p);
 _err_reg:
+    pthread_rwlock_destroy(p->_lock);
+_err_lock:
     free(p->_lock);
 _err_malloc:
     free(p);
