@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -166,7 +166,8 @@ private int stream_heartbeat(int socket_id)
 
     if (server_reply_setheader(reply, data) == -1) goto _err_set;
 
-    if (server_reply_setdelay(reply, 1) == -1) goto _err_set;
+    /* send a heartbeat every minute */
+    if (server_reply_setdelay(reply, 60) == -1) goto _err_set;
 
     reply = server_send_reply(socket_id, reply);
 
