@@ -849,7 +849,8 @@ _err_again:
         return SOCKET_EAGAIN;
 _err_connect:
         /* connection failed */
-        serror(ERR(socket_connect, connect));
+        if (~s->_flags & SOCKET_CLIENT)
+            serror(ERR(socket_connect, connect));
         return SOCKET_EFATAL;
 }
 
