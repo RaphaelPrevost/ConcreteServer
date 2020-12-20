@@ -35,7 +35,7 @@ static char *u32toa(uint32_t u32, char *out, size_t len)
     uint32_t prev = 0;
     uint16_t *p = (void *) (out + 10);
 
-    if (len < 10) {
+    if (len < 12) {
         debug("u32toa(): bad parameters.\n");
     }
 
@@ -68,7 +68,7 @@ static uint32_t atou32(const char *in, size_t len)
 static uint32_t __increment_index(m_string *path)
 {
     uint32_t index = 0;
-    char *ret = NULL, buffer[11];
+    char *ret = NULL, buffer[12];
     unsigned int buflen;
 
     /* get the index */
