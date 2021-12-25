@@ -1,7 +1,7 @@
 Concrete Server version 0.3.8
 =============================
 
-Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>
+Copyright (c) 2005-2022 Raphael Prevost <raph@el.bzh>
 
 Description
 ===========
@@ -11,7 +11,7 @@ building blocks to design and implement efficient TCP or UDP services.
 
     The scope of this framework is not limited to networking functionalities,
 it also provides a database access API, a string library, and a plugin system
-to host different services on top of the Concrete Server.
+to host various services on top of the Concrete Server.
 
     The Concrete Server can be either embedded, by linking to the Concrete
 Server Framework Library and implementing a builtin plugin, or extended, by
