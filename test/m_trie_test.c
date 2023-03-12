@@ -5,9 +5,9 @@
 #include "../lib/m_trie.h"
 #include <signal.h>
 
-#define _CACHE_ITEMS   8000
-#define _CACHE_KEYFM   "%i"
-#define _CACHE_RNDDL    100
+#define _CACHE_ITEMS   800000
+#define _CACHE_KEYFM   "%" PRIuPTR
+#define _CACHE_RNDDL    100000
 
 static int timeout = 0;
 
@@ -15,7 +15,8 @@ static int timeout = 0;
 
 static int callback(const char *element, size_t len, void *arg)
 {
-    printf("%.*s [size=%zu] = %i\n", len, element, len, (int) arg);
+    printf("%.*s [size=%zu] = %" PRIuPTR "\n",
+           (int) len, element, len, (uintptr_t) arg);
     return 1;
 }
 
@@ -33,7 +34,8 @@ static void _timeout(int dummy)
 int test_trie(void)
 {
     m_trie *t = NULL;
-    unsigned int i = 0, j = 0, missing = 0;
+    uintptr_t i = 0, j = 0;
+    int missing = 0;
     char key[BUFSIZ];
     clock_t start, stop;
     size_t len = 0;
@@ -66,9 +68,9 @@ int test_trie(void)
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i); key[len] = 0;
-        if ( (j = (unsigned int) trie_findexec(t, key, len, NULL)) != i) {
+        if ( (j = (uintptr_t) trie_findexec(t, key, len, NULL)) != i) {
             missing ++;
-            printf("(!) Key %i is missing ! (found %i instead)\n", i, j);
+            printf("(!) Key %" PRIuPTR  " is missing ! (found %" PRIuPTR  " instead)\n", i, j);
         }
     }
     stop = clock();
@@ -111,7 +113,7 @@ int test_trie(void)
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i);
-        if ((unsigned int) trie_remove(t, key, len) != i + 1) missing ++;
+        if ((uintptr_t) trie_remove(t, key, len) != i + 1) missing ++;
     }
     stop = clock();
     printf("(-) Time elapsed = ");
@@ -125,8 +127,9 @@ int test_trie(void)
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i);
-        if ((unsigned int) trie_findexec(t, key, len, NULL) != i + 1) missing ++;
-        else printf("(!) found phantom key %i !\n", i);
+        if ((uintptr_t) trie_findexec(t, key, len, NULL) != i + 1)
+            missing ++;
+        else printf("(!) found phantom key %" PRIuPTR  " !\n", i);
     }
     stop = clock();
     printf("(-) Time elapsed = ");
@@ -135,12 +138,12 @@ int test_trie(void)
     printf("(-) %i missing keys\n", missing);
 
     printf("(*) Overwriting a key.\n");
-    i = (unsigned int) trie_insert(t, key, len, (void *) 0x888);
-    if (i) printf("(!) Key insertion returned 0x%x\n", i);
-    i = (unsigned int) trie_update(t, key, len, (void *) 0x8989);
-    if (i != 0x888) printf("(!) Key overwrite returned 0x%x\n", i);
-    if ( (i = (unsigned int) trie_remove(t, key, len)) != 0x8989)
-        printf("(!) Retrieved key is 0x%x, expected 0x8989.\n", i);
+    i = (uintptr_t) trie_insert(t, key, len, (void *) 0x888);
+    if (i) printf("(!) Key insertion returned 0x%" PRIxPTR  "\n", i);
+    i = (uintptr_t) trie_update(t, key, len, (void *) 0x8989);
+    if (i != 0x888) printf("(!) Key overwrite returned 0x%" PRIxPTR  "\n", i);
+    if ( (i = (uintptr_t) trie_remove(t, key, len)) != 0x8989)
+        printf("(!) Retrieved key is 0x%" PRIxPTR  ", expected 0x8989.\n", i);
     else
         printf("(*) Value was successfully overwritten.\n");
 

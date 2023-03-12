@@ -16,7 +16,7 @@ static void print_tokens(const m_string *s, unsigned int indent)
     if (! s) return;
 
     printf("%.*s%s%.*s %s",
-           indent, "", (indent) ? " " : "+ ", SIZE(s), CSTR(s),
+           indent, "", (indent) ? " " : "+ ", (int) SIZE(s), CSTR(s),
            (IS_OBJECT(s) ? "(object)" :
             IS_ARRAY(s) ? "(array)" :
             IS_STRING(s) ? "(string)" :
@@ -212,7 +212,7 @@ int test_string(void)
     } else
         printf("(*) Allocating an ANSI string \"%s\": SUCCESS\n", CSTR(a));
 
-    #ifdef _ENABLE_PCRE
+    #if (_ENABLE_PCRE && HAS_PCRE)
     printf("(*) Looking for \"Random string(.*)\"\n");
     string_parse(a, "Random string(.*)", strlen("Random string(.*)"));
     print_tokens(a, 0);

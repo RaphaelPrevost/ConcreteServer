@@ -8,7 +8,7 @@
 #define _CACHE_RNDDL 100000
 #define _CACHE_THRNG 400000
 
-#define _CACHE_KEYFM "%i"
+#define _CACHE_KEYFM "%" PRIuPTR
 
 /* thread start control switch */
 static pthread_mutex_t mx_switch = PTHREAD_MUTEX_INITIALIZER;
@@ -371,10 +371,10 @@ static void _timeout(int dummy)
 
 static void *_insert_loop(void *range)
 {
-    unsigned int i = 0;
+    uintptr_t i = 0;
     size_t len = 0;
     char key[BUFSIZ];
-    unsigned int r = (unsigned int) range;
+    uintptr_t r = (uintptr_t) range;
 
     /* wait for it... */
     pthread_mutex_lock(& mx_switch);
@@ -383,7 +383,7 @@ static void *_insert_loop(void *range)
 
     for (i = r; i <= r + _CACHE_THRNG; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i);
-        hashtable_insert(v, key, len, (void *) (uintptr_t) i);
+        hashtable_insert(v, key, len, (void *) i);
     }
 
     pthread_exit(NULL);
@@ -393,10 +393,11 @@ static void *_insert_loop(void *range)
 
 static void *_read_loop(void *range)
 {
-    unsigned int i = 0, j = 0, missing = 0;
+    uintptr_t i = 0, j = 0;
+    int missing = 0;
     size_t len = 0;
     char key[BUFSIZ];
-    unsigned int r = (unsigned int) range;
+    uintptr_t r = (uintptr_t) range;
 
     /* wait for it... */
     pthread_mutex_lock(& mx_switch);
@@ -405,9 +406,9 @@ static void *_read_loop(void *range)
 
     for (i = r; i <= r + _CACHE_THRNG; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i);
-        if ( (j = (unsigned int) hashtable_find(v, key, len)) != i) {
+        if ( (j = (uintptr_t) hashtable_find(v, key, len)) != i) {
             missing ++;
-            printf("(!) Key %i is missing ! (found %i instead)\n", i, j);
+            printf("(!) Key %" PRIuPTR " is missing ! (found %" PRIuPTR " instead)\n", i, j);
         }
     }
 
@@ -427,7 +428,8 @@ static int _print_and_delete_key(const char *key, size_t len, UNUSED void *val)
 int test_hashtable(void)
 {
     m_cache *h = NULL;
-    unsigned int i = 0, j = 0, missing = 0;
+    uintptr_t i = 0, j = 0;
+    int missing = 0;
     size_t len = 0;
     char key[BUFSIZ];
     clock_t start, stop;
@@ -446,7 +448,7 @@ int test_hashtable(void)
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i);
-        cache_push(h, key, len, (void *) (uintptr_t) i);
+        cache_push(h, key, len, (void *) i);
     }
     stop = clock();
     printf("(-) Time elapsed = ");
@@ -455,16 +457,16 @@ int test_hashtable(void)
 
     printf("(-) Size of the hashtable: %zu items/%zu buckets\n",
             h->_bucket_count, h->_bucket_size);
-    printf("(-) Memory footprint: %i bytes.\n", cache_footprint(h, & len));
+    printf("(-) Memory footprint: %zu bytes.\n", cache_footprint(h, & len));
     printf("(-) Overhead: %zu bytes (%zu KiB).\n", len, len / 1024);
 
     printf("(*) Getting back values from keys.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i);
-        if ( (j = (unsigned int) cache_find(h, key, len)) != i) {
+        if ( (j = (uintptr_t) cache_find(h, key, len)) != i) {
             missing ++;
-            printf("(!) Key %i is missing ! (found %i instead)\n", i, j);
+            printf("(!) Key %" PRIuPTR " is missing ! (found %" PRIuPTR " instead)\n", i, j);
         }
     }
     stop = clock();
@@ -499,7 +501,7 @@ int test_hashtable(void)
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i);
-        if ( (j = (unsigned int) cache_find(h, key, len)) != i)
+        if ( (j = (uintptr_t) cache_find(h, key, len)) != i)
             missing ++;
     }
     stop = clock();
@@ -514,7 +516,7 @@ int test_hashtable(void)
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i);
-        cache_push(h, key, len, (void *) (uintptr_t) (i + 1) );
+        cache_push(h, key, len, (void *) (i + 1) );
     }
     stop = clock();
     printf("(-) Time elapsed = ");
@@ -529,7 +531,7 @@ int test_hashtable(void)
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i);
-        if ((unsigned int) cache_pop(h, key, len) != i + 1) missing ++;
+        if ((uintptr_t) cache_pop(h, key, len) != i + 1) missing ++;
     }
     stop = clock();
     printf("(-) Time elapsed = ");
@@ -543,8 +545,8 @@ int test_hashtable(void)
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
         len = sprintf(key, _CACHE_KEYFM, i);
-        if ((unsigned int) cache_find(h, key, len) != i + 1) missing ++;
-        else printf("(!) found phantom key %i !\n", i);
+        if ((uintptr_t) cache_find(h, key, len) != i + 1) missing ++;
+        else printf("(!) found phantom key %" PRIuPTR " !\n", i);
     }
     stop = clock();
     printf("(-) Time elapsed = ");
@@ -553,12 +555,12 @@ int test_hashtable(void)
     printf("(-) %i missing keys\n", missing);
 
     printf("(*) Overwriting a key.\n");
-    i = (unsigned int) cache_push(h, key, len, (void *) 0xc0ffee);
-    if (i) printf("(!) Key insertion returned 0x%x\n", i);
-    i = (unsigned int) cache_push(h, key, len, (void *) 0xcafe);
-    if (i != 0xc0ffee) printf("(!) Key overwrite returned 0x%x\n", i);
-    if ( (i = (unsigned int) cache_pop(h, key, len)) != 0xcafe)
-        printf("(!) Retrieved key is 0x%x, expected 0xCAFE.\n", i);
+    i = (uintptr_t) cache_push(h, key, len, (void *) 0xc0ffee);
+    if (i) printf("(!) Key insertion returned 0x%" PRIxPTR "\n", i);
+    i = (uintptr_t) cache_push(h, key, len, (void *) 0xcafe);
+    if (i != 0xc0ffee) printf("(!) Key overwrite returned 0x%" PRIxPTR "\n", i);
+    if ( (i = (uintptr_t) cache_pop(h, key, len)) != 0xcafe)
+        printf("(!) Retrieved key is 0x%" PRIxPTR ", expected 0xCAFE.\n", i);
     else
         printf("(*) Value was successfully overwritten.\n");
 
@@ -680,7 +682,7 @@ int test_hashtable(void)
         tmp.len = sprintf(tmp.key, _CACHE_KEYFM, i);
         if (! (z = hashlib_find(x, & tmp)) ) {
             missing ++;
-            printf("(!) Key %i is missing !\n", i);
+            printf("(!) Key %" PRIuPTR " is missing !\n", i);
         }
     }
     stop = clock();

@@ -217,6 +217,9 @@ public int hashlib_walk(hashtable *master, const fp_hashexec exec, void *datum);
 /* return various statistics on use of this hshtbl */
 public m_hashstats hashlib_stats(const hashtable *master);
 
+/* return the overhead consumed by the hashtable */
+public size_t hashlib_footprint(const hashtable *master);
+
 /* -------------------------------------------------------------------------- */
 /* Useful generic functions */
 /* -------------------------------------------------------------------------- */

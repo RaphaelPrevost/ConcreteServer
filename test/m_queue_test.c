@@ -4,7 +4,7 @@
 #define ITEMS 800000
 
 #define enqueue(i) do { queue_add(q, (void *) (uintptr_t) (i)); } while (0)
-#define dequeue() ((unsigned) queue_get(q))
+#define dequeue() ((uintptr_t) queue_get(q))
 
 static m_queue *q = NULL;
 
@@ -33,7 +33,7 @@ static void *_dequeue(UNUSED void *dummy)
 int test_queue(void)
 {
     pthread_t enq, deq;
-    unsigned int ret = 0;
+    uintptr_t ret = 0;
     clock_t start, stop;
 
     if ( (q = queue_alloc()) == NULL) return -1;
@@ -57,7 +57,7 @@ int test_queue(void)
     }
 
     queue_add(q, (void *) 0x8888);
-    ret = (unsigned) queue_get(q);
+    ret = (uintptr_t) queue_get(q);
     if (ret != 0x8888) {
         printf("(!) Enqueue/Dequeue: missing value !\n");
         return -1;
