@@ -66,9 +66,9 @@ typedef struct m_cache {
     pthread_rwlock_t *_lock;
     size_t _bucket_size;
     size_t _bucket_count;
-    char **_index;
-    char **_bucket;
-    char *_basket;
+    struct _m_bucket *_index;
+    struct _m_item **_bucket;
+    struct _m_item *_basket;
     void (*_freeval)(void *);
     unsigned int _seed[CACHE_HASHFNCOUNT];
 } m_cache;

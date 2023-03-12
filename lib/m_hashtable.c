@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2022 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -75,36 +75,19 @@ static uint8_t _crc_lut[256] = {
     0xb6, 0xe8, 0x0a, 0x54, 0xd7, 0x89, 0x6b, 0x35
 };
 
-#define _key(b)  ((b) + sizeof(uint16_t))
-#define _len(b)  (*((uint16_t *) (b)))
-/* if your arch requires aligned reads, you can modify this macro */
-#define _pad(b)  (*((uint16_t *) (b)))
-#define _ptr(b)  (*((char **) ((b) + sizeof(uint16_t) + _pad(b))))
-#define _val(b)           \
-((void *) *((int **) ((b) + sizeof(uint16_t) + _pad(b) + sizeof(int *))))
+typedef struct _m_item {
+    void *ptr;
+    void *val;
+    struct {
+        uint16_t len;
+        char str[];
+    } key;
+} _m_item;
 
-#define _set_len(b, l)    \
-do { *((uint16_t *) (b)) = (l); } while (0)
-
-#define _set_key(b, k, l) \
-do { memcpy((b) + sizeof(uint16_t), (k), (l)); } while (0)
-
-#define _set_ptr(b, p)    \
-do { *((char **) ((b) + sizeof(uint16_t) + _pad(b))) = (p); } while (0)
-
-#define _cpy_ptr(b0, b1)  \
-do { \
-    *((char **) ((b0) + sizeof(uint16_t) + _pad(b0))) = \
-    *((char **) ((b1) + sizeof(uint16_t) + _pad(b1)));  \
-} while (0)
-
-#define _clr_ptr(b)       \
-do { *((char **) ((b) + sizeof(uint16_t) + _pad(b))) = NULL; } while (0)
-
-#define _set_val(b, p)    \
-do { \
-    *((int **) ((b) + sizeof(uint16_t) + _pad(b) + sizeof(int *))) = (p); \
-} while (0)
+typedef struct _m_bucket {
+    struct _m_bucket *next;
+    _m_item item; 
+} _m_bucket;
 
 /* -------------------------------------------------------------------------- */
 
@@ -399,37 +382,37 @@ static uint8_t _crc8(const char *string, size_t len)
 
 /* -------------------------------------------------------------------------- */
 
-static int _cache_push(m_cache *h, char *key, int replace, void **val)
+static int _cache_push(m_cache *h, _m_item *item, int replace, void **val)
 {
     unsigned int i = 0;
     uintptr_t index = 0;
     unsigned int retry = 0;
     unsigned int hash_cache[CACHE_HASHFNCOUNT];
-    char *slot = NULL, *tmp = NULL;
+    _m_item *slot = NULL, *tmp = NULL;
     uint32_t mask = h->_bucket_size - 1;
 
     /* avoid rehashing every key */
-    if (! (index = (uintptr_t) _ptr(key)) ) {
-        index = _hash(_key(key), _len(key), h->_seed[0]);
-        _set_ptr(key, (void *) index);
+    if (! (index = (uintptr_t) item->ptr) ) {
+        index = _hash(item->key.str, item->key.len, h->_seed[0]);
+        item->ptr = (void *) index;
     }
 
     index &= mask; goto _loop;
 
     /* look for a free slot */
     for (i = 0; i < CACHE_HASHFNCOUNT; i ++) {
-        index = _hash(_key(key), _len(key), h->_seed[i]) & mask;
+        index = _hash(item->key.str, item->key.len, h->_seed[i]) & mask;
 
 _loop:  if (! h->_bucket[index]) {
             /* this slot is free, insert */
-            h->_bucket[index] = key;
+            h->_bucket[index] = item;
             h->_bucket_count ++;
             return 0;
         }
 
         if (replace) {
             slot = h->_bucket[index];
-            if (! memcmp(key, slot, _len(key) + sizeof(uint16_t)))
+            if (! memcmp(& item->key, & slot->key, item->key.len + sizeof(item->key.len)))
                 goto _replace;
         }
 
@@ -438,8 +421,8 @@ _loop:  if (! h->_bucket[index]) {
 
     if (replace) {
         /* couldn't find it, look in the basket */
-        for (slot = h->_basket; slot; slot = _ptr(slot)) {
-            if (! memcmp(key, slot, _len(key) + sizeof(uint16_t)))
+        for (slot = h->_basket; slot; slot = slot->ptr) {
+            if (! memcmp(& item->key, & slot->key, item->key.len + sizeof(item->key.len)))
                 goto _replace;
         }
     }
@@ -447,17 +430,17 @@ _loop:  if (! h->_bucket[index]) {
     /* no free slot found, try cuckoo hashing */
     for (index = hash_cache[0]; retry < CACHE_CUCKOORETRY; retry ++) {
         /* get data off the last slot and replace them */
-        tmp = h->_bucket[index]; h->_bucket[index] = key; key = tmp;
+        tmp = h->_bucket[index]; h->_bucket[index] = item; item = tmp;
 
         /* get rid of tombstones */
-        if (! _len(key)) return 0;
+        if (! item->key.len) return 0;
 
         for (i = 0; i < CACHE_HASHFNCOUNT; i ++) {
-            index = _hash(_key(key), _len(key), h->_seed[i]) & mask;
+            index = _hash(item->key.str, item->key.len, h->_seed[i]) & mask;
 
             if (! h->_bucket[index]) {
                 /* this slot is free, insert */
-                h->_bucket[index] = key;
+                h->_bucket[index] = item;
                 h->_bucket_count ++;
                 return 0;
             } else hash_cache[i] = index;
@@ -465,13 +448,13 @@ _loop:  if (! h->_bucket[index]) {
     }
 
     /* cuckoo hashing did not help, store the key in the basket... */
-    _set_ptr(key, h->_basket); h->_basket = key; h->_bucket_count ++;
+    item->ptr = h->_basket; h->_basket = item; h->_bucket_count ++;
 
     return 0;
 
 _replace:
-    if (replace == -1) *val = _val(key);
-    else { *val = _val(slot); _set_val(slot, _val(key)); }
+    if (replace == -1) *val = item->val;
+    else { *val = slot->val; slot->val = item->val; }
     return 1;
 }
 
@@ -479,8 +462,8 @@ _replace:
 
 static int _cache_resize(m_cache *h, size_t size)
 {
-    char **b = NULL, **next = NULL;
-    char *tmp = NULL;
+    _m_bucket *b = NULL, *next = NULL;
+    _m_item *item = NULL, *tmp = NULL;
 
     if (! h) {
         debug("_cache_resize(): bad parameters.\n");
@@ -495,9 +478,9 @@ static int _cache_resize(m_cache *h, size_t size)
     size ++; size += (size == 0);
 
     /* clear the basket */
-    for (b = (char **) h->_basket, h->_basket = NULL; b; b = next) {
-        next = (char **) _ptr((char *) b);
-        _set_ptr((char *) b, NULL);
+    for (item = h->_basket, h->_basket = NULL; item; item = tmp) {
+        tmp = item->ptr;
+        item->ptr = NULL;
     }
 
     free(h->_bucket);
@@ -513,13 +496,13 @@ static int _cache_resize(m_cache *h, size_t size)
 
     /* rehash old buckets */
     for (b = h->_index, h->_index = NULL; b; b = next) {
-        tmp = ((char *) b) + sizeof(char *); next = (char **) *b;
+        next = b->next;
 
-        if (! _len(tmp)) { free(b); continue; }
+        if (! b->item.key.len) { free(b); continue; }
 
-        _cache_push(h, tmp, 0, NULL);
+        _cache_push(h, & b->item, 0, NULL);
 
-        *b = (char *) h->_index; h->_index = b;
+        b->next = h->_index; h->_index = b;
     }
 
     return 0;
@@ -558,7 +541,7 @@ public m_cache *cache_alloc(void (*freeval)(void *))
     for (i = 0; i < CACHE_HASHFNCOUNT; i ++)
         h->_seed[i] = random_uint32(r);
 
-    if (_cache_resize(h, 2) == -1) {
+    if (_cache_resize(h, 4) == -1) {
         debug("cache_alloc(): cannot resize the hash table.\n");
         goto _err_size;
     }
@@ -586,8 +569,7 @@ _err_rand:
 static void *_cache_add(m_cache *h, const char *key, size_t len, void *val,
                         int replace)
 {
-    char *mkey = NULL;
-    char **keyptr = NULL;
+    _m_bucket *bucket = NULL;
 
     if (! h || ! key || ! len) {
         debug("_cache_add(): bad parameters.\n");
@@ -595,25 +577,25 @@ static void *_cache_add(m_cache *h, const char *key, size_t len, void *val,
     }
 
     /* replace the key by a dynamically allocated one */
-    if (! (keyptr = malloc(sizeof(uint16_t) + (3 * sizeof(int *)) + len)) ) {
+    if (! (bucket = malloc(sizeof(*bucket) + len)) ) {
         perror(ERR(cache_push, malloc));
         return val;
     }
 
-    mkey = ((char *) keyptr) + sizeof(char *);
-
-    _set_len(mkey, len); _set_key(mkey, key, len);
-    _set_val(mkey, val); _set_ptr(mkey, NULL);
+    memcpy(bucket->item.key.str, key, len);
+    bucket->item.key.len = len;
+    bucket->item.val = val;
+    bucket->item.ptr = NULL;
 
     pthread_rwlock_wrlock(h->_lock);
 
-    if (! _cache_push(h, mkey, replace, & val)) {
-        *keyptr = (char *) h->_index; h->_index = keyptr;
+    if (! _cache_push(h, & bucket->item, replace, & val)) {
+        bucket->next = h->_index; h->_index = bucket;
         val = NULL;
-    } else free(keyptr);
+    } else free(bucket);
 
     /* try to expand the hashtable if the load is too important */
-    if (h->_basket && _ptr(h->_basket))
+    if (h->_basket && h->_basket->ptr)
         _cache_resize(h, h->_bucket_size + 1);
 
     pthread_rwlock_unlock(h->_lock);
@@ -641,7 +623,7 @@ public void *cache_findexec(m_cache *h, const char *key, size_t len,
                             void *(*function)(void *))
 {
     unsigned int i = 0, j = 0;
-    const char *ptr = NULL;
+    _m_item *ptr = NULL;
     void *res = NULL;
     uint32_t mask = 0;
 
@@ -660,16 +642,16 @@ public void *cache_findexec(m_cache *h, const char *key, size_t len,
         /* if an empty slot is found, no need to look further */
         if (! (ptr = h->_bucket[j])) break;
 
-        if (_len(ptr) == len && memcmp(_key(ptr), key, len) == 0) {
-            res = _val(ptr); if (function) res = function(res);
+        if (ptr->key.len == len && memcmp(ptr->key.str, key, len) == 0) {
+            res = ptr->val; if (function) res = function(res);
             goto _result;
         }
     }
 
     /* unlucky, scan the basket for orphan keys */
-    for (ptr = h->_basket; ptr; ptr = _ptr(ptr)) {
-        if (_len(ptr) == len && memcmp(_key(ptr), key, len) == 0) {
-            res = _val(ptr); if (function) res = function(res);
+    for (ptr = h->_basket; ptr; ptr = ptr->ptr) {
+        if (ptr->key.len == len && memcmp(ptr->key.str, key, len) == 0) {
+            res = ptr->val; if (function) res = function(res);
             goto _result;
         }
     }
@@ -692,7 +674,7 @@ public void *cache_find(m_cache *h, const char *key, size_t len)
 public void cache_foreach(m_cache *h,
                           int (*function)(const char *, size_t, void *))
 {
-    char **bucket = NULL, *tmp = NULL;
+    _m_bucket *bucket = NULL;
 
     if (! h || ! function) {
         debug("cache_foreach(): bad parameters.\n");
@@ -701,13 +683,11 @@ public void cache_foreach(m_cache *h,
 
     pthread_rwlock_wrlock(h->_lock);
 
-    for (bucket = h->_index; bucket; bucket = (char **) *bucket) {
-        tmp = ((char *) bucket) + sizeof(char *);
-
-        if (_len(tmp)) {
-            if (function(_key(tmp), _len(tmp), _val(tmp)) == -1) {
+    for (bucket = h->_index; bucket; bucket = bucket->next) {
+        if (bucket->item.key.len) {
+            if (function(bucket->item.key.str, bucket->item.key.len, bucket->item.val) == -1) {
                 /* delete the record */
-                _set_len(tmp, 0);
+                bucket->item.key.len = 0;
             }
         }
     }
@@ -723,9 +703,9 @@ public int cache_sort(m_cache *h, unsigned int order,
                       int (*cmp)(const char *key0, const char *key1, size_t len,
                                  void *value0, void *value1))
 {
-    char **l[2] = { NULL, NULL }, **bucket = NULL, **tail = NULL;
+    _m_bucket *l[2] = { NULL, NULL }, *bucket = NULL, *tail = NULL;
     unsigned int size = 1, merge = 0, i = 0;
-    char *a = NULL, *b = NULL;
+    _m_item *a = NULL, *b = NULL;
     unsigned int c[2] = { 0, 0 };
 
     if (! h || ! cmp || (order != CACHE_ASC && order != CACHE_DESC) ) {
@@ -743,7 +723,7 @@ public int cache_sort(m_cache *h, unsigned int order,
 
             /* split the table in 2 sorted lists of up to `size` buckets */
             for (c[0] = 0; c[0] < size; c[0] ++) {
-                if (! (l[1] = (char **) *l[1]) ) { c[0] ++; break; }
+                if (! (l[1] = l[1]->next) ) { c[0] ++; break; }
             }
 
             /* merge these lists */
@@ -752,10 +732,10 @@ public int cache_sort(m_cache *h, unsigned int order,
                 if (l[1] && c[1]) {
 
                     if (c[0]) {
-                        a = ((char *) l[0]) + sizeof(char *);
-                        b = ((char *) l[1]) + sizeof(char *);
-                        i = (_len(a) < _len(b)) ? _len(a) : _len(b);
-                        if (cmp(_key(a), _key(b), i, _val(a), _val(b)) <= 0)
+                        a = & l[0]->item;
+                        b = & l[1]->item;
+                        i = (a->key.len < b->key.len) ? a->key.len : b->key.len;
+                        if (cmp(a->key.str, b->key.str, i, a->val, b->val) <= 0)
                             i = 0 + order;
                         else
                             i = 1 - order;
@@ -765,14 +745,14 @@ public int cache_sort(m_cache *h, unsigned int order,
 
                 bucket = l[i];
 
-                if (tail) *tail = (char *) bucket;
+                if (tail) tail->next = bucket;
                 else h->_index = bucket;
 
-                l[i] = (char **) *l[i]; c[i] --;
+                l[i] = l[i]->next; c[i] --;
             }
         }
 
-        if (tail) *tail = NULL; size <<= 1;
+        if (tail) tail->next = NULL; size <<= 1;
 
     } while (merge > 1);
 
@@ -794,7 +774,7 @@ public int cache_sort_keys(const char *key0, const char *key1, size_t l,
 public void *cache_pop(m_cache *h, const char *key, size_t len)
 {
     unsigned int i = 0, j = 0;
-    char *tmp = NULL, *prev = NULL;
+    _m_item *tmp = NULL, *prev = NULL;
     void *result = NULL;
     uint32_t mask = 0;
 
@@ -810,28 +790,28 @@ public void *cache_pop(m_cache *h, const char *key, size_t len)
     for (i = 0; i < CACHE_HASHFNCOUNT; i ++) {
         j = _hash(key, len, h->_seed[i]) & mask;
 
-        if (! h->_bucket[j] || _len(h->_bucket[j]) != len) continue;
+        if (! h->_bucket[j] || h->_bucket[j]->key.len != len) continue;
 
-        if (memcmp(_key(h->_bucket[j]), key, len) == 0) {
+        if (memcmp(h->_bucket[j]->key.str, key, len) == 0) {
             /* remove from the bucket */
-            result = _val(h->_bucket[j]);
+            result = h->_bucket[j]->val;
             /* a length of 0 indicates a tombstone */
-            _set_len(h->_bucket[j], 0);
+            h->_bucket[j]->key.len = 0;
             pthread_rwlock_unlock(h->_lock);
             return result;
         }
     }
 
     /* unlucky, scan the basket for orphan keys */
-    for (tmp = prev = h->_basket; tmp; prev = tmp, tmp = _ptr(tmp)) {
-        if (_len(tmp) == len) {
-            if (memcmp(_key(tmp), key, len) == 0) {
+    for (tmp = prev = h->_basket; tmp; prev = tmp, tmp = tmp->ptr) {
+        if (tmp->key.len == len) {
+            if (memcmp(tmp->key.str, key, len) == 0) {
                 /* remove the orphan from the basket */
-                result = _val(tmp);
-                if (tmp == h->_basket) h->_basket = _ptr(tmp);
-                else _set_ptr(prev, _ptr(tmp));
+                result = tmp->val;
+                if (tmp == h->_basket) h->_basket = tmp->ptr;
+                else prev->ptr = tmp->ptr;
                 /* XXX tombstone for garbage collection */
-                _set_len(tmp, 0);
+                tmp->key.len = 0;
 
                 pthread_rwlock_unlock(h->_lock);
 
@@ -852,8 +832,7 @@ public void *cache_pop(m_cache *h, const char *key, size_t len)
 
 public size_t cache_footprint(m_cache *h, size_t *overhead)
 {
-    char **bucket = NULL, **next = NULL;
-    char *tmp = NULL;
+    _m_bucket *bucket = NULL;
     size_t key = 0;
     size_t ret = sizeof(*h);
 
@@ -871,15 +850,13 @@ public size_t cache_footprint(m_cache *h, size_t *overhead)
         /* segment bucket size */
         ret += h->_bucket_size * sizeof(*h->_bucket);
         /* keys */
-        for (bucket = h->_index; bucket; bucket = next) {
-            tmp = ((char *) bucket) + sizeof(char *);
-            next = (char **) *bucket;
-            if (_len(tmp)) {
+        for (bucket = h->_index; bucket; bucket = bucket->next) {
+            if (bucket->item.key.len) {
                 /* key length + key recorded size + next and value pointers */
-                ret += sizeof(char *) + _len(tmp) + sizeof(uint16_t) +
+                ret += sizeof(char *) + bucket->item.key.len + sizeof(bucket->item.key.len) +
                        sizeof(char *) + sizeof(void *);
                 /* key length and value pointer are not overhead */
-                key += sizeof(uint16_t) + _len(tmp) + sizeof(void *);
+                key += sizeof(bucket->item.key.len) + bucket->item.key.len + sizeof(void *);
             }
         }
     }
@@ -895,15 +872,14 @@ public size_t cache_footprint(m_cache *h, size_t *overhead)
 
 public m_cache *cache_free(m_cache *h)
 {
-    char **bucket = NULL, **next = NULL;
-    char *keyptr = NULL;
+    _m_bucket *bucket = NULL, *next = NULL;
 
     if (! h) return NULL;
 
     for (bucket = h->_index; bucket; bucket = next) {
-        keyptr = ((char *) bucket) + sizeof(char *);
-        next = (char **) *bucket;
-        if (h->_freeval && _len(keyptr)) h->_freeval(_val(keyptr));
+        next = bucket->next;
+        if (h->_freeval && bucket->item.key.len)
+            h->_freeval(bucket->item.val);
         free(bucket);
     }
 
