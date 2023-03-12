@@ -77,12 +77,15 @@
 /* check system endianness */
 #if (defined(__BYTE_ORDER) && defined(__LITTLE_ENDIAN) && \
      __BYTE_ORDER == __LITTLE_ENDIAN) || \
+    (defined(__APPLE__) && defined(__LITTLE_ENDIAN__)) || \
     (defined(__i386) || defined(__x86_64__) || defined(__ia64) || \
      defined(_M_IX86) || defined(_M_X64) || defined(_M_IA64) || \
      defined(__ARMEL__) || defined(_M_ARM) || defined(__MIPSEL__))
     #define LITTLE_ENDIAN_HOST
 #elif (defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) && \
        __BYTE_ORDER == __BIG_ENDIAN) || \
+
+      (defined(__APPLE__) && defined(__BIG_ENDIAN__)) || \
       (defined(__sparc) || defined(__powerpc__) || defined(__ppc__) || \
        defined(__mc68000) || defined(__ARMEB__) || defined(__MIPSEB__))
     #define BIG_ENDIAN_HOST
