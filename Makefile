@@ -1,37 +1,37 @@
- ###############################################################################
- #  Concrete Server                                                            #
- #  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      #
- #                                                                             #
- #  This software is a computer program whose purpose is to provide a          #
- #  framework for developing and prototyping network services.                 #
- #                                                                             #
- #  This software is governed by the CeCILL  license under French law and      #
- #  abiding by the rules of distribution of free software.  You can  use,      #
- #  modify and/ or redistribute the software under the terms of the CeCILL     #
- #  license as circulated by CEA, CNRS and INRIA at the following URL          #
- #  "http://www.cecill.info".                                                  #
- #                                                                             #
- #  As a counterpart to the access to the source code and  rights to copy,     #
- #  modify and redistribute granted by the license, users are provided only    #
- #  with a limited warranty  and the software's author,  the holder of the     #
- #  economic rights,  and the successive licensors  have only  limited         #
- #  liability.                                                                 #
- #                                                                             #
- #  In this respect, the user's attention is drawn to the risks associated     #
- #  with loading,  using,  modifying and/or developing or reproducing the      #
- #  software by the user in light of its specific status of free software,     #
- #  that may mean  that it is complicated to manipulate,  and  that  also      #
- #  therefore means  that it is reserved for developers  and  experienced      #
- #  professionals having in-depth computer knowledge. Users are therefore      #
- #  encouraged to load and test the software's suitability as regards their    #
- #  requirements in conditions enabling the security of their systems and/or   #
- #  data to be ensured and,  more generally, to use and operate it in the      #
- #  same conditions as regards security.                                       #
- #                                                                             #
- #  The fact that you are presently reading this means that you have had       #
- #  knowledge of the CeCILL license and that you accept its terms.             #
- #                                                                             #
- ###############################################################################
+################################################################################
+#  Concrete Server                                                             #
+#  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                       #
+#                                                                              #
+#  This software is a computer program whose purpose is to provide a           #
+#  framework for developing and prototyping network services.                  #
+#                                                                              #
+#  This software is governed by the CeCILL  license under French law and       #
+#  abiding by the rules of distribution of free software.  You can  use,       #
+#  modify and/ or redistribute the software under the terms of the CeCILL      #
+#  license as circulated by CEA, CNRS and INRIA at the following URL           #
+#  "http://www.cecill.info".                                                   #
+#                                                                              #
+#  As a counterpart to the access to the source code and  rights to copy,      #
+#  modify and redistribute granted by the license, users are provided only     #
+#  with a limited warranty  and the software's author,  the holder of the      #
+#  economic rights,  and the successive licensors  have only  limited          #
+#  liability.                                                                  #
+#                                                                              #
+#  In this respect, the user's attention is drawn to the risks associated      #
+#  with loading,  using,  modifying and/or developing or reproducing the       #
+#  software by the user in light of its specific status of free software,      #
+#  that may mean  that it is complicated to manipulate,  and  that  also       #
+#  therefore means  that it is reserved for developers  and  experienced       #
+#  professionals having in-depth computer knowledge. Users are therefore       #
+#  encouraged to load and test the software's suitability as regards their     #
+#  requirements in conditions enabling the security of their systems and/or    #
+#  data to be ensured and,  more generally, to use and operate it in the       #
+#  same conditions as regards security.                                        #
+#                                                                              #
+#  The fact that you are presently reading this means that you have had        #
+#  knowledge of the CeCILL license and that you accept its terms.              #
+#                                                                              #
+################################################################################
 
 PROJECT = CONCRETE
 
@@ -64,7 +64,6 @@ CONFIG  = -D_ENABLE_SERVER \
           -D_ENABLE_FILE \
           -D_ENABLE_PCRE \
           -D_ENABLE_JSON \
-          -D_ENABLE_DB -D_ENABLE_MYSQL -D_ENABLE_SQLITE \
           -D_ENABLE_CONFIG \
           -D_BUILTIN_PLUGIN \
           -D_USE_BIG_FDS=4095
@@ -120,7 +119,6 @@ SHARED   =
 LIBFLAGS =
 
 # Installation
-#PREFIX  = /usr
 PREFIX =
 CONFDIR =
 DESTDIR =
@@ -128,26 +126,37 @@ SHAREDIR =
 
 # system features
 OS           = $(shell uname)
-GCC_ALIASED  = $(shell gcc --version | head -1 | cut -d\  -f1)
-GCC_MAJ      = $(shell gcc --version | head -1 | cut -d\  -f3 | cut -d. -f1)
-GCC_MIN      = $(shell gcc --version | head -1 | cut -d\  -f3 | cut -d. -f2)
-HAS_DL       = $(shell ls /usr/include/dlfcn.h 2> /dev/null)
-HAS_RL       = $(shell ls /usr/include/readline/readline.h 2> /dev/null)
-HAS_SSL      = $(shell ls /usr/include/openssl/ssl.h 2> /dev/null)
-HAS_SHADOW   = $(shell ls /usr/include/shadow.h 2> /dev/null)
-HAS_ZLIB     = $(shell ls /usr/include/zlib.h 2> /dev/null)
-HAS_POLL     = $(shell ls /usr/include/poll.h 2> /dev/null)
-HAS_PCRE     = $(shell ls /usr/include/pcre.h 2> /dev/null)
-HAS_LIBXML   = $(shell which xml2-config 2> /dev/null)
-HAS_MYSQL    = $(shell which mysql_config 2> /dev/null)
-HAS_SQLITE   = $(shell ls /usr/include/sqlite3.h 2> /dev/null)
-HAS_LIBMAGIC = $(shell ls /usr/include/magic.h 2> /dev/null)
-HAS_ICONV    = $(shell ls /usr/include/iconv.h 2> /dev/null)
 ARCH         = $(shell uname -m)
 LIBEXT       = so
+HAS_DL       =
+HAS_RL       =
+HAS_SSL      =
+HAS_SHADOW   =
+HAS_ZLIB     =
+HAS_POLL     =
+HAS_PCRE     =
+HAS_LIBXML   =
+HAS_MYSQL    =
+HAS_SQLITE   =
+HAS_ICONV    =
 
 # GCC options
 ifeq ($(CC),gcc)
+GCC_ALIASED  = $(shell gcc --version | head -1 | cut -d\  -f1)
+GCC_MAJ      = $(shell gcc --version | head -1 | cut -d\  -f3 | cut -d. -f1)
+GCC_MIN      = $(shell gcc --version | head -1 | cut -d\  -f3 | cut -d. -f2)
+GCC_INC      = gcc -o /dev/null -E -xc - 2> /dev/null
+HAS_DL       = $(shell echo '\#include <dlfcn.h>' | $(GCC_INC); echo $$?)
+HAS_RL       = $(shell echo '\#include <readline/readline.h>' | $(GCC_INC); echo $$?)
+HAS_SSL      = $(shell echo '\#include <openssl/ssl.h>' | $(GCC_INC); echo $$?)
+HAS_SHADOW   = $(shell echo '\#include <shadow.h>' | $(GCC_INC); echo $$?)
+HAS_ZLIB     = $(shell echo '\#include <zlib.h>' | $(GCC_INC); echo $$?)
+HAS_POLL     = $(shell echo '\#include <poll.h>' | $(GCC_INC); echo $$?)
+HAS_PCRE     = $(shell echo '\#include <pcre.h>' | $(GCC_INC); echo $$?)
+HAS_LIBXML   = $(shell which xml2-config 2> /dev/null)
+HAS_MYSQL    = $(shell which mysql_config 2> /dev/null)
+HAS_SQLITE   = $(shell echo '\#include <sqlite3.h>' | $(GCC_INC); echo $$?)
+HAS_ICONV    = $(shell echo '\#include <iconv.h>' | $(GCC_INC); echo $$?)
 ifeq ($(GCC_ALIASED),gcc)
 FINAL   += -finline -mpreferred-stack-boundary=4 -minline-all-stringops
 FLAGS   += -findirect-inlining -posix
@@ -179,18 +188,18 @@ LIBFLAGS += -fPIC
 endif
 
 # check for shadow.h
-ifeq ($(HAS_SHADOW),/usr/include/shadow.h)
+ifeq ($(HAS_SHADOW),0)
 CONFIG += -DHAS_SHADOW
 endif
 
 # check for zlib
-ifeq ($(HAS_ZLIB),/usr/include/zlib.h)
+ifeq ($(HAS_ZLIB),0)
 CONFIG += -DHAS_ZLIB
 LIBS += -lz
 endif
 
 # check for poll(2)
-ifeq ($(HAS_POLL),/usr/include/poll.h)
+ifeq ($(HAS_POLL),0)
 CONFIG += -DHAS_POLL
 endif
 
@@ -201,14 +210,8 @@ FLAGS += $(shell xml2-config --cflags)
 CONFIG += -DHAS_LIBXML
 endif
 
-# check for libmagic
-#ifneq ($(HAS_LIBMAGIC), )
-#LIBS += -lmagic
-#CONFIG += -DHAS_LIBMAGIC
-#endif
-
 # check for iconv
-ifeq ($(HAS_ICONV),/usr/include/iconv.h)
+ifeq ($(HAS_ICONV),0)
 CONFIG += -DHAS_ICONV
 endif
 
@@ -216,7 +219,7 @@ PCRE_ENABLED=$(shell echo $(CONFIG) | grep -c D_ENABLE_PCRE)
 
 # check for PCRE
 ifeq ($(PCRE_ENABLED),1)
-ifneq ($(HAS_PCRE), )
+ifeq ($(HAS_PCRE),0)
 LIBS += -lpcre
 CONFIG += -DHAS_PCRE
 endif
@@ -227,7 +230,7 @@ SSL_ENABLED=$(shell echo $(CONFIG) | grep -c D_ENABLE_SSL)
 
 # check for OpenSSL
 ifeq ($(SSL_ENABLED),1)
-ifeq ($(HAS_SSL),/usr/include/openssl/ssl.h)
+ifeq ($(HAS_SSL),0)
 CONFIG += -DHAS_SSL
 LIBS += -lcrypt -lssl
 endif
@@ -238,7 +241,7 @@ SQLITE_ENABLED=$(shell echo $(CONFIG) | grep -c D_ENABLE_SQLITE)
 
 # check for SQLite
 ifeq ($(SQLITE_ENABLED),1)
-ifeq ($(HAS_SQLITE),/usr/include/sqlite3.h)
+ifeq ($(HAS_SQLITE),0)
 CONFIG += -DHAS_SQLITE
 LIBS += -lsqlite3
 endif
@@ -271,8 +274,9 @@ endif
 ifeq ($(OS),Darwin)
 # APPLE gcc default preprocessor can't cope with variadic macros
 FLAGS += -no-cpp-precomp
-ifeq ($(HAS_DL), /usr/include/dlfcn.h)
+ifeq ($(HAS_DL),0)
 # Mac OS >= 10.3
+export MACOSX_DEPLOYMENT_TARGET := 10.3
 LIBS   += -ldl
 SHARED += -dynamiclib
 PLUGIN += -mmacosx-version-min=10.3 -bundle -undefined dynamic_lookup
@@ -283,7 +287,7 @@ SHARED += -bundle
 PLUGIN += -bundle -bundle_loader $(BIN)
 endif
 # iconv needs to be explicitly linked on Mac OS X
-ifeq ($(HAS_ICONV),/usr/include/iconv.h)
+ifeq ($(HAS_ICONV),0)
 LIBS += -liconv
 endif
 endif
