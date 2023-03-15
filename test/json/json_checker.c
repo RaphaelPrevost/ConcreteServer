@@ -2,13 +2,6 @@
 #include "../../lib/m_string.h"
 #include "../../lib/m_trie.h"
 
-/*
-
-gcc -D_ENABLE_JSON -D_ENABLE_TRIE -W -Wall -std=c99 -posix -pedantic -O3 -ldl -lrt -lpthread ../../lib/util/m_util_vfscanf.c ../../lib/util/m_util_vfprintf.c ../../lib/util/m_util_float.c ../../lib/util/m_util_dtoa.c ../../lib/ports/m_ports.c ../../lib/m_string.c ../../lib/m_trie.c json_checker.c -o json_checker
-
-*/
-
-
 typedef struct jsonpath_context {
     m_trie *tree;
     m_string *path;
@@ -97,7 +90,7 @@ static void print_tokens(const m_string *s, unsigned int indent)
     if (! s) return;
 
     printf("%.*s%s%.*s %s",
-           indent, "", (indent) ? " " : "+ ", SIZE(s), CSTR(s),
+           indent, "", (indent) ? " " : "+ ", (int) SIZE(s), CSTR(s),
            (IS_OBJECT(s) ? "(object)" :
             IS_ARRAY(s) ? "(array)" :
             IS_STRING(s) ? "(string)" :
@@ -201,7 +194,7 @@ int CALLBACK json_data(UNUSED int type, const char *data,
 
 int trie_print(const char *k, size_t len, UNUSED void *val)
 {
-    printf("%.*s\n", len, k);
+    printf("%.*s\n", (int) len, k);
     return 0;
 }
 

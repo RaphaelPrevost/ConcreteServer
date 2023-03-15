@@ -34,6 +34,8 @@
 ################################################################################
 
 PROJECT = CONCRETE
+CC      = gcc
+DBG     = gdb
 
 # Concrete Server configuration flags
 # Available CONFIG flags:
@@ -75,7 +77,6 @@ CONFIG  = -D_ENABLE_SERVER \
 PLGCONF = -D_DIALMSN_ENABLE_BOT
 
 # Files
-CC      = gcc
 OBJBIN  = $(addsuffix .o, $(basename $(wildcard *.c)))
 OBJLIB  = $(addsuffix .o, $(basename $(wildcard lib/*.c))) \
           $(addsuffix .o, $(basename $(wildcard lib/util/*.c))) \
@@ -92,6 +93,7 @@ OBJPROF = $(addsuffix .gcno, $(basename $(wildcard lib/*.c))) \
 LIBS    = -lpthread
 BIN     = concrete
 LIB     = concrete
+DBG_BIN = test.out
 PLUGINS = $(shell find plugins/* -type d | grep -v .svn)
 
 # Build options:
@@ -277,6 +279,7 @@ FLAGS += -no-cpp-precomp
 ifeq ($(HAS_DL),0)
 # Mac OS >= 10.3
 export MACOSX_DEPLOYMENT_TARGET := 10.3
+DBG = lldb
 LIBS   += -ldl
 SHARED += -dynamiclib
 PLUGIN += -mmacosx-version-min=10.3 -bundle -undefined dynamic_lookup
@@ -289,6 +292,14 @@ endif
 # iconv needs to be explicitly linked on Mac OS X
 ifeq ($(HAS_ICONV),0)
 LIBS += -liconv
+endif
+endif
+
+ifeq ($(DBG), gdb)
+DBG_PARMS = -silent ./$(DBG_BIN) -ex 'handle SIGPIPE nostop' -ex r
+else
+ifeq ($(DBG), lldb)
+DBG_PARMS = ./$(DBG_BIN) -o r
 endif
 endif
 
@@ -364,32 +375,42 @@ plugin: $(BIN) lib$(LIB)
 
 test: CFLAGS = $(FLAGS)
 test: $(OBJTEST)
-	@$(CC) $(OBJTEST) $(CFLAGS) $(CONFIG) $(LIBS) -L. -l$(LIB) -o test.out
+	@$(CC) $(OBJTEST) $(CFLAGS) $(CONFIG) $(LIBS) -L. -l$(LIB) -o $(DBG_BIN)
 	@echo "TEST"
-	@-(LD_LIBRARY_PATH=. gdb -silent ./test.out -ex 'handle SIGPIPE nostop' -ex r)
+	@-(LD_LIBRARY_PATH=. $(DBG) $(DBG_PARMS));
 
 testfinal: CFLAGS = $(FLAGS)
 testfinal: $(OBJTEST)
-	@$(CC) $(OBJTEST) $(CFLAGS) $(CONFIG) $(LIBS) -L. -l$(LIB) -o test.out
+	@$(CC) $(OBJTEST) $(CFLAGS) $(CONFIG) $(LIBS) -L. -l$(LIB) -o $(DBG_BIN)
 	@echo "TEST"
-	@-(LD_LIBRARY_PATH=. ./test.out)
+	@-(LD_LIBRARY_PATH=. ./$(DBG_BIN))
 
 install: plugin
 	@echo "INSTALL"
 	@mkdir -p $(DESTDIR)$(PREFIX)/bin
 	@mkdir -p $(DESTDIR)$(PREFIX)/lib/concrete/plugins
-	@strip $(BIN) lib$(LIB).so plugins/*.so
+	@strip $(BIN) lib$(LIB).$(LIBEXT) plugins/*.so
 	@cp $(BIN) $(DESTDIR)$(PREFIX)/bin
-	@cp lib$(LIB).so $(DESTDIR)$(PREFIX)/lib/concrete/
+	@cp lib$(LIB).$(LIBEXT) $(DESTDIR)$(PREFIX)/lib/concrete/
 	@cp plugins/*.so $(DESTDIR)$(PREFIX)/lib/concrete/plugins/
+
+json_checker:
+	@echo "JSON_CHECKER"
+	@$(CC) -D_ENABLE_JSON -D_ENABLE_TRIE $(FINAL) -lpthread \
+	lib/util/m_util_vfscanf.c lib/util/m_util_vfprintf.c \
+	lib/util/m_util_float.c lib/util/m_util_dtoa.c \
+	lib/ports/m_ports.c lib/m_string.c lib/m_trie.c \
+	test/json/json_checker.c -o json_checker
 
 clean:
 	@echo "CLEAN"
 	@rm -f $(BIN) lib$(LIB).$(LIBEXT) $(PLG).so \
 	$(OBJBIN) $(OBJLIB) $(OBJPLG) $(OBJTEST) $(OBJPROF) \
-	*~ lib/*~ lib/util/*~ lib/ports/*~ test/*~ test.out \
+	*~ lib/*~ lib/util/*~ lib/ports/*~ test/*~ $(DBG_BIN) \
 	plugins/*.so plugins/*/*~ lib/*.o lib/util/*.o lib/ports/*.o test/*.o \
-	*.d lib/*.d lib/util/*.d lib/ports/*.d test/*.d plugins/*/*.d
+	*.d lib/*.d lib/util/*.d lib/ports/*.d test/*.d plugins/*/*.d \
+	json_checker
+	@rm -rf plugins/*.dSYM
 
 -include $(OBJBIN:.o=.d)
 -include $(OBJLIB:.o=.d)
