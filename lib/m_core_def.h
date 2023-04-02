@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -144,6 +144,7 @@
         #else
         #define backtrace()
         #endif
+        typedef uint32_t unaligned_uint32_t __attribute__((aligned(1)));
     #else
         #ifndef __APPLE__
         #define private __attribute__((visibility("internal")))
@@ -151,6 +152,7 @@
         #define private __attribute__((visibility("hidden")))
         #endif
         #define backtrace()
+        typedef uint32_t unaligned_uint32_t;
     #endif
     #define public
     #define export

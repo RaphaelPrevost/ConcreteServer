@@ -141,8 +141,8 @@ static void _dialmsn_hostess_impersonate(struct _dialmsn_hostess *hostess)
                                  http, hostess->id, hostess->name,
                                  hostess->age, hostess->hair,
                                  hostess->eyes,
-                                 (profile) ? CSTR(profile) : "",
-                                 (avatar) ? CSTR(avatar) : "",
+                                 (profile) ? DATA(profile) : "",
+                                 (avatar) ? DATA(avatar) : "",
                                  plugin_get_host());
 
             string_free(profile); string_free(avatar);

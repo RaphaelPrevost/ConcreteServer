@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -56,7 +56,7 @@ static void _sigusr1_handler(UNUSED int _dummy);
 #define MAIN_PRINTVER \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"]"CONCRETE_OS"\n" \
-"Copyright (c) 2005-2020 Raphael Prevost, all rights reserved.\n\n"
+"Copyright (c) 2005-2023 Raphael Prevost, all rights reserved.\n\n"
 
 #define MAIN_OPTSHRT_DAEMON "-d"
 #define MAIN_OPTLONG_DAEMON "--daemon"
@@ -73,7 +73,7 @@ static void _sigusr1_handler(UNUSED int _dummy);
 #define MAIN_PRINTHLP \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"]"CONCRETE_OS"\n" \
-"Copyright (c) 2005-2020 Raphael Prevost, all rights reserved.\n\n" \
+"Copyright (c) 2005-2023 Raphael Prevost, all rights reserved.\n\n" \
 "Usage: %s [OPTION]\n" \
 "Start the Concrete Server.\n" \
 "\nOptions:\n\n" \
@@ -91,7 +91,7 @@ static void _sigusr1_handler(UNUSED int _dummy);
 #define MAIN_PRINTHLP \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"]"CONCRETE_OS"\n" \
-"Copyright (c) 2005-2020 Raphael Prevost, all rights reserved.\n\n" \
+"Copyright (c) 2005-2023 Raphael Prevost, all rights reserved.\n\n" \
 "Usage: %s [OPTION]\n" \
 "Start the Concrete Server.\n" \
 "\nOptions:\n\n" \
@@ -141,7 +141,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv);
 #define MAIN_PRINTVER \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"] for Windows NT\n" \
-"Copyright (c) 2005-2020 Raphael Prevost, all rights reserved.\n\n"
+"Copyright (c) 2005-2023 Raphael Prevost, all rights reserved.\n\n"
 
 #define MAIN_OPTSHRT_DAEMON "/d"
 #define MAIN_OPTLONG_DAEMON "/daemon"
@@ -169,7 +169,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv);
 #define MAIN_PRINTHLP \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"] for Windows NT\n" \
-"Copyright (c) 2005-2020 Raphael Prevost, all rights reserved.\n\n" \
+"Copyright (c) 2005-2023 Raphael Prevost, all rights reserved.\n\n" \
 "Usage: %s [OPTION]\n" \
 "Start the Concrete Server.\n" \
 "\nOptions:\n\n" \
@@ -193,7 +193,7 @@ static VOID WINAPI _service_main(DWORD argc, LPSTR *argv);
 #define MAIN_PRINTHLP \
 "\nConcrete Server\n" \
 "version "CONCRETE_VERSION" ["__DATE__"] for Windows NT\n" \
-"Copyright (c) 2005-2020 Raphael Prevost, all rights reserved.\n\n" \
+"Copyright (c) 2005-2023 Raphael Prevost, all rights reserved.\n\n" \
 "Usage: %s [OPTION]\n" \
 "Start the Concrete Server.\n" \
 "\nOptions:\n\n" \
@@ -1234,9 +1234,11 @@ export void plugin_main(uint16_t socket_id, UNUSED uint16_t ingress_id,
                         m_string *data)
 {
     /* send back the incoming data and close the connection */
-    server_send_buffer(plugin_token, socket_id,
-                       SERVER_TRANS_END,
-                       CSTR(data), SIZE(data));
+    server_send_buffer(
+        plugin_token, socket_id,
+        SERVER_TRANS_END,
+        DATA(data), SIZE(data)
+    );
 }
 
 /* -------------------------------------------------------------------------- */

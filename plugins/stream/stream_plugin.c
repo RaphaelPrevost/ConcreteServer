@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -151,8 +151,10 @@ public void plugin_main(uint16_t socket_id, uint16_t ingress_id, m_string *data)
     if (stream_get_status(socket_id) == STREAM_STATUS_PIPE) {
         if ( (egress = stream_get_egress(socket_id, ingress_id)) ) {
             /* forward the data between the two ends of the pipe */
-            server_send_buffer(plugin_get_token(), egress,
-                               0x0, CSTR(data), SIZE(data));
+            server_send_buffer(
+                plugin_get_token(), egress,
+                0x0, DATA(data), SIZE(data)
+            );
         } else server_close_managed_socket(plugin_get_token(), socket_id);
         string_flush(data);
     }

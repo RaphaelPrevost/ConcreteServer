@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -526,14 +526,14 @@ public int fs_mkdir(m_view *v, const char *p, size_t l)
 
     for (i = 0; i < PARTS(folder); i ++) {
 
-        if (! TLEN(folder, i)) continue;
+        if (! TOKEN_SIZE(folder, i)) continue;
 
         *(end = (char *) TOKEN_END(folder, i)) = 0;
 
         /* create the directory if it does not already exist */
-        if (access(CSTR(path), F_OK) == -1) {
+        if (access(DATA(path), F_OK) == -1) {
             /* use default permissions */
-            if (mkdir(CSTR(path), 0777) == -1) {
+            if (mkdir(DATA(path), 0777) == -1) {
                 perror(ERR(fs_mkdir, mkdir));
                 goto _err_mkdir;
             }

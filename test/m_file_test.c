@@ -33,7 +33,7 @@ static void *threadA(UNUSED void *dummy)
     sleep(2);
 
     printf("(*) Opened file %.*s\n", (int) orig->pathlen, orig->path);
-    printf("(*) Thread A got: %s\n", CSTR(orig->data));
+    printf("(*) Thread A got: %s\n", DATA(orig->data));
 
     orig = fs_closefile(orig);
 
@@ -70,7 +70,7 @@ static void *threadB(UNUSED void *dummy)
     } else printf("(*) Opening a remapped virtual file: SUCCESS\n");
 
     printf("(*) Opened file %.*s\n", (int) file->pathlen, file->path);
-    printf("(*) Thread B got: %s\n", CSTR(file->data));
+    printf("(*) Thread B got: %s\n", DATA(file->data));
 
     file = fs_closefile(file);
 

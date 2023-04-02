@@ -281,6 +281,7 @@ ifeq ($(HAS_DL),0)
 export MACOSX_DEPLOYMENT_TARGET := 10.3
 DBG = lldb
 LIBS   += -ldl
+DEBUG  += -fsanitize=address -fsanitize=undefined
 SHARED += -dynamiclib
 PLUGIN += -mmacosx-version-min=10.3 -bundle -undefined dynamic_lookup
 LIBEXT = dylib
@@ -410,7 +411,7 @@ clean:
 	plugins/*.so plugins/*/*~ lib/*.o lib/util/*.o lib/ports/*.o test/*.o \
 	*.d lib/*.d lib/util/*.d lib/ports/*.d test/*.d plugins/*/*.d \
 	json_checker
-	@rm -rf plugins/*.dSYM
+	@rm -rf *.dSYM plugins/*.dSYM
 
 -include $(OBJBIN:.o=.d)
 -include $(OBJLIB:.o=.d)

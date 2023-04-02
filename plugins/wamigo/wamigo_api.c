@@ -385,9 +385,9 @@ private int wamigo_call(unsigned int call, unsigned int argc, ...)
         id = wamigo_get_id();
         login = wamigo_get_user();
         pass = wamigo_get_pass();
-        h = http_set_var(h, "login", CSTR(login), SIZE(login));
-        h = http_set_var(h, "password", CSTR(pass), SIZE(pass));
-        h = http_set_var(h, "soft_id", CSTR(id), SIZE(id));
+        h = http_set_var(h, "login", DATA(login), SIZE(login));
+        h = http_set_var(h, "password", DATA(pass), SIZE(pass));
+        h = http_set_var(h, "soft_id", DATA(id), SIZE(id));
     }
 
     va_start(argv, argc);
@@ -433,9 +433,9 @@ private int wamigo_call_sync(m_file *sync_output)
 
     http_set_header(h, "User-Agent", "Concrete/Wamigo " CONCRETE_VERSION);
     http_set_header(h, "Connection", "close");
-    h = http_set_var(h, "login", CSTR(wamigo_user), SIZE(wamigo_user));
-    h = http_set_var(h, "password", CSTR(wamigo_pass), SIZE(wamigo_pass));
-    h = http_set_var(h, "soft_id", CSTR(wamigo_id), SIZE(wamigo_id));
+    h = http_set_var(h, "login", DATA(wamigo_user), SIZE(wamigo_user));
+    h = http_set_var(h, "password", DATA(wamigo_pass), SIZE(wamigo_pass));
+    h = http_set_var(h, "soft_id", DATA(wamigo_id), SIZE(wamigo_id));
     h = http_set_var(h, "last_synchro", "0", strlen("0"));
     h = http_set_file(h, "data", "sync.csv", sync_output, 0, 0);
     http_set_header(h, "Content-Transfer-Encoding", "binary");
@@ -466,7 +466,10 @@ private int wamigo_call_download()
 
 static void prout(UNUSED uint16_t id, UNUSED uint16_t ingress, m_string *buffer)
 {
-    fprintf(stderr, "Chunk sent, received:\n%.*s\n", SIZE(buffer), CSTR(buffer));
+    fprintf(
+        stderr, "Chunk sent, received:\n%.*s\n",
+        (int) SIZE(buffer), DATA(buffer)
+    );
     if (SIZE(buffer) > 4) {
         /* not an error code */
         //wamigo_call(WAMIGO_RM, 3, "id", CSTR(buffer), "type", "file", "path", "/WamigoBox/");
@@ -534,9 +537,9 @@ private int wamigo_call_upload(const char *path)
             chunk_len = 32768;
             http_set_header(h, "Connection", "keep-alive");
         }
-        h = http_set_var(h, "login", CSTR(wamigo_user), SIZE(wamigo_user));
-        h = http_set_var(h, "password", CSTR(wamigo_pass), SIZE(wamigo_pass));
-        h = http_set_var(h, "soft_id", CSTR(wamigo_id), SIZE(wamigo_id));
+        h = http_set_var(h, "login", DATA(wamigo_user), SIZE(wamigo_user));
+        h = http_set_var(h, "password", DATA(wamigo_pass), SIZE(wamigo_pass));
+        h = http_set_var(h, "soft_id", DATA(wamigo_id), SIZE(wamigo_id));
         h = http_set_var(h, "dest", "/", 1);
         h = http_set_fmt(h, "chunk", "%i", chunk);
         h = http_set_fmt(h, "chunks", "%i", chunks);
@@ -557,7 +560,7 @@ private int wamigo_call_upload(const char *path)
 static void _wamigo_init(UNUSED uint16_t id, UNUSED uint16_t ingress,
                          m_string *buffer)
 {
-    fprintf(stderr, "Got configuration: %s\n", CSTR(buffer));
+    fprintf(stderr, "Got configuration: %s\n", DATA(buffer));
     string_flush(buffer);
 
     /* start the initial synchronization */
@@ -598,7 +601,7 @@ static void _wamigo_endsync(UNUSED uint16_t id, UNUSED uint16_t ingress,
 static void _wamigo_delete(UNUSED uint16_t id, UNUSED uint16_t ingress,
                            m_string *buffer)
 {
-    fprintf(stderr, "Deleted file, received: %s\n", CSTR(buffer));
+    fprintf(stderr, "Deleted file, received: %s\n", DATA(buffer));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -613,7 +616,7 @@ static void _wamigo_rename(UNUSED uint16_t id, UNUSED uint16_t ingress,
 static void _wamigo_id(UNUSED uint16_t id, UNUSED uint16_t ingress,
                        m_string *buffer)
 {
-    const char *ret = CSTR(buffer);
+    const char *ret = DATA(buffer);
 
     if (! isdigit(*ret) && *ret != '{') {
         debug("_wamigo_id(): received an incorrect WamigoSoftID.\n");
@@ -657,7 +660,7 @@ _err_id:
 static void _wamigo_mkdir(UNUSED uint16_t id, UNUSED uint16_t ingress,
                           UNUSED m_string *buffer)
 {
-    fprintf(stderr, "Folder created, received:\n%s\n", CSTR(buffer));
+    fprintf(stderr, "Folder created, received:\n%s\n", DATA(buffer));
     if (SIZE(buffer) > 4) {
         /* not an error code */
         //wamigo_call(WAMIGO_RM, 3, "id", CSTR(buffer), "type", "folder", "path", "/WamigoBox/");

@@ -382,7 +382,7 @@ static void *_insert_loop(void *range)
     pthread_mutex_unlock(& mx_switch);
 
     for (i = r; i <= r + _CACHE_THRNG; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         hashtable_insert(v, key, len, (void *) i);
     }
 
@@ -405,7 +405,7 @@ static void *_read_loop(void *range)
     pthread_mutex_unlock(& mx_switch);
 
     for (i = r; i <= r + _CACHE_THRNG; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         if ( (j = (uintptr_t) hashtable_find(v, key, len)) != i) {
             missing ++;
             printf("(!) Key %" PRIuPTR " is missing ! (found %" PRIuPTR " instead)\n", i, j);
@@ -447,7 +447,7 @@ int test_hashtable(void)
     printf("(*) Inserting key-value pairs.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         cache_push(h, key, len, (void *) i);
     }
     stop = clock();
@@ -463,7 +463,7 @@ int test_hashtable(void)
     printf("(*) Getting back values from keys.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         if ( (j = (uintptr_t) cache_find(h, key, len)) != i) {
             missing ++;
             printf("(!) Key %" PRIuPTR " is missing ! (found %" PRIuPTR " instead)\n", i, j);
@@ -481,7 +481,7 @@ int test_hashtable(void)
     printf("(*) Randomly deleting 100k keys.\n");
     while (! timeout && missing < _CACHE_RNDDL) {
         i = rand() % _CACHE_ITEMS;
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         if (cache_pop(h, key, len)) missing ++;
     }
     timeout = 1;
@@ -500,7 +500,7 @@ int test_hashtable(void)
     printf("(*) Getting back values from keys.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         if ( (j = (uintptr_t) cache_find(h, key, len)) != i)
             missing ++;
     }
@@ -515,7 +515,7 @@ int test_hashtable(void)
     printf("(*) Replacing all keys values.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         cache_push(h, key, len, (void *) (i + 1) );
     }
     stop = clock();
@@ -530,7 +530,7 @@ int test_hashtable(void)
     printf("(*) Removing all the data from the table.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         if ((uintptr_t) cache_pop(h, key, len) != i + 1) missing ++;
     }
     stop = clock();
@@ -544,7 +544,7 @@ int test_hashtable(void)
     printf("(*) Checking that all the keys have been deleted.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         if ((uintptr_t) cache_find(h, key, len) != i + 1) missing ++;
         else printf("(!) found phantom key %" PRIuPTR " !\n", i);
     }
@@ -664,7 +664,7 @@ int test_hashtable(void)
     printf("(*) Inserting key-value pairs.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        tmp.len = sprintf(tmp.key, _CACHE_KEYFM, i);
+        tmp.len = snprintf(tmp.key, sizeof(key), _CACHE_KEYFM, i);
         tmp.val = (void *) (uintptr_t) i;
         hashlib_insert(x, & tmp);
     }
@@ -679,7 +679,7 @@ int test_hashtable(void)
     printf("(*) Getting back values from keys.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        tmp.len = sprintf(tmp.key, _CACHE_KEYFM, i);
+        tmp.len = snprintf(tmp.key, sizeof(key), _CACHE_KEYFM, i);
         if (! (z = hashlib_find(x, & tmp)) ) {
             missing ++;
             printf("(!) Key %" PRIuPTR " is missing !\n", i);
@@ -699,7 +699,7 @@ int test_hashtable(void)
     printf("(*) Randomly deleting 100k keys.\n");
     while (! timeout && missing < _CACHE_RNDDL) {
         i = rand() % _CACHE_ITEMS;
-        tmp.len = sprintf(tmp.key, _CACHE_KEYFM, i);
+        tmp.len = snprintf(tmp.key, sizeof(key), _CACHE_KEYFM, i);
         if (hashlib_remove(x, & tmp)) missing ++;
     }
     timeout = 1;
@@ -709,7 +709,7 @@ int test_hashtable(void)
     printf("(*) Replacing all keys values.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        tmp.len = sprintf(tmp.key, _CACHE_KEYFM, i);
+        tmp.len = snprintf(tmp.key, sizeof(key), _CACHE_KEYFM, i);
         tmp.val = (void *) (uintptr_t) (i + 1);
         hashlib_insert(x, & tmp);
     }
@@ -723,7 +723,7 @@ int test_hashtable(void)
     printf("(*) Removing all the data from the table.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        tmp.len = sprintf(tmp.key, _CACHE_KEYFM, i);
+        tmp.len = snprintf(tmp.key, sizeof(key), _CACHE_KEYFM, i);
         hashlib_remove(x, & tmp);
     }
     stop = clock();
@@ -736,7 +736,7 @@ int test_hashtable(void)
     printf("(*) Checking that all the keys have been deleted.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        tmp.len = sprintf(tmp.key, _CACHE_KEYFM, i);
+        tmp.len = snprintf(tmp.key, sizeof(key), _CACHE_KEYFM, i);
         if (! (hashlib_find(x, & tmp)) ) missing ++;
     }
     stop = clock();

@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -281,8 +281,8 @@ static int server_reply_process(m_reply *r, m_socket *s)
     /* header */
     if (r->header) {
         if (r->op & SERVER_TRANS_OOB)
-            w = socket_oob_write(s, CSTR(r->header), SIZE(r->header));
-        else w = socket_write(s, CSTR(r->header), SIZE(r->header));
+            w = socket_oob_write(s, DATA(r->header), SIZE(r->header));
+        else w = socket_write(s, DATA(r->header), SIZE(r->header));
         if (w < (ssize_t) SIZE(r->header)) {
             if (w > 0) {
                 debug("server_reply_process(): partial header write.\n");
@@ -309,7 +309,7 @@ static int server_reply_process(m_reply *r, m_socket *s)
 
     /* footer */
     if (r->footer) {
-        w = socket_write(s, CSTR(r->footer), SIZE(r->footer));
+        w = socket_write(s, DATA(r->footer), SIZE(r->footer));
         if (w < (ssize_t) SIZE(r->footer)) {
             if (w > 0) {
                 debug("server_reply_process(): partial footer write.\n");
@@ -438,7 +438,7 @@ static m_socket *_server_receive(m_string *buffer)
         sockbuf = (char *) STRING_END(_frag[SOCKET_ID(s)]);
     } else
     #endif
-    sockbuf = (char *) CSTR(buffer);
+    sockbuf = (char *) DATA(buffer);
 
     /* read the incoming data */
     if ( (ret = socket_read(s, sockbuf, SOCKET_BUFFER)) <= 0) {
@@ -459,7 +459,7 @@ static m_socket *_server_receive(m_string *buffer)
 
     /* prepare the input buffer */
     #ifdef _ENABLE_HTTP
-    if (sockbuf == CSTR(buffer)) {
+    if (sockbuf == DATA(buffer)) {
     #endif
         buffer->_len = ret;
     #ifdef _ENABLE_HTTP

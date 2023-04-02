@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2022 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -423,7 +423,7 @@ public int string_to_uint8(const m_string *string, uint8_t *out)
 {
     /** @brief convert a binary string to an integer */
 
-    if (! string || ! out || ! CSTR(string) || SIZE(string) < sizeof(*out)) {
+    if (! string || ! out || ! DATA(string) || SIZE(string) < sizeof(*out)) {
         debug("string_to_uint8(): bad parameters.\n");
         return -1;
     }
@@ -485,7 +485,7 @@ public int string_to_uint16(const m_string *string, uint16_t *out)
 {
     /** @brief convert a binary string to an integer */
 
-    if (! string || ! out || ! CSTR(string) || SIZE(string) < sizeof(*out)) {
+    if (! string || ! out || ! DATA(string) || SIZE(string) < sizeof(*out)) {
         debug("string_to_uint16(): bad parameters.\n");
         return -1;
     }
@@ -547,7 +547,7 @@ public int string_to_uint32(const m_string *string, uint32_t *out)
 {
     /** @brief convert a binary string to an integer */
 
-    if (! string || ! out || ! CSTR(string) || SIZE(string) < sizeof(*out)) {
+    if (! string || ! out || ! DATA(string) || SIZE(string) < sizeof(*out)) {
         debug("string_to_uint32(): bad parameters.\n");
         return -1;
     }
@@ -609,7 +609,7 @@ public int string_to_uint64(const m_string *string, uint64_t *out)
 {
     /** @brief convert a binary string to an integer */
 
-    if (! string || ! out || ! CSTR(string) || SIZE(string) < sizeof(*out)) {
+    if (! string || ! out || ! DATA(string) || SIZE(string) < sizeof(*out)) {
         debug("string_to_uint64(): bad parameters.\n");
         return -1;
     }
@@ -651,11 +651,11 @@ public int string_peek_fmt(m_string *string, const char *fmt, ...)
     int ret = 0;
     va_list args;
 
-    if (! string || ! CSTR(string) || ! fmt) return -1;
+    if (! string || ! DATA(string) || ! fmt) return -1;
 
     va_start(args, fmt);
 
-    if (! (ret = m_vsnscanf(CSTR(string), SIZE(string), fmt, args)) ) {
+    if (! (ret = m_vsnscanf(DATA(string), SIZE(string), fmt, args)) ) {
         debug("string_peek_fmt(): wrong format or vsnscanf() error.\n");
         return -1;
     }
@@ -674,11 +674,11 @@ public int string_fetch_fmt(m_string *string, const char *fmt, ...)
     int ret = 0;
     va_list args;
 
-    if (! string || ! CSTR(string) || ! fmt) return -1;
+    if (! string || ! DATA(string) || ! fmt) return -1;
 
     va_start(args, fmt);
 
-    if (! (ret = m_vsnscanf(CSTR(string), SIZE(string), fmt, args)) ) {
+    if (! (ret = m_vsnscanf(DATA(string), SIZE(string), fmt, args)) ) {
         debug("string_fetch_fmt(): wrong format or vsnscanf() error.\n");
         return -1;
     }
@@ -696,11 +696,11 @@ public int string_peek_buffer(m_string *string, char *out, size_t len)
 {
     /** @brief copy data from the string to an external buffer */
 
-    if (! string || ! CSTR(string) || ! out || ! len) return -1;
+    if (! string || ! DATA(string) || ! out || ! len) return -1;
 
     len = MIN(SIZE(string), len);
 
-    memcpy(out, CSTR(string), MIN(SIZE(string), len));
+    memcpy(out, DATA(string), MIN(SIZE(string), len));
 
     return 0;
 }
@@ -711,11 +711,11 @@ public int string_fetch_buffer(m_string *string, char *out, size_t len)
 {
     /** @brief move data from the string to an external buffer */
 
-    if (! string || ! CSTR(string) || ! out || ! len) return -1;
+    if (! string || ! DATA(string) || ! out || ! len) return -1;
 
     len = MIN(SIZE(string), len);
 
-    memcpy(out, CSTR(string), MIN(SIZE(string), len));
+    memcpy(out, DATA(string), MIN(SIZE(string), len));
 
     string_suppr(string, 0, len);
 
@@ -728,11 +728,11 @@ public m_string *string_peek(m_string *string, size_t len)
 {
     /** @brief copy data from the string */
 
-    if (! string || ! CSTR(string)) return NULL;
+    if (! string || ! DATA(string)) return NULL;
 
     if (! len) len = SIZE(string);
 
-    return string_alloc(CSTR(string), len);
+    return string_alloc(DATA(string), len);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -743,11 +743,11 @@ public m_string *string_fetch(m_string *string, size_t len)
 
     m_string *ret = NULL;
 
-    if (! string || ! CSTR(string)) return NULL;
+    if (! string || ! DATA(string)) return NULL;
 
     if (! len) len = SIZE(string);
 
-    ret = string_alloc(CSTR(string), len);
+    ret = string_alloc(DATA(string), len);
 
     string_suppr(string, 0, len);
 
@@ -775,13 +775,13 @@ public int string_wchar(m_string *string)
     size_t bufsize = 0;
     size_t ret = 0;
 
-    if (! string || ! CSTR(string)) return -1;
+    if (! string || ! DATA(string)) return -1;
 
     /* check if writing and resizing the string is allowed */
     if (string->_flags & _STRING_FLAG_STATIC) return -1;
 
     /* find the size of the wchar string */
-    if ( (bufsize = mbstowcs(NULL, CSTR(string), 0)) != (size_t) -1) {
+    if ( (bufsize = mbstowcs(NULL, DATA(string), 0)) != (size_t) -1) {
         /* allocate the wchar buffer */
         buffer = malloc( (bufsize + 1) * sizeof(wchar_t));
         if (buffer == NULL) {
@@ -789,7 +789,7 @@ public int string_wchar(m_string *string)
         }
 
         /* convert the multibyte string to wchar */
-        ret = mbstowcs((wchar_t *) buffer, CSTR(string), bufsize + 1);
+        ret = mbstowcs((wchar_t *) buffer, DATA(string), bufsize + 1);
 
         if (ret == (size_t) -1) {
             free(buffer); perror(ERR(string_wchar, mbstowcs));
@@ -816,13 +816,13 @@ public int string_mbyte(m_string *string)
     char *buffer = NULL;
     size_t l = 0;
 
-    if (! string || ! CSTR(string)) return -1;
+    if (! string || ! DATA(string)) return -1;
 
     /* check if writing and resizing the string is allowed */
     if (string->_flags & _STRING_FLAG_STATIC) return -1;
 
     /* find the size of the multibyte buffer */
-    if ( (l = wcstombs(NULL, (wchar_t *) CSTR(string), 0)) != (size_t) -1) {
+    if ( (l = wcstombs(NULL, (wchar_t *) DATA(string), 0)) != (size_t) -1) {
         /* allocate it */
         buffer = malloc( (l + 1) * sizeof(*buffer));
         if (buffer == NULL) {
@@ -830,7 +830,7 @@ public int string_mbyte(m_string *string)
         }
 
         /* perform the conversion */
-        if (wcstombs(buffer, (wchar_t *) CSTR(string), l + 1) == (size_t) -1) {
+        if (wcstombs(buffer, (wchar_t *) DATA(string), l + 1) == (size_t) -1) {
             perror(ERR(string_mbyte, wcstombs));
             free(buffer); return -1;
         }
@@ -980,7 +980,7 @@ public int string_swap(m_string *string)
     unsigned int i = 0;
     unsigned char tmp = 0;
 
-    if (! string || ! CSTR(string) || SIZE(string) % 2) {
+    if (! string || ! DATA(string) || SIZE(string) % 2) {
         debug("string_swap(): bad parameters.\n");
         return -1;
     }
@@ -1048,7 +1048,7 @@ public m_string *string_dupextend(const m_string *s, size_t x)
     if (! s) return NULL;
 
     /* copy the string */
-    if (! (ret = string_prealloc(CSTR(s), SIZE(s), SIZE(s) + x)) ) return NULL;
+    if (! (ret = string_prealloc(DATA(s), SIZE(s), SIZE(s) + x)) ) return NULL;
 
     /* copy the tokens */
     if (_string_copy_tokens(ret, s) == -1) return string_free(ret);
@@ -1149,7 +1149,7 @@ static void _string_rebase_token(m_string *s, char *oldbase, char *newbase)
 
     for (i = 0; i < PARTS(s); i ++) {
 
-        char *addr = newbase + (TOKEN_CSTR(s, i) - oldbase);
+        char *addr = newbase + (TOKEN_DATA(s, i) - oldbase);
 
         if (addr <= (s->_data + s->_alloc)) {
             /* the rebased token is inbound, fine */
@@ -1199,11 +1199,11 @@ static void _string_shift_token(m_string *s, unsigned int off,
 
     /* find the beginning of the shift */
     for (i = 0; i < PARTS(s); i ++) {
-        if (TSTR(s, i) >= CSTR(s) + off) {
+        if (TOKEN_DATA(s, i) >= DATA(s) + off) {
             /* update the position of all subsequent tokens */
             for (j = i; j < PARTS(s); j ++) {
                 if (j == i && shift < 0)
-                    __move_subtokens(TOKEN(s, j), shift, CSTR(s) + off + end);
+                    __move_subtokens(TOKEN(s, j), shift, DATA(s) + off + end);
                 else
                     __move_subtokens(TOKEN(s, j), shift, NULL);
             }
@@ -1214,7 +1214,7 @@ static void _string_shift_token(m_string *s, unsigned int off,
                     m_string *parent = s->parent;
                     /* check parent's tokens bound */
                     for (i = 0; i < PARTS(parent); i ++) {
-                        if (TEND(parent, i) >= STRING_END(parent)) {
+                        if (TOKEN_END(parent, i) >= STRING_END(parent)) {
                             while ( (-- parent->parts) > i + 1)
                                 string_free_token(TOKEN(parent, PARTS(parent)));
                             break;
@@ -1374,8 +1374,8 @@ static m_string *_string_mov(m_string *to, off_t o, const char * from, size_t l)
     } else while (parent->parent) parent = parent->parent;
 
     /* check if the source is inside the destination */
-    if ( (from >= CSTR(parent)) && (from < STRING_END(parent)) )
-        within = 1, within_offset = from - CSTR(parent);
+    if ( (from >= DATA(parent)) && (from < STRING_END(parent)) )
+        within = 1, within_offset = from - DATA(parent);
 
     /* reject out of bound offsets and resize the destination string */
     if (string_extend(to, o + l) == -1) {
@@ -1383,10 +1383,10 @@ static m_string *_string_mov(m_string *to, off_t o, const char * from, size_t l)
         goto _error;
     } else if (within) {
         /* if the source was within destination, correct the pointer */
-        from = CSTR(parent) + within_offset;
+        from = DATA(parent) + within_offset;
 
         /* check if the offset is still in bound */
-        if ( (from < CSTR(parent)) || (from >= STRING_END(parent)) ) {
+        if ( (from < DATA(parent)) || (from >= STRING_END(parent)) ) {
             debug("string_movs(): offset out of bound.\n");
             goto _error;
         }
@@ -1448,14 +1448,14 @@ public int string_suppr(m_string *string, off_t o, size_t l)
 
     /* get the parent and compute the absolute offset */
     while (parent->parent) parent = parent->parent;
-    o += CSTR(string) - CSTR(parent); i = o + l;
+    o += DATA(string) - DATA(parent); i = o + l;
 
     if (parent->_flags & _STRING_FLAG_ENCAPS && ! o) {
         /* shortcut if a static buffer is used and offset is 0 */
         parent->_data += l;
     } else if (i < SIZE(parent)) {
         /* handle the repositioning of the tokens manually */
-        if (! _string_mov(parent, o, CSTR(parent) + i, SIZE(parent) + 1 - i)) {
+        if (! _string_mov(parent, o, DATA(parent) + i, SIZE(parent) + 1 - i)) {
             debug("string_suppr(): string_movs() failed.\n");
             return -1;
         }
@@ -1463,7 +1463,7 @@ public int string_suppr(m_string *string, off_t o, size_t l)
 
     /* find the beginning of the move using the absolute offset */
     for (i = 0; i < PARTS(parent); i ++)
-        if (TSTR(parent, i) - CSTR(parent) >= (int) (o + l)) break;
+        if (TOKEN_DATA(parent, i) - DATA(parent) >= (int) (o + l)) break;
 
     /* shift the tokens from this position on */
     while (i < PARTS(parent)) __move_subtokens(TOKEN(parent, i ++), - l, NULL);
@@ -1504,7 +1504,7 @@ public m_string *string_pres(m_string *to, const char *from, size_t len)
     /** @brief prepend a C string to a m_string */
 
     /* move the original string to the right */
-    if (to && ! (string_movs(to, len, CSTR(to), to->_len)) ) return NULL;
+    if (to && ! (string_movs(to, len, DATA(to), to->_len)) ) return NULL;
 
     return string_movs(to, 0, from, len);
 }
@@ -1524,12 +1524,12 @@ public int string_cmps(const m_string *a, const char *b, size_t len)
 {
     /** @brief compare a m_string and a C string */
 
-    if (! a || ! CSTR(a) || ! b || ! len) {
+    if (! a || ! DATA(a) || ! b || ! len) {
         debug("string_cmps(): bad parameters.\n");
         return 2;
     }
 
-    return memcmp(CSTR(a), b, MIN(SIZE(a), len));
+    return memcmp(DATA(a), b, MIN(SIZE(a), len));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1543,7 +1543,7 @@ public m_string *string_mov(m_string *to, off_t off,
 
     if (! from) return NULL;
 
-    return string_movs(to, off, CSTR(from), len);
+    return string_movs(to, off, DATA(from), len);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1554,7 +1554,7 @@ public m_string *string_cat(m_string *to, const m_string *from)
 
     if (! from) return NULL;
 
-    return string_cats(to, CSTR(from), SIZE(from));
+    return string_cats(to, DATA(from), SIZE(from));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1565,7 +1565,7 @@ public m_string *string_pre(m_string *to, const m_string *from)
 
     if (! from) return NULL;
 
-    return string_pres(to, CSTR(from), SIZE(from));
+    return string_pres(to, DATA(from), SIZE(from));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1576,7 +1576,7 @@ public m_string *string_cpy(m_string *to, const m_string *from)
 
     if (! from) return NULL;
 
-    return string_cpys(to, CSTR(from), SIZE(from));
+    return string_cpys(to, DATA(from), SIZE(from));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1587,7 +1587,7 @@ public int string_cmp(const m_string *a, const m_string *b)
 
     if (! b) return 2;
 
-    return string_cmps(a, CSTR(b), SIZE(b));
+    return string_cmps(a, DATA(b), SIZE(b));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1598,7 +1598,7 @@ public int string_upper(m_string *string)
 
     unsigned int i = 0;
 
-    if (! string || ! CSTR(string)) {
+    if (! string || ! DATA(string)) {
         debug("string_upper(): bad parameters.\n");
         return -1;
     }
@@ -1625,7 +1625,7 @@ public int string_lower(m_string *string)
 
     unsigned int i = 0;
 
-    if (! string || ! CSTR(string)) {
+    if (! string || ! DATA(string)) {
         debug("string_lower(): bad parameters.\n");
         return -1;
     }
@@ -1750,9 +1750,9 @@ public off_t string_sfinds(const char *str, size_t slen, size_t o,
 public off_t string_finds(const m_string *str, size_t o, const char *sub,
                           size_t len)
 {
-    if (! str || ! CSTR(str) || ! sub || ! len) return -1;
+    if (! str || ! DATA(str) || ! sub || ! len) return -1;
 
-    return string_sfinds(CSTR(str), SIZE(str), o, sub, len);
+    return string_sfinds(DATA(str), SIZE(str), o, sub, len);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1761,16 +1761,16 @@ public off_t string_find(const m_string *string, size_t o, const m_string *sub)
 {
     /** @brief find a susbstring within a string */
 
-    if (! string || ! sub || ! CSTR(string) || ! CSTR(sub) ) return -1;
+    if (! string || ! sub || ! DATA(string) || ! DATA(sub) ) return -1;
 
-    return string_sfinds(CSTR(string), SIZE(string), o, CSTR(sub), SIZE(sub));
+    return string_sfinds(DATA(string), SIZE(string), o, DATA(sub), SIZE(sub));
 }
 
 /* -------------------------------------------------------------------------- */
 
 public off_t string_pos(const m_string *string, const char *sub)
 {
-    if (! string || ! sub || ! CSTR(string)) return -1;
+    if (! string || ! sub || ! DATA(string)) return -1;
 
     return string_finds(string, 0, sub, strlen(sub));
 }
@@ -1786,7 +1786,7 @@ public int string_splits(m_string *s, const char *pattern, size_t len)
     m_string *t = NULL;
     m_search_string compiled_pattern;
 
-    if (! s || ! CSTR(s) || ! pattern || ! len) {
+    if (! s || ! DATA(s) || ! pattern || ! len) {
         debug("string_splits(): bad parameters.\n");
         return -1;
     }
@@ -1812,7 +1812,7 @@ public int string_splits(m_string *s, const char *pattern, size_t len)
 
     /* fill the offsets array with the locations of the pattern */
     while (off != -1) {
-        off = string_compile_find(CSTR(s), SIZE(s), prev,
+        off = string_compile_find(DATA(s), SIZE(s), prev,
                                   pattern, & compiled_pattern);
 
         offset[j ++] = prev = off; prev += len;
@@ -1857,15 +1857,16 @@ _err_realloc:
 
 public int string_split(m_string *string, const m_string *pattern)
 {
-    if (! string || ! pattern || ! CSTR(pattern)) return -1;
+    if (! string || ! pattern || ! DATA(pattern)) return -1;
 
-    return string_splits(string, CSTR(pattern), SIZE(pattern));
+    return string_splits(string, DATA(pattern), SIZE(pattern));
 }
 
 /* -------------------------------------------------------------------------- */
 
 static void __bcpy(const char *src, char *dst, size_t len)
 {
+    typedef uint32_t unaligned_uint32_t __attribute__((aligned(1)));
     size_t c = 0;
 
     src += len;
@@ -1875,7 +1876,7 @@ static void __bcpy(const char *src, char *dst, size_t len)
 
     if (c) do {
         src -= 4; dst -= 4;
-        *(uint32_t *) dst = *(uint32_t *) src;
+        *(unaligned_uint32_t *) dst = *(unaligned_uint32_t *) src;
     } while (-- c);
 
     c = len & 0x3;
@@ -1892,7 +1893,7 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
     int i = 0, p = 0, diff = 0, new_size = 0;
     unsigned int last = 0, known_good = 0;
 
-    if (! string || ! CSTR(string)) {
+    if (! string || ! DATA(string)) {
         debug("string_merges(): bad parameters.\n");
         return -1;
     }
@@ -1911,12 +1912,12 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
 
     /* get the size difference with the previous delimiter length */
     for (i = 0; i < PARTS(string) - 1; i ++) {
-        diff = len - (TSTR(string, i + 1) - TEND(string, i));
+        diff = len - (TOKEN_DATA(string, i + 1) - TOKEN_END(string, i));
         if (! (p += diff) && ! diff) {
             known_good = i + 1;
             if (likely(len == 1))
-                *((char *) TEND(string, i)) = *pattern;
-            else memcpy((char *) TEND(string, i), pattern, len);
+                *((char *) TOKEN_END(string, i)) = *pattern;
+            else memcpy((char *) TOKEN_END(string, i), pattern, len);
         }
     }
 
@@ -1929,32 +1930,33 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
 
         /* move every token starting from the end */
         for (last = PARTS(string) - 1; last -- > known_good; p -= diff) {
-            diff = len - (TSTR(string, last + 1) - TEND(string, last));
+            diff = len - (TOKEN_DATA(string, last + 1) - TOKEN_END(string, last));
 
-            __bcpy(TSTR(string, last + 1), (char *) TSTR(string, last + 1) + p,
-                   TLEN(string, last + 1));
+            __bcpy(TOKEN_DATA(string, last + 1),
+                   (char *) TOKEN_DATA(string, last + 1) + p,
+                   TOKEN_SIZE(string, last + 1));
 
             __move_subtokens(TOKEN(string, last + 1), p, NULL);
 
             if (likely(len == 1))
-                *((char *) TSTR(string, last + 1) - len) = *pattern;
-            else memcpy((char *) TSTR(string, last + 1) - len, pattern, len);
+                *((char *) TOKEN_DATA(string, last + 1) - len) = *pattern;
+            else memcpy((char *) TOKEN_DATA(string, last + 1) - len, pattern, len);
         }
 
         _string_update_size(string, new_size - SIZE(string));
     } else {
         /* move every token from the start */
         for (i = known_good; i < PARTS(string) - 1; i ++) {
-            diff = len - (TSTR(string, i + 1) - TEND(string, i));
+            diff = len - (TOKEN_DATA(string, i + 1) - TOKEN_END(string, i));
 
-            memcpy((char *) TSTR(string, i + 1) + diff,
-                   TSTR(string, i + 1), TLEN(string, i + 1));
+            memmove((char *) TOKEN_DATA(string, i + 1) + diff,
+                   TOKEN_DATA(string, i + 1), TOKEN_SIZE(string, i + 1));
 
             __move_subtokens(TOKEN(string, i + 1), diff, NULL);
 
             if (likely(len == 1))
-                *((char *) TSTR(string, i + 1) - len) = *pattern;
-            else memcpy((char *) TSTR(string, i + 1) - len, pattern, len);
+                *((char *) TOKEN_DATA(string, i + 1) - len) = *pattern;
+            else memcpy((char *) TOKEN_DATA(string, i + 1) - len, pattern, len);
         }
 
         string_dim(string, new_size);
@@ -1967,9 +1969,9 @@ public int string_merges(m_string *string, const char *pattern, size_t len)
 
 public int string_merge(m_string *string, const m_string *pattern)
 {
-    if (! string || ! pattern || ! CSTR(pattern)) return -1;
+    if (! string || ! pattern || ! DATA(pattern)) return -1;
 
-    return string_merges(string, CSTR(pattern), SIZE(pattern));
+    return string_merges(string, DATA(pattern), SIZE(pattern));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1984,7 +1986,7 @@ public m_string *string_reps(m_string *string, const char *search, size_t slen,
     unsigned int i = 0;
 
     /* a NULL replacement string is allowed (deletion) */
-    if (! string || ! CSTR(string) || ! search || ! slen) {
+    if (! string || ! DATA(string) || ! search || ! slen) {
         debug("string_reps(): bad parameters.\n");
         return NULL;
     }
@@ -2025,7 +2027,7 @@ public m_string *string_reps(m_string *string, const char *search, size_t slen,
     /* perform the replacement */
     for (i = 0; i < count; i ++) {
         /* copy the data between the strings that are going to be replaced */
-        if (! string_movs(string, dst, CSTR(string) + src, offset[i] - src))
+        if (! string_movs(string, dst, DATA(string) + src, offset[i] - src))
             goto _err_move;
         dst += offset[i] - src; src = offset[i] + slen;
 
@@ -2062,9 +2064,9 @@ public m_string *string_rep(m_string *string, const m_string *search,
 {
     /** @brief replace all occurences of a substring in a string */
 
-    if (! string || ! search || ! CSTR(search)) return NULL;
+    if (! string || ! search || ! DATA(search)) return NULL;
 
-    return string_reps(string, CSTR(search), SIZE(search), rep, rlen);
+    return string_reps(string, DATA(search), SIZE(search), rep, rlen);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2087,9 +2089,9 @@ public m_string *string_rem(m_string *string, const m_string *rem)
 {
     /** @brief remove all occurences of a substring in a string */
 
-    if (! string || ! CSTR(string) || ! rem || ! CSTR(rem)) return NULL;
+    if (! string || ! DATA(string) || ! rem || ! DATA(rem)) return NULL;
 
-    return string_reps(string, CSTR(rem), SIZE(rem), NULL, 0);
+    return string_reps(string, DATA(rem), SIZE(rem), NULL, 0);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2124,7 +2126,7 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
     }
 
     #ifdef DEBUG
-    if (! CSTR(s) || (size_t) end > SIZE(s) || end <= start) {
+    if (! DATA(s) || (size_t) end > SIZE(s) || end <= start) {
         debug("string_add_token(): bad parameters.\n");
         return NULL;
     }
@@ -2170,12 +2172,12 @@ public m_string *string_add_token(m_string *s, off_t start, off_t end)
 
 public int string_push_token(m_string *s, m_string *token)
 {
-    if (! s || ! token || ! CSTR(s) || ! CSTR(token)) {
+    if (! s || ! token || ! DATA(s) || ! DATA(token)) {
         debug("string_push_token(): bad parameters.\n");
         return -1;
     }
 
-    return string_push_tokens(s, CSTR(token), SIZE(token));
+    return string_push_tokens(s, DATA(token), SIZE(token));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2190,7 +2192,7 @@ public int string_push_tokens(m_string *s, const char *strtoken, size_t len)
     }
 
     if (PARTS(s))
-        slen = CSTR(LAST_TOKEN(s)) - CSTR(s) + SIZE(LAST_TOKEN(s));
+        slen = DATA(LAST_TOKEN(s)) - DATA(s) + SIZE(LAST_TOKEN(s));
     else slen = 0;
 
     /* make room for the new data */
@@ -2211,13 +2213,13 @@ public int string_push_tokens(m_string *s, const char *strtoken, size_t len)
 public m_string *string_suppr_token(m_string *s, unsigned int index)
 {
     #ifdef DEBUG
-    if (! s || ! CSTR(s) || ! PARTS(s) || index >= PARTS(s)) {
+    if (! s || ! DATA(s) || ! PARTS(s) || index >= PARTS(s)) {
         debug("string_suppr_token(): bad parameters.\n");
         return NULL;
     }
     #endif
 
-    if (string_suppr(s, TSTR(s, index) - CSTR(s), TLEN(s, index)) == -1)
+    if (string_suppr(s, TOKEN_DATA(s, index) - DATA(s), TOKEN_SIZE(s, index)) == -1)
         return NULL;
 
     if (index == -- s->parts && ! s->parent) s->_data[SIZE(s)] = '\0';
@@ -2231,15 +2233,15 @@ public m_string *string_pop_token(m_string *s)
 {
     m_string *ret = NULL;
 
-    if (! s || ! CSTR(s) || ! PARTS(s)) {
+    if (! s || ! DATA(s) || ! PARTS(s)) {
         debug("string_pop_token(): bad parameters.\n");
         return NULL;
     }
 
-    if (! (ret = string_alloc(TSTR(s, 0), TLEN(s, 0))) )
+    if (! (ret = string_alloc(TOKEN_DATA(s, 0), TOKEN_SIZE(s, 0))) )
         return NULL;
 
-    string_suppr(s, TSTR(s, 0) - CSTR(s), SIZE(ret));
+    string_suppr(s, TOKEN_DATA(s, 0) - DATA(s), SIZE(ret));
     memmove(s->token, s->token + 1, -- s->parts * sizeof(*s->token));
 
     if (! PARTS(s)) s->_len = 0;
@@ -2281,7 +2283,7 @@ public int string_parse(m_string *string, const char *pattern, size_t len)
     int r = 0;
     const char *err = NULL;
 
-    if (! string || ! CSTR(string) || ! pattern || ! len) {
+    if (! string || ! DATA(string) || ! pattern || ! len) {
         debug("string_parse(): bad parameters.\n");
         return -1;
     }
@@ -2305,7 +2307,7 @@ public int string_parse(m_string *string, const char *pattern, size_t len)
 
     for (i = 0, last = 0; ; last = off[1], i ++) {
         /* match the pattern */
-        r = pcre_exec(regex, NULL, CSTR(string), SIZE(string), last, 0x0, off, size);
+        r = pcre_exec(regex, NULL, DATA(string), SIZE(string), last, 0x0, off, size);
 
         if (r <= 0) {
             if (i) break;
@@ -2436,7 +2438,7 @@ public m_string *string_b58(const m_string *s)
 {
     /** @brief convert a string to base58 encoding */
 
-    return string_b58s(CSTR(s), SIZE(s));
+    return string_b58s(DATA(s), SIZE(s));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2532,7 +2534,7 @@ public m_string *string_deb58(const m_string *s)
 {
     /** @brief convert a base58 encoded string to plain text */
 
-    return string_deb58s(CSTR(s), SIZE(s));
+    return string_deb58s(DATA(s), SIZE(s));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2638,7 +2640,7 @@ public m_string *string_b64(const m_string *s, size_t linesize)
 {
     /** @brief convert a string to base64 encoding */
 
-    return string_b64s(CSTR(s), SIZE(s), linesize);
+    return string_b64s(DATA(s), SIZE(s), linesize);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2710,7 +2712,7 @@ public m_string *string_deb64(const m_string *s)
 {
     /** @brief convert a base64 encoded string to plain text */
 
-    return string_deb64s(CSTR(s), SIZE(s));
+    return string_deb64s(DATA(s), SIZE(s));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2732,7 +2734,7 @@ public m_string *string_compress(m_string *s)
 
     dest = (Bytef *) z->_data; dlen = z->_len;
 
-    if (compress2(dest, & dlen, (Bytef *) CSTR(s), (uLong) SIZE(s), 9) != 0) {
+    if (compress2(dest, & dlen, (Bytef *) DATA(s), (uLong) SIZE(s), 9) != 0) {
         debug("string_compress(): gzip compression failed.\n");
         return string_free(z);
     }
@@ -2759,7 +2761,7 @@ public m_string *string_uncompress(m_string *s, size_t original_size)
 
     dest = (Bytef *) z->_data; dlen = z->_len;
 
-    switch (uncompress(dest, & dlen, (Bytef *) CSTR(s), (uLong) SIZE(s))) {
+    switch (uncompress(dest, & dlen, (Bytef *) DATA(s), (uLong) SIZE(s))) {
     case Z_OK: z->_len = dlen; return z;
     case Z_MEM_ERROR: debug("string_uncompress(): out of memory.\n"); break;
     case Z_DATA_ERROR: debug("string_uncompress(): data corruption.\n"); break;
@@ -3100,7 +3102,7 @@ public m_string *string_sha1s(const char *string, size_t len)
 
 public m_string *string_sha1(m_string *s)
 {
-    return string_sha1s(CSTR(s), SIZE(s));
+    return string_sha1s(DATA(s), SIZE(s));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3165,9 +3167,9 @@ public int string_urlencode(m_string *url, int flags)
     char *encoded = NULL;
     size_t len = 0;
 
-    if (! url || ! CSTR(url)) return -1;
+    if (! url || ! DATA(url)) return -1;
 
-    if (! (encoded = string_rawurlencode(CSTR(url), SIZE(url), flags)) )
+    if (! (encoded = string_rawurlencode(DATA(url), SIZE(url), flags)) )
         return -1;
 
     len = strlen(encoded);
@@ -3179,7 +3181,7 @@ public int string_urlencode(m_string *url, int flags)
         return -1;
     }
 
-    memcpy((void *) CSTR(url), encoded, len);
+    memcpy((void *) DATA(url), encoded, len);
 
     free(encoded);
 
@@ -3225,7 +3227,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
                     json = LAST_TOKEN(json);
 
-                    pos = CSTR(LAST_TOKEN(json)) - CSTR(json) +
+                    pos = DATA(LAST_TOKEN(json)) - DATA(json) +
                           SIZE(LAST_TOKEN(json)) + 1;
 
                     for (i = 0; i < 65535; i ++)
@@ -3240,7 +3242,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             /* input was incomplete */
             if (PARTS(LAST_TOKEN(json))) json = LAST_TOKEN(json);
 
-            pos = CSTR(LAST_TOKEN(json)) - CSTR(json);
+            pos = DATA(LAST_TOKEN(json)) - DATA(json);
             /* XXX make sure the opening quotation mark is accounted for */
             if (IS_STRING(LAST_TOKEN(json))) pos --;
 
@@ -3252,7 +3254,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
     } else string_free_token(json);
 
     /* skip UTF-8 BOM if present */
-    if (! memcmp(CSTR(json) + pos, "\xEF\xBB\xBF", MIN(SIZE(json) - pos, 3)))
+    if (! memcmp(DATA(json) + pos, "\xEF\xBB\xBF", MIN(SIZE(json) - pos, 3)))
         pos += 3;
 
     for ( ; pos < SIZE(json); pos ++) {
@@ -3261,7 +3263,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
         if (likely(class < 13) && unlikely(IS_STRING(json))) continue;
 
-        p = (char *) CSTR(json) + pos;
+        p = (char *) DATA(json) + pos;
 
         switch (class) {
 
@@ -3381,7 +3383,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             /* parser callback */
             if (ctx) {
-                ctx->key.current = CSTR(LAST_TOKEN(json));
+                ctx->key.current = DATA(LAST_TOKEN(json));
                 ctx->key.len = SIZE(LAST_TOKEN(json));
             }
         } break;
@@ -3426,7 +3428,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             state &= ~_VAL;
 
             {   /* optimize for large numbers */
-                uint32_t prefetch = *(uint32_t *) (p + 1);
+                uint32_t prefetch;
+                memcpy(& prefetch, p + 1, sizeof(prefetch));
                 if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x39))
                     pos += 4;
             }
@@ -3516,7 +3519,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             state &= ~_SIG; state |= _RAD;
 
             {   /* optimize for large numbers */
-                uint32_t prefetch = *(uint32_t *) (p + 1);
+                uint32_t prefetch;
+                memcpy(& prefetch, p + 1, sizeof(prefetch));
                 if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x39)) {
                     pos += 4; break;
                 }
@@ -3603,7 +3607,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
 
-            pos = p - CSTR(json);
+            pos = p - DATA(json);
 
             goto _token;
         } else if (state & _BUG) break; goto _error; /* QUIRK unquoted keys */
@@ -3654,7 +3658,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             } else return 0; /* EOF */
 
             {   /* optimize for long strings */
-                uint32_t prefetch = *(uint32_t *) json->_data;
+                uint32_t prefetch;
+                memcpy(& prefetch, json->_data, sizeof(prefetch));
                 if (__zero(prefetch ^ (~0U / 255 * json->_data[(int) pos])))
                     break; /* " or ' */
                 if (unlikely(__zero(prefetch ^ 0x5C5C5C5CU)))
@@ -3694,7 +3699,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             case  't': break;
 
             case  'u': { /* unicode escape sequence */
-                uint32_t prefetch = *(uint32_t *) (json->_data + pos + 1);
+                uint32_t prefetch;
+                memcpy(& prefetch, json->_data + pos + 1, sizeof(prefetch));
                 if (! __less(prefetch, 0x30) && ! __more(prefetch, 0x66))
                 if (likely(! __between(prefetch, 0x46, 0x61)))
                 if (likely(! __zero(prefetch ^ 0x40404040U))) {
@@ -3724,25 +3730,27 @@ _quirk:
 
             if (*++ p == '/') {
                 do {
-                    uint32_t prefetch = *(uint32_t *) p;
+                    uint32_t prefetch;
+                    memcpy(& prefetch, p, sizeof(prefetch));
                     if (__zero(prefetch ^ 0x0A0A0A0AU)) {
                         while (*p ++ != 0x0A);
                         p --; break;
                     }
                     p += 4;
-                } while (p < CSTR(json) + SIZE(json));
+                } while (p < DATA(json) + SIZE(json));
             } else if (*p ++ == '*') {
                 do {
-                    uint32_t prefetch = *(uint32_t *) p;
+                    uint32_t prefetch;
+                    memcpy(& prefetch, p, sizeof(prefetch));
                     if (__zero(prefetch ^ 0x2A2A2A2AU)) {
                         while (*p ++ != 0x2A);
                         if (*p == '/') break;
                     } else p += 4;
-                } while (p < CSTR(json) + SIZE(json));
+                } while (p < DATA(json) + SIZE(json));
             }
 
-            if ((p - CSTR(json)) - pos > 2) {
-                pos = p - CSTR(json); break;
+            if ((p - DATA(json)) - pos > 2) {
+                pos = p - DATA(json); break;
             } else goto _error;
         }
 
@@ -3761,7 +3769,8 @@ _quirk:
             if (leading_digit != '0' || ++ pos > 2) goto _error;
 
             do {
-                uint32_t prefetch = *(uint32_t *) (json->_data + pos);
+                uint32_t prefetch;
+                memcpy(& prefetch, json->_data + pos, sizeof(prefetch));
                 if (__less(prefetch, 0x30) || __more(prefetch, 0x66))
                     break;
                 if (__between(prefetch, 0x46, 0x61))
@@ -3815,7 +3824,7 @@ _token: if (likely(json->_len != pos))
                 ctx->key.len = 0;
                 prealloc += (prealloc < json->parts);
             } else if (ctx->data && (state & _KEY) == 0) {
-                callback = ctx->data(type, CSTR(json), SIZE(json), ctx);
+                callback = ctx->data(type, DATA(json), SIZE(json), ctx);
                 if (callback == 1) return 0;
             }
         }

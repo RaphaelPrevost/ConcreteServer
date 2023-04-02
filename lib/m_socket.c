@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -1105,7 +1105,7 @@ public ssize_t socket_sendfile(m_socket *out, m_file *in, off_t *off, size_t len
                 return written;
             }
         } else if (in->data && (*off + len) <= SIZE(in->data)) {
-            buffer = (char *) CSTR(in->data) + *off;
+            buffer = (char *) DATA(in->data) + *off;
             written = socket_write(out, buffer, len);
             if (written > 0) { *off += written; out->_tx += written; }
             return written;

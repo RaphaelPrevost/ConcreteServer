@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -194,38 +194,28 @@ typedef struct m_json_parser {
 #define LAST_TOKEN(s)    (& (s)->token[(s)->parts - 1])
 
 /** Macro to READ-ONLY access the inner data buffer of a m_string */
-#define CSTR(s) ((const char *) (s)->_data)
+#define DATA(s) ((const char *) (s)->_data)
 /** Macro to get the size of a string. Consider using @ref string_len instead */
-#define CLEN(s) ((s)->_len)
-/** Prettier alias to CLEN() */
-#define SIZE    CLEN
+#define SIZE(s) ((s)->_len)
 
 /** Macro to READ-ONLY access the last byte of a string */
 #define STRING_END(s) ((const char *) (s)->_data + (s)->_len)
 /** Macro to get the available length in a string */
 #define STRING_AVL(s) ((s)->_alloc - (s)->_len)
 
+/** Macro to read the last character of a NUL-terminated string */
+#define LAST_CHAR(s) ((s)->_data[(s)->_len - 1])
+
 /** Macro to READ-ONLY access the inner data buffer of a token. No bound check */
-#define TOKEN_CSTR(s, i) ((const char *) (s)->token[(i)]._data)
+#define TOKEN_DATA(s, i) ((const char *) (s)->token[(i)]._data)
 /** Macro to get the size of a token. Consider using @ref string_len instead */
-#define TOKEN_CLEN(s, i) ((s)->token[(i)]._len)
-/** Prettier alias to TOKEN_CLEN() */
-#define TOKEN_SIZE       TOKEN_CLEN
+#define TOKEN_SIZE(s, i) ((s)->token[(i)]._len)
 /** Macro to READ-ONLY access the last byte of a token */
 #define TOKEN_END(s, i)  ((const char *) (s)->token[(i)]._data + \
                                          (s)->token[(i)]._len)
 
-/** shorter aliases */
-#define TSTR             TOKEN_CSTR
-#define TLEN             TOKEN_CLEN
-#define TSIZE            TOKEN_CLEN
-#define TEND             TOKEN_END
-
 /** Similar macros to get the size of a subtoken. */
-#define SUBTOKEN_CLEN(s, i, j) ((s)->token[(i)].token[(j)]._len)
-#define SUBTOKEN_SIZE    SUBTOKEN_CLEN
-#define SUBLEN           SUBTOKEN_CLEN
-#define SUBSIZE          SUBTOKEN_CLEN
+#define SUBTOKEN_SIZE(s, i, j) ((s)->token[(i)].token[(j)]._len)
 
 #ifdef _ENABLE_HTTP
 /** urlencode options */

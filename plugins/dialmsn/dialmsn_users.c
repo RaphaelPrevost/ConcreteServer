@@ -728,7 +728,7 @@ private void dialmsn_userlist_refresh(void)
 
     list = string_fmt(list, "%bB4i%bB4i%bB4i%.*bs%bB4i",
                       DIALMSN_LIST | DIALMSN_LIST_REPLY,
-                      SIZE(list), SIZE(data), SIZE(data), CSTR(data),
+                      SIZE(list), SIZE(data), SIZE(data), DATA(data),
                       DIALMSN_TERM);
 
     /* update the cache */
@@ -898,7 +898,7 @@ private void dialmsn_userlist_getmisc(uint16_t session, uint32_t request)
         }
 
         server_send_buffer(plugin_get_token(), session, 0x0,
-                           CSTR(list), SIZE(list));
+                           DATA(list), SIZE(list));
     } else {
         debug("DialMessenger::LIST: all users from the list are offline.\n");
         error |= DIALMSN_LIST_ERR_EEMPTY;

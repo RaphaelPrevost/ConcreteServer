@@ -65,13 +65,13 @@ static uint32_t __increment_index(m_string *path)
     unsigned int buflen;
 
     /* get the index */
-    index = atou32(CSTR(LAST_TOKEN(path)), SIZE(LAST_TOKEN(path)));
+    index = atou32(DATA(LAST_TOKEN(path)), SIZE(LAST_TOKEN(path)));
 
     /* increment and replace */
     ret = u32toa(++ index, buffer, sizeof(buffer));
     buflen = 10 - (ret - buffer);
     if (likely(buflen == SIZE(LAST_TOKEN(path)))) {
-        memcpy((char *) CSTR(LAST_TOKEN(path)), ret, buflen);
+        memcpy((char *) DATA(LAST_TOKEN(path)), ret, buflen);
     } else {
         string_suppr_token(path, PARTS(path) - 1);
         string_enqueue_tokens(path, ret, buflen);
@@ -89,12 +89,14 @@ static void print_tokens(const m_string *s, unsigned int indent)
 
     if (! s) return;
 
-    printf("%.*s%s%.*s %s",
-           indent, "", (indent) ? " " : "+ ", (int) SIZE(s), CSTR(s),
-           (IS_OBJECT(s) ? "(object)" :
-            IS_ARRAY(s) ? "(array)" :
-            IS_STRING(s) ? "(string)" :
-            IS_PRIMITIVE(s) ? "(primitive)" : ""));
+    printf(
+        "%.*s%s%.*s %s",
+        indent, "", (indent) ? " " : "+ ", (int) SIZE(s), DATA(s),
+        (IS_OBJECT(s) ? "(object)" :
+         IS_ARRAY(s) ? "(array)" :
+         IS_STRING(s) ? "(string)" :
+         IS_PRIMITIVE(s) ? "(primitive)" : "")
+    );
     if (HAS_ERROR(s)) printf(" (!) ");
     if (! IS_TYPE(s, JSON_TYPE))
         printf("(size=%zu)", SIZE(s));
@@ -148,9 +150,18 @@ int CALLBACK json_exit(int type, struct m_json_parser *ctx)
         if (! context->count) {
             /* insert nonetheless */
             string_merges(context->path, "/", 1);
-            trie_insert(context->tree, CSTR(context->path),
-                        SIZE(context->path), NULL);
+            trie_insert(
+                context->tree,
+                DATA(context->path), SIZE(context->path),
+                NULL
+            );
         }
+    } else if (type == JSON_OBJECT && LAST_CHAR(context->path) != '/') {
+        trie_insert(
+            context->tree,
+            DATA(context->path), SIZE(context->path),
+            NULL
+        );
     }
 
     /* remove the array name */
@@ -174,14 +185,20 @@ int CALLBACK json_data(UNUSED int type, const char *data,
 
     if (ctx->parent == JSON_ARRAY) {
         string_merges(context->path, "/", 1);
-        trie_insert(context->tree, CSTR(context->path),
-                    SIZE(context->path), NULL);
+        trie_insert(
+            context->tree,
+            DATA(context->path), SIZE(context->path),
+            NULL
+        );
         context->count = __increment_index(context->path);
     } else if (ctx->key.current) {
         string_enqueue_tokens(context->path, ctx->key.current, ctx->key.len);
         string_merges(context->path, "/", 1);
-        trie_insert(context->tree, CSTR(context->path),
-                    SIZE(context->path), NULL);
+        trie_insert(
+            context->tree,
+            DATA(context->path), SIZE(context->path),
+            NULL
+        );
         if (likely(PARTS(context->path)))
             string_suppr_token(context->path, PARTS(context->path) - 1);
         if (unlikely(! PARTS(context->path))) context->path->_len = 0;

@@ -266,16 +266,16 @@ public void plugin_main(uint16_t id, UNUSED uint16_t ingress, m_string *buffer)
                 }
 
                 /* check if the protocol versions match */
-                if (strncmp(DIALMSN_VERSION, TSTR(buffer, 0),
-                            TLEN(buffer, 0)) != 0) {
+                if (strncmp(DIALMSN_VERSION, TOKEN_DATA(buffer, 0),
+                            TOKEN_SIZE(buffer, 0)) != 0) {
                     debug("DialMessenger:AUTH: bad protocol version.\n");
                     error |= DIALMSN_AUTH_ERR_EPROTO;
                     goto _err_abort;
                 }
 
                 /* login and password are limited to 32 chars */
-                if ( (TOKEN_CLEN(buffer, 1) > DIALMSN_NICK_MAX) ||
-                     (TOKEN_CLEN(buffer, 2) > DIALMSN_PASS_MAX) ) {
+                if ( (TOKEN_SIZE(buffer, 1) > DIALMSN_NICK_MAX) ||
+                     (TOKEN_SIZE(buffer, 2) > DIALMSN_PASS_MAX) ) {
                     debug("DialMessenger::AUTH: login or password too long.\n");
                     error |= DIALMSN_AUTH_ERR_EINVAL;
                     goto _err_abort;
@@ -512,14 +512,14 @@ public void plugin_main(uint16_t id, UNUSED uint16_t ingress, m_string *buffer)
                 ! string_splits(msg, DIALMSN_SEPARATOR, DIALMSN_SEPLENGTH)) {
                 /* log the conversation if logging is enabled */
                 if ( (request & DIALMSN_MESG_TXT) &&
-                     (PARTS(msg) > 1) && (TLEN(msg, 1) > 1) ) {
+                     (PARTS(msg) > 1) && (TOKEN_SIZE(msg, 1) > 1) ) {
                     /* record only non NULL messages */
                     con = dialmsn_db_borrow();
                     db_exec(con, DIALMSN_SQL_LOGCONVERS,
                             dialmsn_user_getuid(id),
                             dialmsn_user_getuid(recipient),
-                            TLEN(msg, 1),
-                            TSTR(msg, 1));
+                            TOKEN_SIZE(msg, 1),
+                            TOKEN_DATA(msg, 1));
                     con = dialmsn_db_return(con);
                 }
             }
@@ -529,7 +529,7 @@ public void plugin_main(uint16_t id, UNUSED uint16_t ingress, m_string *buffer)
                                  "%bB4i%i%.*s%.*s%bB4i",
                                  DIALMSN_MESG | DIALMSN_MESG_RTF,
                                  id, DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                                 SIZE(msg), CSTR(msg), DIALMSN_TERM);
+                                 SIZE(msg), DATA(msg), DIALMSN_TERM);
 
             msg = string_free(msg);
 
@@ -610,8 +610,8 @@ public void plugin_main(uint16_t id, UNUSED uint16_t ingress, m_string *buffer)
                 }
 
                 /* check if the nickname was already taken */
-                if (dialmsn_user_chknickname(TSTR(buffer, 0),
-                                             TLEN(buffer, 0))) {
+                if (dialmsn_user_chknickname(TOKEN_DATA(buffer, 0),
+                                             TOKEN_SIZE(buffer, 0))) {
                     debug("DialMessenger::ADDACCOUNT: nick already in use.\n");
                     goto _err_nonfatal;
                 }
@@ -621,17 +621,17 @@ public void plugin_main(uint16_t id, UNUSED uint16_t ingress, m_string *buffer)
                 /* get the client IP */
                 socket_ip(id, host, sizeof(host), NULL);
 
-                if (TLEN(buffer, 8) && *(TSTR(buffer, 8)))
-                    affiliation = TSTR(buffer, 8);
+                if (TOKEN_SIZE(buffer, 8) && *(TOKEN_DATA(buffer, 8)))
+                    affiliation = TOKEN_DATA(buffer, 8);
 
                 r = db_query(con, DIALMSN_SQL_ADDACCOUNT,
-                             TLEN(buffer, 2), TSTR(buffer, 2), /* email */
-                             TLEN(buffer, 0), TSTR(buffer, 0), /* login */
-                             TLEN(buffer, 1), TSTR(buffer, 1), /* password */
-                             atoi(TSTR(buffer, 3)),            /* sex */
-                             TLEN(buffer, 5), TSTR(buffer, 5), /* birthdate */
-                             host,                             /* ip */
-                             affiliation);                     /* affiliation */
+                             TOKEN_SIZE(buffer, 2), TOKEN_DATA(buffer, 2), /* email */
+                             TOKEN_SIZE(buffer, 0), TOKEN_DATA(buffer, 0), /* login */
+                             TOKEN_SIZE(buffer, 1), TOKEN_DATA(buffer, 1), /* password */
+                             atoi(TOKEN_DATA(buffer, 3)),                  /* sex */
+                             TOKEN_SIZE(buffer, 5), TOKEN_SIZE(buffer, 5), /* birthdate */
+                             host,                                         /* ip */
+                             affiliation);                                 /* affiliation */
 
                 con = dialmsn_db_return(con);
 

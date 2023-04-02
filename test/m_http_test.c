@@ -27,9 +27,9 @@ int test_http(void)
     h = http_set_var(h, "parm", "1", 1);
     http_set_header(h, "Content-Transfer-Encoding", "binary");
     request = http_format(h, HTTP_POST, "/form.php", "www.example.com");
-    printf("%s\n", CSTR(request));
+    printf("%s\n", DATA(request));
     for (i = 0; i < request->parts; i ++)
-        printf("%i: %.*s\n", i + 1, (int) TLEN(request, i), TSTR(request, i));
+        printf("%i: %.*s\n", i + 1, (int) TOKEN_SIZE(request, i), TOKEN_DATA(request, i));
     request = string_free(request);
     http_close(h);
 
@@ -45,9 +45,9 @@ int test_http(void)
     h = http_set_file(h, "parm", "filename", f, 0, 100);
     http_set_header(h, "Content-Transfer-Encoding", "binary");
     request = http_format(h, HTTP_POST, "/form.php", "www.example.com");
-    printf("%s\n", CSTR(request));
+    printf("%s\n", DATA(request));
     for (i = 0; i < request->parts; i ++)
-        printf("%i: %.*s\n", i + 1, (int) TLEN(request, i), TSTR(request, i));
+        printf("%i: %.*s\n", i + 1, (int) TOKEN_SIZE(request, i), TOKEN_DATA(request, i));
     request = string_free(request);
     http_close(h);
     f = fs_closefile(f);
@@ -57,7 +57,7 @@ int test_http(void)
     z = string_alloc(pipeline, strlen(pipeline));
     while ( (w = http_get_request(& http_status, & m, z)) ) {
         if (w) fprintf(stderr, "Processing 0 [%zu] %.*s\n",
-                       SIZE(w), (int) SIZE(w), CSTR(w));
+                       SIZE(w), (int) SIZE(w), DATA(w));
         string_flush(w);
     }
     z = string_free(z);
@@ -69,7 +69,7 @@ int test_http(void)
 
         while ( (w = http_get_request(& http_status, & m, z)) ) {
             if (w) fprintf(stderr, "Processing 1 [%zu] %.*s\n",
-                           SIZE(w), (int) SIZE(w), CSTR(w));
+                           SIZE(w), (int) SIZE(w), DATA(w));
             string_flush(w);
         }
         z = string_free(z);
@@ -88,9 +88,9 @@ int test_http(void)
     z = string_alloc("HTTP 200 OK\r\nContent-", strlen("HTTP 200 OK\r\nContent-"));
     w = http_get_request(& http_status, & m, z);
     if (w) fprintf(stderr, "input=[%zu] %.*s\n",
-                   SIZE(w), (int) SIZE(w), CSTR(w));
+                   SIZE(w), (int) SIZE(w), DATA(w));
     if (m) fprintf(stderr, "frag=[%zu] %.*s\n",
-                   SIZE(m), (int) SIZE(m), CSTR(m));
+                   SIZE(m), (int) SIZE(m), DATA(m));
 
     z = string_free(z);
     w = string_free(w);
@@ -101,14 +101,14 @@ int test_http(void)
     z = string_alloc("Length: 4\r\n\r\nALLO", strlen("Length: 4\r\n\r\nALLO"));
     w = http_get_request(& http_status, & m, z);
     if (w) fprintf(stderr, "input=[%zu] %.*s\n",
-                   SIZE(w), (int) SIZE(w), CSTR(w));
+                   SIZE(w), (int) SIZE(w), DATA(w));
     if (m) fprintf(stderr, "frag=[%zu] %.*s\n",
-                   SIZE(m), (int) SIZE(m), CSTR(m));
+                   SIZE(m), (int) SIZE(m), DATA(m));
     w = http_get_request(& http_status, & m, z);
     if (w) fprintf(stderr, "input=[%zu] %.*s\n",
-                   SIZE(w), (int) SIZE(w), CSTR(w));
+                   SIZE(w), (int) SIZE(w), DATA(w));
     if (m) fprintf(stderr, "frag=[%zu] %.*s\n",
-                   SIZE(m), (int) SIZE(m), CSTR(m));
+                   SIZE(m), (int) SIZE(m), DATA(m));
 
     z = string_free(z);
     w = string_free(w);
@@ -122,7 +122,7 @@ int test_http(void)
     w = http_get_request(& http_status, & m, z);
 
     if (m) fprintf(stderr, "frag(x)=[%zu] %.*s\n",
-                   SIZE(m), (int) SIZE(m), CSTR(m));
+                   SIZE(m), (int) SIZE(m), DATA(m));
 
     z = string_free(z);
 
@@ -146,7 +146,7 @@ int test_http(void)
 
         while (w) {
             fprintf(stderr, "got request=%.*s (%zu)\n",
-                    (int) SIZE(w), CSTR(w), SIZE(w));
+                    (int) SIZE(w), DATA(w), SIZE(w));
             j += SIZE(w);
             fprintf(stderr, "download: %i\n", http_get_progress(TOKEN(z, 0)));
             fprintf(stderr, "got %i bytes\n", j);
@@ -159,13 +159,13 @@ int test_http(void)
 
     if (m) {
         fprintf(stderr, "frag(x)=[%zu] %.*s\n",
-                SIZE(m), (int) SIZE(m), CSTR(m));
+                SIZE(m), (int) SIZE(m), DATA(m));
         fprintf(stderr, "download: %i\n", http_get_progress(TOKEN(m, 0)));
         fprintf(stderr, "got %i bytes\n", j);
         http_status = 0;
         w = http_get_request(& http_status, & z, m);
         if (w) fprintf(stderr, "got request=%.*s (%zu)\n",
-                       (int) SIZE(w), CSTR(w), SIZE(w));
+                       (int) SIZE(w), DATA(w), SIZE(w));
     }
     m = string_free(m);
 

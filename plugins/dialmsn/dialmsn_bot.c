@@ -227,11 +227,11 @@ static void *_dialmsn_bot(UNUSED void *dummy)
             pause = string_finds(line, 0, DIALMSN_BOT_PAUSE, DIALMSN_BOT_CMDSZ);
 
             if (pause != (size_t) -1 && pause + DIALMSN_BOT_CMDSZ < SIZE(line)) {
-                if ( (*(CSTR(line) + pause + DIALMSN_BOT_CMDSZ) == '(') &&
+                if ( (*(DATA(line) + pause + DIALMSN_BOT_CMDSZ) == '(') &&
                      (pause + DIALMSN_BOT_CMDSZ < SIZE(line)) ) {
 
                     /* get the number of seconds to sleep */
-                    delay = atoi(CSTR(line) + pause + DIALMSN_BOT_CMDSZ + 1);
+                    delay = atoi(DATA(line) + pause + DIALMSN_BOT_CMDSZ + 1);
 
                     /* remove the command */
                     end = string_finds(line,
@@ -250,7 +250,7 @@ static void *_dialmsn_bot(UNUSED void *dummy)
                 continue;
             }
 
-            debug("DialMessenger::BOT: \"%.*s\".\n", SIZE(line), CSTR(line));
+            debug("DialMessenger::BOT: \"%.*s\".\n", SIZE(line), DATA(line));
 
             server_send_response(plugin_get_token(), spammee, 0x0,
                                  "%bB4i%i%.*s%.*s\r\n%bB4i",
@@ -258,7 +258,7 @@ static void *_dialmsn_bot(UNUSED void *dummy)
                                  simulated_user,
                                  DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
                                  SIZE(line),
-                                 CSTR(line), DIALMSN_TERM);
+                                 DATA(line), DIALMSN_TERM);
 
             /* wait the required delay before the next line */
             debug("DialMessenger::BOT: sleeping for %i seconds.\n", delay);

@@ -99,7 +99,7 @@ private uint32_t plugin_get_token(void)
 public void plugin_main(uint16_t id, UNUSED uint16_t ingress_id, m_string *buf)
 {
     /* this task will send back the incoming data and close the connection */
-    server_send_buffer(plugin_token, id, SERVER_TRANS_END, CSTR(buf), SIZE(buf));
+    server_send_buffer(plugin_token, id, SERVER_TRANS_END, DATA(buf), SIZE(buf));
 }
 
 /* -------------------------------------------------------------------------- */

@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -302,7 +302,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
             multipart = string_fmt(NULL,
                                    "Content-Type: multipart/form-data; "
                                    "boundary=%.*s\r\n",
-                                   (int) SIZE(token), CSTR(token));
+                                   (int) SIZE(token), DATA(token));
         }
         #endif
         h = h->prev;
@@ -324,7 +324,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
             /* regular value */
             postdata = string_catfmt(postdata, BOUNDARY,
                                      (int) SIZE(token),
-                                     CSTR(token), h->name);
+                                     DATA(token), h->name);
             /* append local headers */
             if (h->prev && h->_headers)
                 string_cat(postdata, h->_headers);
@@ -345,7 +345,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
             /* file */
             postdata = string_catfmt(postdata, BOUNDARY,
                                      (int) SIZE(token),
-                                     CSTR(token), h->name, h->value);
+                                     DATA(token), h->name, h->value);
             /* append local headers */
             if (h->prev && h->_headers)
                 string_cat(postdata, h->_headers);
@@ -374,7 +374,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
         if (h->next) h = h->next; else {
             /* finalize the multipart postdata */
             string_catfmt(postdata, "--%.*s--\r\n\r\n",
-                          (int) SIZE(token), CSTR(token));
+                          (int) SIZE(token), DATA(token));
             break;
         }
 
@@ -400,13 +400,13 @@ public m_string *http_compile(m_http *h, int method, const char *action,
                          "%.*s",
                          action, host,
                          (postdata) ? SIZE(postdata) + addlen : 0,
-                         (postdata && multipart) ? CSTR(multipart) :
+                         (postdata && multipart) ? DATA(multipart) :
                          (postdata) ?
                          "Content-Type: application/x-www-form-urlencoded\r\n" :
                          "",
-                         CSTR(head->_headers),
+                         DATA(head->_headers),
                          (postdata) ? SIZE(postdata) : 0,
-                         (postdata) ? CSTR(postdata) : "");
+                         (postdata) ? DATA(postdata) : "");
 
         token = string_free(token);
         multipart = string_free(multipart);
@@ -422,9 +422,9 @@ public m_string *http_compile(m_http *h, int method, const char *action,
                          action,
                          (postdata) ? "?" : "",
                          (postdata) ? SIZE(postdata) : 0,
-                         (postdata) ? CSTR(postdata) : "",
+                         (postdata) ? DATA(postdata) : "",
                          host,
-                         CSTR(head->_headers));
+                         DATA(head->_headers));
     }
 
     postdata = string_free(postdata);
@@ -463,10 +463,10 @@ static m_string *_http_split_pipeline(m_string *buf, m_string *input, int *http)
     /* buffering or streaming mode? */
     if (PARTS(input)) {
         if (IS_FRAG(TOKEN(input, 0))) {
-            stream = off = TLEN(input, 0);
+            stream = off = TOKEN_SIZE(input, 0);
         } else if (PARTS(input) == 2) {
             /* encapsulate the parsed request */
-            stream = off = TEND(input, 1) - CSTR(input);
+            stream = off = TOKEN_END(input, 1) - DATA(input);
             tokens = input->token; input->token = NULL;
             v = input->parts; input->parts = input->_parts_alloc = 0;
             if (! string_select(input, 0, stream)) {
@@ -484,41 +484,41 @@ static m_string *_http_split_pipeline(m_string *buf, m_string *input, int *http)
 
     /* find all the occurences of "HTTP" in the incoming buffer */
     do {
-        pos = string_compile_find(CSTR(input), SIZE(input), off, "HTTP", & c);
+        pos = string_compile_find(DATA(input), SIZE(input), off, "HTTP", & c);
         if ( (off = pos) == -1) {
             start = end; off = end = SIZE(input); break;
         }
 
         if (error == 3) error = 2;
 
-        if (*(CSTR(input) + (v = pos + 4)) == '/') {
+        if (*(DATA(input) + (v = pos + 4)) == '/') {
             /* found a versioned protocol */
             while (++ v < SIZE(input) && v < (unsigned) pos + 8) {
                 /* only allow MAJOR.MINOR versioning */
-                if (*(CSTR(input) + v) == '\r' ||
-                    *(CSTR(input) + v) == '\n' ||
-                    *(CSTR(input) + v) == ' ') break;
+                if (*(DATA(input) + v) == '\r' ||
+                    *(DATA(input) + v) == '\n' ||
+                    *(DATA(input) + v) == ' ') break;
             }
         }
 
-        if (*(CSTR(input) + v) == '\r' || *(CSTR(input) + v) == '\n') {
+        if (*(DATA(input) + v) == '\r' || *(DATA(input) + v) == '\n') {
             /* HTTP query, find the real starting offset */
-            if (! pos || *(CSTR(input) + -- pos) != ' ') {
+            if (! pos || *(DATA(input) + -- pos) != ' ') {
                 debug("_http_split_pipeline(): HTTP query without URI.\n");
                 goto _next;
             }
             /* skip the URI */
-            while (*(CSTR(input) + -- pos) != ' ');
+            while (*(DATA(input) + -- pos) != ' ');
             /* try to identify a method */
-            i = *(CSTR(input) + pos - 2) - 'A';
-            j = *(CSTR(input) + pos - 1) - 'A';
+            i = *(DATA(input) + pos - 2) - 'A';
+            j = *(DATA(input) + pos - 1) - 'A';
             if (i > 25 || j > 25) {
                 debug("_http_split_pipeline(): malformed query.\n");
                 goto _error;
             }
             method = http_method[http_matrix[i][j]];
             if (*method && (pos -= *method) >= 0) {
-                if (memcmp(CSTR(input) + pos, method + 1, *method - 2) != 0) {
+                if (memcmp(DATA(input) + pos, method + 1, *method - 2) != 0) {
                     debug("_http_split_pipeline(): unknown HTTP method.\n");
                     goto _error;
                 } else HTTP_SET_METHOD(input, http_matrix[i][j]);
@@ -526,7 +526,7 @@ static m_string *_http_split_pipeline(m_string *buf, m_string *input, int *http)
                 debug("_http_split_pipeline(): unknown HTTP method.\n");
                 goto _error;
             }
-        } else if (*(CSTR(input) + v) != ' ') {
+        } else if (*(DATA(input) + v) != ' ') {
             /* should be an HTTP response, do some checking */
             debug("_http_split_pipeline(): malformed response.\n");
             if (! stream) goto _error; else goto _next;
@@ -538,13 +538,13 @@ _split:
             if (pos > stream) {
                 if (! stream) {
                     /* enqueue to the previous buffer */
-                    buf = string_cats(buf, CSTR(input), pos);
+                    buf = string_cats(buf, DATA(input), pos);
                     string_suppr(input, 0, pos);
                     start = -1; end = 0; pos = 0; off = stream;
                 } else {
                     /* append to the initial token */
                     SUBTOKEN(input, 0, 1)->_len += pos - stream;
-                    SUBTOKEN(input, 0, 1)->_alloc = SUBLEN(input, 0, 1);
+                    SUBTOKEN(input, 0, 1)->_alloc = SUBTOKEN_SIZE(input, 0, 1);
                     http_inc_progress(TOKEN(input, 0), pos - stream);
                 }
             }
@@ -574,9 +574,9 @@ _next:
     } else if (stream && start == -1) {
         /* merge to the starving request */
         SUBTOKEN(input, 0, 1)->_len += end - stream;
-        SUBTOKEN(input, 0, 1)->_alloc = SUBLEN(input, 0, 1);
+        SUBTOKEN(input, 0, 1)->_alloc = SUBTOKEN_SIZE(input, 0, 1);
         TOKEN(input, 0)->_len += end - stream;
-        TOKEN(input, 0)->_alloc = TLEN(input, 0);
+        TOKEN(input, 0)->_alloc = TOKEN_SIZE(input, 0);
         if (! IS_CHUNK(input))
             http_inc_progress(TOKEN(input, 0), end - stream);
         if (http) *http = 1;
@@ -608,7 +608,7 @@ static int _http_valid(m_string *input)
     /* if the input is already split, it has been validated before */
     if (input->parts > 1) goto _check_content_length;
 
-    buf = CSTR(input); len = SIZE(input); magic = ntohl(0x48545450);
+    buf = DATA(input); len = SIZE(input); magic = ntohl(0x48545450);
 
     if (! HTTP_METHOD(input) && *((uint32_t *) buf) != magic) {
         i = *buf - 'A'; j = *(buf + 1) - 'A';
@@ -665,7 +665,7 @@ static int _http_valid(m_string *input)
         if (PARTS(TOKEN(header, 0)) > 3) {
             header = TOKEN(header, 0);
             /* seems like the url was not urlencoded... */
-            header->token[1]._len = CSTR(LAST_TOKEN(header)) - TSTR(header, 1);
+            header->token[1]._len = DATA(LAST_TOKEN(header)) - TOKEN_DATA(header, 1);
             header->token[1]._alloc = header->token[1]._len;
             memcpy(& header->token[2], LAST_TOKEN(header), sizeof(m_string));
             header->parts = 2;
@@ -682,7 +682,7 @@ static int _http_valid(m_string *input)
     input->_flags |= _STRING_FLAG_HTTP;
 
     /* prepare storage for progress */
-    if (http_set_progress(input, TLEN(input, 1)) == -1) {
+    if (http_set_progress(input, TOKEN_SIZE(input, 1)) == -1) {
         debug("_http_valid(): cannot store progress.\n");
         return 1;
     }
@@ -700,14 +700,14 @@ _check_content_length:
                               _STRING_FLAG_CHUNK |
                               _STRING_FLAG_BUFFER);
 
-            if (! TLEN(input, 1)) return -2;
+            if (! TOKEN_SIZE(input, 1)) return -2;
 
             /* check the beginning of the token */
-            if ( (o = http_get_progress(input)) > TLEN(input, 1) ) o = 0;
+            if ( (o = http_get_progress(input)) > TOKEN_SIZE(input, 1) ) o = 0;
 
             /* check the size of the chunk */
-            if (! (len = strtol(TSTR(input, 1) + o, (char **) & buf, 16)) ) {
-                if (errno != ERANGE || buf != TSTR(input, 1)) {
+            if (! (len = strtol(TOKEN_DATA(input, 1) + o, (char **) & buf, 16)) ) {
+                if (errno != ERANGE || buf != TOKEN_DATA(input, 1)) {
                     /* real zero */
                     if (o) string_dim(TOKEN(input, 1), o);
                     input->_flags &= ~_STRING_FLAG_BUFFER;
@@ -717,13 +717,13 @@ _check_content_length:
             }
 
             /* check if strtol() read past the boundaries of the token */
-            if (buf > TEND(input, 1)) {
+            if (buf > TOKEN_END(input, 1)) {
                 debug("_http_valid(): strtol() out of bound.\n");
                 goto _badchunk;
             }
 
             /* check that there is enough data in the buffer */
-            if (buf + 1 + len + 2 > TEND(input, 1)) return -2;
+            if (buf + 1 + len + 2 > TOKEN_END(input, 1)) return -2;
 
             /* check CRLF are present both after chunk size and data */
             if (memcmp(buf, "\r\n", 2)) {
@@ -734,7 +734,11 @@ _check_content_length:
                 goto _badchunk;
             }
 
-            string_suppr(TOKEN(input, 1), o, (buf + 2) - (TSTR(input, 1) + o));
+            string_suppr(
+                TOKEN(input, 1),
+                o,
+                (buf + 2) - (TOKEN_DATA(input, 1) + o)
+            );
             string_dim(TOKEN(input, 1), o + len);
             http_inc_progress(input, len);
             input->_flags &= ~_STRING_FLAG_ERRORS;
@@ -771,7 +775,7 @@ public m_string *http_get_request(int *r, m_string **buf, m_string *input)
     /* finished handling a starved request */
     case -2: {
         for (i = 0; i < PARTS(input); i ++)
-            if (! TLEN(input, i)) input->parts --;
+            if (! TOKEN_SIZE(input, i)) input->parts --;
         *buf = input;
         return NULL;
     }
@@ -885,33 +889,33 @@ static void *_http_find_contentlength(m_string *header)
     uint32_t len = 0;
     const char *buf = NULL;
 
-    if (! (idx = (char) *(TEND(header, 0) + 1)) ) {
+    if (! (idx = (char) *(TOKEN_END(header, 0) + 1)) ) {
 
         /* slow path */
         for (idx = 0; idx < PARTS(header); idx ++) {
-            if (TLEN(header, idx) < 14) continue;
+            if (TOKEN_SIZE(header, idx) < 14) continue;
 
-            if (! memcmp(TSTR(header, idx), "Content-Length", 14)) {
+            if (! memcmp(TOKEN_DATA(header, idx), "Content-Length", 14)) {
                 /* found the header */
-                *((char *) TEND(header, 0) + 1) = idx;
-                buf = TSTR(header, idx) + 14;
+                *((char *) TOKEN_END(header, 0) + 1) = idx;
+                buf = TOKEN_DATA(header, idx) + 14;
                 if (*buf ++ == ':') {
                     len = strtol(buf, NULL, 10);
                     if (errno == ERANGE) len = 0;
                 }
                 /* record the length */
-                *((uint32_t *) TSTR(header, idx)) = len;
-                return (void *) TSTR(header, idx);
+                *((unaligned_uint32_t *) TOKEN_DATA(header, idx)) = len;
+                return (void *) TOKEN_DATA(header, idx);
             }
         }
 
         /* not found */
-        *((unsigned char *) TEND(header, 0) + 1) = 0xff;
+        *((unsigned char *) TOKEN_END(header, 0) + 1) = 0xff;
         return NULL;
 
     } else if (idx > PARTS(header)) return NULL;
 
-    return (void *) TSTR(header, idx);
+    return (void *) TOKEN_DATA(header, idx);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -943,7 +947,7 @@ public const char *http_get_header(m_string *buffer, const char *name)
 
     header = TOKEN(buffer, 0);
 
-    data = CSTR(header);
+    data = DATA(header);
 
     if ( (len = strlen(name)) == 14 && ! memcmp(name, "Content-Length", 14)) {
         const char *ptr = NULL;
@@ -952,9 +956,9 @@ public const char *http_get_header(m_string *buffer, const char *name)
         pos = ptr - data;
     } else {
         for (i = 0; i < PARTS(header); i ++) {
-            if (TLEN(header, i) < len) continue;
-            if (! memcmp(TSTR(header, i), name, len)) {
-                pos = TSTR(header, i) - data; break;
+            if (TOKEN_SIZE(header, i) < len) continue;
+            if (! memcmp(TOKEN_DATA(header, i), name, len)) {
+                pos = TOKEN_DATA(header, i) - data; break;
             }
         }
 
@@ -973,7 +977,7 @@ public const char *http_get_header(m_string *buffer, const char *name)
 public uint32_t http_get_contentlength(m_string *buffer)
 {
     m_string *header = NULL;
-    uint32_t *len = NULL;
+    unaligned_uint32_t *len = NULL;
 
     if (! buffer) {
         debug("http_get_contentlength(): bad parameters.\n");
@@ -1025,8 +1029,8 @@ public uint32_t http_get_progress(m_string *buffer)
     if (! header->parts) return 0;
 
     switch (PARTS( (header = TOKEN(header, 0)) )) {
-    case 2: return *((uint32_t *) TSTR(header, 0));
-    case 3: return *((uint32_t *) TSTR(header, 2));
+    case 2: return *((unaligned_uint32_t *) TOKEN_DATA(header, 0));
+    case 3: return *((unaligned_uint32_t *) TOKEN_DATA(header, 2));
     default: return 0;
     }
 }
@@ -1061,12 +1065,12 @@ static int _http_set_progress(m_string *buffer, uint32_t progress, int inc)
     }
 
     if (inc) switch (PARTS( ((header = TOKEN(header, 0))) )) {
-        case 2: *((uint32_t *) TSTR(header, 0)) += progress; break;
-        case 3: *((uint32_t *) TSTR(header, 2)) += progress; break;
+        case 2: *((unaligned_uint32_t *) TOKEN_DATA(header, 0)) += progress; break;
+        case 3: *((unaligned_uint32_t *) TOKEN_DATA(header, 2)) += progress; break;
         default: return -1;
     } else switch (PARTS( ((header = TOKEN(header, 0))) )) {
-        case 2: *((uint32_t *) TSTR(header, 0)) = progress; break;
-        case 3: *((uint32_t *) TSTR(header, 2)) = progress; break;
+        case 2: *((unaligned_uint32_t *) TOKEN_DATA(header, 0)) = progress; break;
+        case 3: *((unaligned_uint32_t *) TOKEN_DATA(header, 2)) = progress; break;
         default: return -1;
     }
 

@@ -16,7 +16,7 @@ static void print_tokens(const m_string *s, unsigned int indent)
     if (! s) return;
 
     printf("%.*s%s%.*s %s",
-           indent, "", (indent) ? " " : "+ ", (int) SIZE(s), CSTR(s),
+           indent, "", (indent) ? " " : "+ ", (int) SIZE(s), DATA(s),
            (IS_OBJECT(s) ? "(object)" :
             IS_ARRAY(s) ? "(array)" :
             IS_STRING(s) ? "(string)" :
@@ -95,11 +95,11 @@ int test_string(void)
     /* base58 and base64 encoding */
     z = string_b58s("test string", strlen("test string"));
     printf("(*) Base58 encoding: test string -> %.*s [%zu]\n",
-           (int) SIZE(z), CSTR(z), SIZE(z));
+           (int) SIZE(z), DATA(z), SIZE(z));
     z = string_free(z);
     z = string_deb58s("Vs5LyRhXt9nUp14", strlen("Vs5LyRhXt9nUp14"));
     printf("(*) Base58 encoding: Vs5LyRhXt9nUp14 -> %.*s [%zu]\n",
-           (int) SIZE(z), CSTR(z), SIZE(z));
+           (int) SIZE(z), DATA(z), SIZE(z));
     z = string_free(z);
 
     #ifdef _ENABLE_RANDOM
@@ -109,7 +109,7 @@ int test_string(void)
 
     z = string_b58s((char *) random_token, 10 * sizeof(*random_token));
     printf("(*) Base58 encoded random token:\n(-) %.*s [%zu]\n",
-           (int) SIZE(z), CSTR(z), SIZE(z));
+           (int) SIZE(z), DATA(z), SIZE(z));
     z = string_free(z);
     r = random_fini(r);
     #endif
@@ -119,7 +119,7 @@ int test_string(void)
     i = string_convs(gb18030, 20, "GB18030", NULL, 0, "UTF-8");
     printf("(-) Buffer length required for conversion: %i\n", i);
     string_conv(z, "GB18030", "");
-    printf("(-) Unicode buffer: %.*s\n", (int) SIZE(z), CSTR(z));
+    printf("(-) Unicode buffer: %.*s\n", (int) SIZE(z), DATA(z));
     string_free(z);
     #endif
 
@@ -202,7 +202,7 @@ int test_string(void)
     if (! (w = string_alloc(str, strlen(str))) ) {
         printf("(!) Allocating a wide string \"%s\": FAILURE\n", str);
         return -1;
-    } else printf("(*) Allocating a wide string \"%s\": SUCCESS\n", CSTR(w));
+    } else printf("(*) Allocating a wide string \"%s\": SUCCESS\n", DATA(w));
 
     /* string_alloc(ansi, len) */
     if (! (a = string_alloc(cs, strlen(cs))) ) {
@@ -210,7 +210,7 @@ int test_string(void)
         printf("(!) Allocating an ANSI string \"%s\": FAILURE\n", cs);
         return -1;
     } else
-        printf("(*) Allocating an ANSI string \"%s\": SUCCESS\n", CSTR(a));
+        printf("(*) Allocating an ANSI string \"%s\": SUCCESS\n", DATA(a));
 
     #if (_ENABLE_PCRE && HAS_PCRE)
     printf("(*) Looking for \"Random string(.*)\"\n");
@@ -237,65 +237,65 @@ int test_string(void)
     /* looking for "je" */
     if ( (pos = string_finds(a, 0, "st", strlen("st"))) == -1) {
         printf("i = %i\n", i);
-        printf("(!) Searching for \"st\" in \"%s\": FAILURE\n", CSTR(a));
+        printf("(!) Searching for \"st\" in \"%s\": FAILURE\n", DATA(a));
         w = string_free(w);
         a = string_free(a);
         return -1;
     } else
-        printf("(*) Searching for \"st\" => \"%s\": SUCCESS\n", CSTR(a) + pos);
+        printf("(*) Searching for \"st\" => \"%s\": SUCCESS\n", DATA(a) + pos);
 
     /* converting to wide */
     if (string_wchar(w) == -1) {
         printf("(!) Mbyte to wide string conversion \"%s\": "
-                "FAILURE\n", CSTR(w));
+                "FAILURE\n", DATA(w));
         w = string_free(w);
         a = string_free(a);
         return -1;
     } else
         printf("(*) Mbyte to wide string conversion \"%ls\": "
-                "SUCCESS\n", (wchar_t *) CSTR(w));
+                "SUCCESS\n", (wchar_t *) DATA(w));
 
     /* converting back to multibyte */
     if (string_mbyte(w) == -1) {
         printf("(!) Wide to mbyte string conversion \"%s\": "
-                "FAILURE\n", CSTR(w));
+                "FAILURE\n", DATA(w));
         w = string_free(w);
         a = string_free(a);
         return -1;
     } else
         printf("(*) Wide to mbyte string conversion \"%s\": "
-                "SUCCESS\n", CSTR(w));
+                "SUCCESS\n", DATA(w));
 
     /* appending */
     if (string_cat(w, a) == NULL) {
         printf("(!) Appending \"%s\" to \"%s\": "
-                "FAILURE\n", CSTR(a), CSTR(w));
+                "FAILURE\n", DATA(a), DATA(w));
         w = string_free(w);
         a = string_free(a);
         return -1;
-    } else printf("(*) Appending \"%s\": SUCCESS\n", CSTR(w));
+    } else printf("(*) Appending \"%s\": SUCCESS\n", DATA(w));
 
     /* looking for Random ! */
     pos = string_finds(w, 0, "Random", strlen("Random"));
     if (pos == -1) {
         printf("i = %i\n", i);
-        printf("(!) Searching for \"Random\" in \"%s\": FAILURE\n", CSTR(w));
+        printf("(!) Searching for \"Random\" in \"%s\": FAILURE\n", DATA(w));
         w = string_free(w);
         a = string_free(a);
         return -1;
     } else
         printf("(*) Searching for \"Random\" => \"%s\": "
-                "SUCCESS\n", CSTR(w) + pos);
+                "SUCCESS\n", DATA(w) + pos);
 
     /* looking for "问题" */
     if ( (pos = string_finds(w, 0, "问题", strlen("问题"))) == -1) {
-        printf("(!) Searching for \"问题\" in \"%s\": FAILURE\n", CSTR(w));
+        printf("(!) Searching for \"问题\" in \"%s\": FAILURE\n", DATA(w));
         w = string_free(w);
         a = string_free(a);
         return -1;
     } else
         printf("(*) Searching for \"问题\" => \"%s\": "
-                "SUCCESS\n", CSTR(w) + pos);
+                "SUCCESS\n", DATA(w) + pos);
 
     w = string_free(w);
     a = string_free(a);
@@ -304,22 +304,26 @@ int test_string(void)
 
     /* split on ":" */
     if (string_splits(w, ":", strlen(":")) == -1) {
-        printf("(!) Splitting on \":\" in \"%s\": FAILURE\n", CSTR(w));
+        printf("(!) Splitting on \":\" in \"%s\": FAILURE\n", DATA(w));
         w = string_free(w);
         return -1;
-    } else printf("(*) Splitting on \":\" in \"%s\": SUCCESS\n", CSTR(w));
+    } else printf("(*) Splitting on \":\" in \"%s\": SUCCESS\n", DATA(w));
 
     print_tokens(w, 0);
 
     /* split first token on "-" */
     if (PARTS(w) == 2) {
         if (string_splits(TOKEN(w, 0), "-", strlen("-")) == -1) {
-            printf("(!) Splitting on \"-\" in \"%.*s\": FAILURE\n",
-                   (int) TLEN(w, 0), TSTR(w, 0));
+            printf(
+                "(!) Splitting on \"-\" in \"%.*s\": FAILURE\n",
+                (int) TOKEN_SIZE(w, 0), TOKEN_DATA(w, 0)
+            );
             w = string_free(w);
             return -1;
-        } else printf("(*) Splitting on \"-\" in \"%.*s\": SUCCESS\n",
-                      (int) TLEN(w, 0), TSTR(w, 0));
+        } else printf(
+            "(*) Splitting on \"-\" in \"%.*s\": SUCCESS\n",
+            (int) TOKEN_SIZE(w, 0), TOKEN_DATA(w, 0)
+        );
 
         print_tokens(w, 0);
 
@@ -328,16 +332,19 @@ int test_string(void)
                 printf("(!) Prepending to a token: FAILURE\n");
                 w = string_free(w);
                 return -1;
-            } else printf("(*) Prepending to a token "
-                           "(\"%.*s\" in \"%.*s\"): SUCCESS\n",
-                           (int) TLEN(TOKEN(w, 0), 2), TSTR(TOKEN(w, 0), 2),
-                           (int) TLEN(w, 0), TSTR(w, 0));
+            } else printf(
+                "(*) Prepending to a token (\"%.*s\" in \"%.*s\"): SUCCESS\n",
+                (int) TOKEN_SIZE(TOKEN(w, 0), 2), TOKEN_DATA(TOKEN(w, 0), 2),
+                (int) TOKEN_SIZE(w, 0), TOKEN_DATA(w, 0)
+            );
         }
     }
 
     if (string_merges(TOKEN(w, 0), "/", strlen("/")) == -1) {
-        printf("(!) Merging token \"%.*s\" on \"/\": FAILURE\n",
-               (int) TLEN(w, 0), TSTR(w, 0));
+        printf(
+            "(!) Merging token \"%.*s\" on \"/\": FAILURE\n",
+            (int) TOKEN_SIZE(w, 0), TOKEN_DATA(w, 0)
+        );
         w = string_free(w);
         return -1;
     } else printf("(*) Merging token on \"/\": SUCCESS\n");
@@ -345,8 +352,10 @@ int test_string(void)
     print_tokens(w, 0);
 
     if (string_merges(w, " -> ", strlen(" -> ")) == -1) {
-        printf("(!) Merging string \"%.*s\" on \" -> \": FAILURE\n",
-               (int) SIZE(w), CSTR(w));
+        printf(
+            "(!) Merging string \"%.*s\" on \" -> \": FAILURE\n",
+            (int) SIZE(w), DATA(w)
+        );
         w = string_free(w);
         return -1;
     } else printf("(*) Merging string on \" -> \": SUCCESS\n");
@@ -361,11 +370,11 @@ int test_string(void)
         printf("(!) Shrinking token (Size differs: %zu): FAILURE\n", SIZE(w));
         w = string_free(w);
         return -1;
-    } else printf("(*) Shrinking token (%s): SUCCESS\n", CSTR(w));
+    } else printf("(*) Shrinking token (%s): SUCCESS\n", DATA(w));
 
     print_tokens(w, 0);
 
-    if (string_suppr(w, TLEN(w, 0), strlen(" -> ")) == -1) {
+    if (string_suppr(w, TOKEN_SIZE(w, 0), strlen(" -> ")) == -1) {
         printf("(!) Suppressing substring: FAILURE\n");
         w = string_free(w);
         return -1;
@@ -375,10 +384,10 @@ int test_string(void)
 
     /* try resplitting */
     if (string_splits(w, "/", strlen("/")) == -1) {
-        printf("(!) Replitting on \"/\" in \"%s\": FAILURE\n", CSTR(w));
+        printf("(!) Replitting on \"/\" in \"%s\": FAILURE\n", DATA(w));
         w = string_free(w);
         return -1;
-    } else printf("(*) Replitting on \"/\" in \"%s\": SUCCESS\n", CSTR(w));
+    } else printf("(*) Replitting on \"/\" in \"%s\": SUCCESS\n", DATA(w));
 
     print_tokens(w, 0);
 
@@ -389,31 +398,41 @@ int test_string(void)
         printf("(!) Prepending to a token: FAILURE\n");
         w = string_free(w);
         return -1;
-    } else printf("(*) Prepending to a token (\"%.*s\"): SUCCESS\n",
-                  (int) TLEN(w, 0), TSTR(w, 0));
+    } else printf(
+        "(*) Prepending to a token (\"%.*s\"): SUCCESS\n",
+        (int) TOKEN_SIZE(w, 0), TOKEN_DATA(w, 0)
+    );
 
     if (string_urlencode(TOKEN(w, 0), 0x0) == -1) {
         printf("(!) Urlencode: FAILURE\n");
         w = string_free(w);
         return -1;
-    } else printf("(*) Urlencode %s: SUCCESS\n", TSTR(w, 0));
+    } else printf("(*) Urlencode %s: SUCCESS\n", TOKEN_DATA(w, 0));
 
-    item_size = m_snprintf(buffer, sizeof(buffer),
-                           "http://www.test.com/?parm=%.*url",
-                           5, ".#{0}");
+    item_size = m_snprintf(
+        buffer, sizeof(buffer),
+        "http://www.test.com/?parm=%.*url",
+        5, ".#{0}"
+    );
     printf("(*) Urlencode %s: SUCCESS\n", buffer);
 
     for (i = 0; i < PARTS(w); i ++)
-        printf("(-) token[%i] = %.*s (size=%zu)\n",
-               i, (int) TLEN(w, i), TSTR(w, i), TLEN(w, i));
+        printf(
+            "(-) token[%i] = %.*s (size=%zu)\n",
+            i, (int) TOKEN_SIZE(w, i), TOKEN_DATA(w, i), TOKEN_SIZE(w, i)
+        );
     #endif
 
     z = string_sha1(TOKEN(w, 1));
 
     if (string_cmps(z, "2fe5db4a1ddad9423d4e174bb78eb6a8c80ea6db",
                     strlen("2fe5db4a1ddad9423d4e174bb78eb6a8c80ea6db"))) {
-        printf("(!) SHA1(%.*s [%zu]) == %s: FAILURE\n",
-               (int) TLEN(w, 1), TSTR(w, 1), TLEN(w, 1), CSTR(z));
+        printf(
+            "(!) SHA1(%.*s [%zu]) == %s: FAILURE\n",
+            (int) TOKEN_SIZE(w, 1), TOKEN_DATA(w, 1),
+            TOKEN_SIZE(w, 1),
+            DATA(z)
+        );
         w = string_free(w);
         z = string_free(z);
         return -1;
@@ -424,7 +443,7 @@ int test_string(void)
         printf("(!) Append formatted string: FAILURE\n");
         z = string_free(z);
         return -1;
-    } else printf("(*) Append formatted string %s: SUCCESS\n", CSTR(z));
+    } else printf("(*) Append formatted string %s: SUCCESS\n", DATA(z));
 
     if (string_splits(z, "-", 1) == -1 || PARTS(z) < 2) {
         printf("(!) Splitting: FAILURE\n");
@@ -483,7 +502,7 @@ int test_string(void)
     print_tokens(z, 0);
 
     while ( (a = string_pop_token(z)) ) {
-        printf("(*) Dequeued token: %.*s\n", (int) SIZE(a), CSTR(a));
+        printf("(*) Dequeued token: %.*s\n", (int) SIZE(a), DATA(a));
         print_tokens(z, 0);
         string_free(a);
     }
@@ -549,7 +568,7 @@ int test_string(void)
     if (! (w = string_uncompress(z, item_size)) ) {
         printf("(!) Uncompressing a string: FAILURE\n");
         return -1;
-    } else printf("(*) Uncompressing a string (%s): SUCCESS\n", CSTR(w));
+    } else printf("(*) Uncompressing a string (%s): SUCCESS\n", DATA(w));
 
     z = string_free(z);
     #endif

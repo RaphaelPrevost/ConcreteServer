@@ -51,7 +51,7 @@ int test_trie(void)
     printf("(*) Inserting key-value pairs.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i); key[len] = 0;
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i); key[len] = 0;
         trie_insert(t, key, len, (void *) (uintptr_t) i);
     }
     stop = clock();
@@ -67,7 +67,7 @@ int test_trie(void)
     printf("(*) Getting back values from keys.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i); key[len] = 0;
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i); key[len] = 0;
         if ( (j = (uintptr_t) trie_findexec(t, key, len, NULL)) != i) {
             missing ++;
             printf("(!) Key %" PRIuPTR  " is missing ! (found %" PRIuPTR  " instead)\n", i, j);
@@ -87,7 +87,7 @@ int test_trie(void)
     printf("(*) Randomly deleting 100k keys.\n");
     while (! timeout && missing < _CACHE_RNDDL) {
         i = rand() % _CACHE_ITEMS;
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         if (trie_remove(t, key, len)) missing ++;
     }
     timeout = 1;
@@ -97,7 +97,7 @@ int test_trie(void)
     printf("(*) Replacing all keys values.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         trie_update(t, key, len, (void *) (uintptr_t) (i + 1) );
     }
     stop = clock();
@@ -112,7 +112,7 @@ int test_trie(void)
     printf("(*) Removing all the data from the table.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         if ((uintptr_t) trie_remove(t, key, len) != i + 1) missing ++;
     }
     stop = clock();
@@ -126,7 +126,7 @@ int test_trie(void)
     printf("(*) Checking that all the keys have been deleted.\n");
     start = clock();
     for (i = 1; i <= _CACHE_ITEMS; i ++) {
-        len = sprintf(key, _CACHE_KEYFM, i);
+        len = snprintf(key, sizeof(key), _CACHE_KEYFM, i);
         if ((uintptr_t) trie_findexec(t, key, len, NULL) != i + 1)
             missing ++;
         else printf("(!) found phantom key %" PRIuPTR  " !\n", i);
