@@ -156,7 +156,7 @@ int CALLBACK json_exit(int type, struct m_json_parser *ctx)
                 NULL
             );
         }
-    } else if (type == JSON_OBJECT && LAST_CHAR(context->path) != '/') {
+    } else if (type == JSON_OBJECT && SIZE(context->path) && LAST_CHAR(context->path) != '/') {
         trie_insert(
             context->tree,
             DATA(context->path), SIZE(context->path),

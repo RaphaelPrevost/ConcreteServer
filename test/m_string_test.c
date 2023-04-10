@@ -50,7 +50,7 @@ int test_string(void)
                           "\xd3\xd0\xc3\xbb\xd3\xd0\xce\xca\xcc\xe2";
     #endif
     #ifdef _ENABLE_JSON
-    const char *good_json = "{\"obj\":{\"b\":false,\"z\":[\"\"]},\"matrix\":[[[1,2],[2,3]]],\"empty\":{}}";
+    const char *good_json = "{\"obj\":{\"b\":false,\"z\":[\"\"]},\"unicode\":\"\\u611b\",\"matrix\":[[[1,2],[2,3]]],\"empty\":{}}";
     const char *incomplete_json1 = "{\"0\": {}, \"a\":[1,2,3],\"b\":[4,5";
     const char *incomplete_json2 = ",6],\"c\":[7,8,9]}";
     const char *json_stream1 = "{\"a\": \"stream_part\"}[[[[{\"b\"";
@@ -60,8 +60,31 @@ int test_string(void)
     const char *json5 = "{ // single-line comment\nunquoted_key: 'single quoted string w/ nested \"double quoted string\"',\n'single quoted key'/* multi-line\ncomment */: \"stray CRLF\\\n\tunescaped tab\",\"hex\": [0xA, 0xBAD, 0xc0ffee, 0x00000000064B175]/* max 64 bits */,\n\"no fractional part\": 123.,\n, \"trailing commas in object\":\n[\"and\",,\"in array\", ],\n}";
     const char *incomplete_string1 = "\"incomplete, ";
     const char *incomplete_string2 = "string\"";
-    unsigned int bad_json = 22;
-    const char *bad[] = { "{\"a\":}", "{\"a\"}", "{\"a\" \"b\"}", "{\"a\" ::::: \"b\"}", "{\"a\": [1 \"b\"] }", "{\"a\"\"\"}", "{\"a\":1\"\"}", "{\"a\":1\"b\":1}", "{\"a\":\"b\",{\"c\":\"d\"}}", "[\"a\":\"b\"]", "{ {\"a\": 1 } {\"b\": 2}}", "{,}", "{ : }", "[1,,3]", "\"unescaped\tstring\"", "{ : 1}", "{\"a\": 1,,}", "[1,2]]", "[1,2],", "{\"a\": 0},", "{ },", "{ }:" };
+    unsigned int bad_json = 23;
+    const char *bad[] = { 
+        "{\"a\":}",
+        "{\"a\"}",
+        "{\"a\" \"b\"}",
+        "{\"a\" ::::: \"b\"}",
+        "{\"a\": [1 \"b\"] }",
+        "{\"a\"\"\"}",
+        "{\"a\":1\"\"}",
+        "{\"a\":1\"b\":1}",
+        "{\"a\":\"b\",{\"c\":\"d\"}}",
+        "[\"a\":\"b\"]",
+        "{ {\"a\": 1 } {\"b\": 2}}",
+        "{,}",
+        "{ : }",
+        "[1,,3]",
+        "\"unescaped\tstring\"",
+        "\"bad escaped unicode \\u1?34\"",
+        "{ : 1}",
+        "{\"a\": 1,,}",
+        "[1,2]]",
+        "[1,2],",
+        "{\"a\": 0},",
+        "{ },",
+        "{ }:" };
     #endif
     const char *cs = "Random string1234";
     m_string *a = NULL, *w = NULL, *z = NULL;
