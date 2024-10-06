@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -206,6 +206,32 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
+#ifdef DEBUG
+    #define debug(...) do { fprintf(stderr, __VA_ARGS__); } while (0)
+#else
+    #if defined(_MSC_VER) && _MSC_VER < 1300
+        #pragma warning(disable:4002)
+        #define debug(__VA_ARGS__) do { } while (0)
+    #else
+        #define debug(...) do { } while (0)
+    #endif
+#endif
+
+#ifndef CALLBACK
+    #ifdef __GNUC__
+        #ifdef __i386
+            #define CALLBACK __attribute__ ((regparm(1)))
+        #else
+            /* x86_64 already uses registers to pass function parameters */
+            #define CALLBACK
+        #endif
+    #else
+        /* XXX the WIN32 __fastcall calling convention uses too many
+           registers to be suitable for callbacks */
+        #define CALLBACK
+    #endif
+#endif
+
 /* various OS dependant definitions */
 #include "ports/m_ports.h"
 
@@ -263,32 +289,6 @@ public extern char *working_directory;
 
 #ifndef SHAREDIR
     #define SHAREDIR (working_directory)
-#endif
-
-#ifdef DEBUG
-    #define debug(...) do { fprintf(stderr, __VA_ARGS__); } while (0)
-#else
-    #if defined(_MSC_VER) && _MSC_VER < 1300
-        #pragma warning(disable:4002)
-        #define debug(__VA_ARGS__) do { } while (0)
-    #else
-        #define debug(...) do { } while (0)
-    #endif
-#endif
-
-#ifndef CALLBACK
-    #ifdef __GNUC__
-        #ifdef __i386
-            #define CALLBACK __attribute__ ((regparm(1)))
-        #else
-            /* x86_64 already uses registers to pass function parameters */
-            #define CALLBACK
-        #endif
-    #else
-        /* XXX the WIN32 __fastcall calling convention uses too many
-           registers to be suitable for callbacks */
-        #define CALLBACK
-    #endif
 #endif
 
 #endif

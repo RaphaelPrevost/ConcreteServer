@@ -1,3 +1,38 @@
+/*******************************************************************************
+ *  Concrete Server                                                            *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
+ *                                                                             *
+ *  This software is a computer program whose purpose is to provide a          *
+ *  framework for developing and prototyping network services.                 *
+ *                                                                             *
+ *  This software is governed by the CeCILL  license under French law and      *
+ *  abiding by the rules of distribution of free software.  You can  use,      *
+ *  modify and/ or redistribute the software under the terms of the CeCILL     *
+ *  license as circulated by CEA, CNRS and INRIA at the following URL          *
+ *  "http://www.cecill.info".                                                  *
+ *                                                                             *
+ *  As a counterpart to the access to the source code and  rights to copy,     *
+ *  modify and redistribute granted by the license, users are provided only    *
+ *  with a limited warranty  and the software's author,  the holder of the     *
+ *  economic rights,  and the successive licensors  have only  limited         *
+ *  liability.                                                                 *
+ *                                                                             *
+ *  In this respect, the user's attention is drawn to the risks associated     *
+ *  with loading,  using,  modifying and/or developing or reproducing the      *
+ *  software by the user in light of its specific status of free software,     *
+ *  that may mean  that it is complicated to manipulate,  and  that  also      *
+ *  therefore means  that it is reserved for developers  and  experienced      *
+ *  professionals having in-depth computer knowledge. Users are therefore      *
+ *  encouraged to load and test the software's suitability as regards their    *
+ *  requirements in conditions enabling the security of their systems and/or   *
+ *  data to be ensured and,  more generally, to use and operate it in the      *
+ *  same conditions as regards security.                                       *
+ *                                                                             *
+ *  The fact that you are presently reading this means that you have had       *
+ *  knowledge of the CeCILL license and that you accept its terms.             *
+ *                                                                             *
+ ******************************************************************************/
+
 #include "../../lib/m_core_def.h"
 #include "../../lib/m_string.h"
 #include "../../lib/m_trie.h"
@@ -46,7 +81,7 @@ static char *u32toa(uint32_t u32, char *out, size_t len)
 
 /* -------------------------------------------------------------------------- */
 
-static uint32_t atou32(const char *in, size_t len)
+static inline uint32_t atou32(const char *in, size_t len)
 {
     unsigned int i = 0;
     uint32_t ret = 0;
@@ -124,9 +159,8 @@ int CALLBACK json_init(int type, struct m_json_parser *ctx)
 {
     struct jsonpath_context *context = ctx->context;
 
-    if (ctx->key.current) {
+    if (ctx->key.current)
         string_enqueue_tokens(context->path, ctx->key.current, ctx->key.len);
-    }
 
     if (type == JSON_ARRAY) {
         /* add the index token */
@@ -156,12 +190,6 @@ int CALLBACK json_exit(int type, struct m_json_parser *ctx)
                 NULL
             );
         }
-    } else if (type == JSON_OBJECT && SIZE(context->path) && LAST_CHAR(context->path) != '/') {
-        trie_insert(
-            context->tree,
-            DATA(context->path), SIZE(context->path),
-            NULL
-        );
     }
 
     /* remove the array name */
@@ -184,7 +212,7 @@ int CALLBACK json_data(UNUSED int type, const char *data,
     struct jsonpath_context *context = ctx->context;
 
     if (ctx->parent == JSON_ARRAY) {
-        string_merges(context->path, "/", 1);
+        if (unlikely(! context->count)) string_merges(context->path, "/", 1);
         trie_insert(
             context->tree,
             DATA(context->path), SIZE(context->path),

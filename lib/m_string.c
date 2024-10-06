@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -62,7 +62,7 @@ static const char _d58[] = {
 };
 
 /* macro to ease the use of the decode table and prevent out of bound access */
-#define _D58(c) (_d58[(c) & 0x7F])
+#define _D58(c) (_d58[(c) & 0x7f])
 
 /* -- base64 encoding/decoding -- */
 
@@ -87,7 +87,7 @@ static const char _d64[] = {
 };
 
 /* macro to ease the use of the decode table and prevent out of bound access */
-#define _D64(c) (_d64[(c) & 0x7F])
+#define _D64(c) (_d64[(c) & 0x7f])
 
 #ifdef _ENABLE_JSON
 static const unsigned char _j[] = {
@@ -170,13 +170,11 @@ static const char _unsafe[256] = {
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, /* 0xff */
 };
 
-/* fast macros to test if at least one byte in a word is < n, or > n, or = 0 */
-#define __zero(x)    (((x) - 0x01010101U) & ~(x) & 0x80808080U)
-#define __less(x, n) (((x) - ~0U / 255 * (n)) & ~(x) & ~0U / 255 * 128)
-#define __more(x, n) ((((x) + ~0U / 255 * (127 - (n))) | (x)) & ~0U / 255 * 128)
-#define __between(x, m, n) \
-(((~0U / 255 * (127 + (n)) - ((x) & ~0U / 255 * 127)) & ~(x) & \
- (((x) & ~0U / 255 * 127) + ~0U / 255 * (127 - (m)))) & ~0U / 255 * 128)
+/* -------------------------------------------------------------------------- */
+/* BITWISE OPERATIONS */
+/* -------------------------------------------------------------------------- */
+
+#include "ports/m_port_bitops.c"
 
 /* -------------------------------------------------------------------------- */
 /* 0. Initialization */
@@ -2476,15 +2474,15 @@ public m_string *string_deb58s(const char *s, size_t size)
     /* legitimate leading 0s */
     while (zcount < size && s[zcount] == '1') zcount ++;
 
-    if ( (remain = size & 3) ) mask = 0xFFFFFFFF << (remain * 8);
+    if ( (remain = size & 3) ) mask = 0xffffffff << (remain * 8);
 
     for (i = zcount; i < size; i ++) {
         if ((int) (c = _D58(s[i])) == -1) goto _panic;
 
         for (j = outlen - 1; j; j --) {
             b = ((uint64_t) r[j]) * 58 + c;
-            c = (b & 0x3F00000000) >> 32;
-            r[j] = b & 0xFFFFFFFF;
+            c = (b & 0x3f00000000) >> 32;
+            r[j] = b & 0xffffffff;
         }
 
         /* output was too large */
@@ -2494,17 +2492,17 @@ public m_string *string_deb58s(const char *s, size_t size)
     c = r[(i = 0)]; ret->_data = (char *) r;
 
     switch (remain) {
-    case 3: { ret->_data[i ++] = (c & 0xFF0000) >> 16; }
-    case 2: { ret->_data[i ++] = (c & 0xFF00) >> 8; }
-    case 1: { ret->_data[i ++] = (c & 0xFF); j = 1; goto _loop; }
+    case 3: { ret->_data[i ++] = (c & 0xff0000) >> 16; }
+    case 2: { ret->_data[i ++] = (c & 0xff00) >> 8; }
+    case 1: { ret->_data[i ++] = (c & 0xff); j = 1; goto _loop; }
     }
 
     for (j = 0; j < outlen; j ++) {
 _loop:  c = r[j];
-        ret->_data[i ++] = (c >> 0x18) & 0xFF;
-        ret->_data[i ++] = (c >> 0x10) & 0xFF;
-        ret->_data[i ++] = (c >> 0x08) & 0xFF;
-        ret->_data[i ++] = (c & 0xFF);
+        ret->_data[i ++] = (c >> 0x18) & 0xff;
+        ret->_data[i ++] = (c >> 0x10) & 0xff;
+        ret->_data[i ++] = (c >> 0x08) & 0xff;
+        ret->_data[i ++] = (c & 0xff);
     }
 
     /* check if there is spurious remaining 0s */
@@ -2581,10 +2579,10 @@ public m_string *string_b64s(const char *s, size_t size, size_t linesize)
 
         if (j + 4 < b64size) {
             /* convert three bytes in ASCII characters */
-            r[j ++] = _b64[(s[i] & 0xFC) >> 2];
-            r[j ++] = _b64[((s[i] & 0x03) << 4) | ((s[i + 1] & 0xF0) >> 4)];
-            r[j ++] = _b64[((s[i + 1] & 0x0F) << 2) | ((s[i + 2] & 0xC0) >> 6)];
-            r[j ++] = _b64[s[i + 2] & 0x3F]; i += 3;
+            r[j ++] = _b64[(s[i] & 0xfc) >> 2];
+            r[j ++] = _b64[((s[i] & 0x03) << 4) | ((s[i + 1] & 0xf0) >> 4)];
+            r[j ++] = _b64[((s[i + 1] & 0x0f) << 2) | ((s[i + 2] & 0xc0) >> 6)];
+            r[j ++] = _b64[s[i + 2] & 0x3f]; i += 3;
         } else goto _panic;
 
         /* if a linesize was given, check if we should insert a CRLF */
@@ -2602,13 +2600,13 @@ public m_string *string_b64s(const char *s, size_t size, size_t linesize)
         /* process the remaining */
         switch (size + 1 - i) {
         case 4:
-        r[j + 3] = _b64[s[i + 2] & 0x3F];
+        r[j + 3] = _b64[s[i + 2] & 0x3f];
         case 3:
-        r[j + 2] = _b64[(s[i + 1] & 0x0F) << 2 | (s[i + 2] & 0xC0) >> 6];
+        r[j + 2] = _b64[(s[i + 1] & 0x0f) << 2 | (s[i + 2] & 0xc0) >> 6];
         case 2:
-        r[j + 1] = _b64[(s[i] & 0x03) << 4 | (s[i + 1] & 0xF0) >> 4];
+        r[j + 1] = _b64[(s[i] & 0x03) << 4 | (s[i + 1] & 0xf0) >> 4];
         case 1:
-        r[j] = _b64[(s[i] & 0xFC) >> 2]; j += 4;
+        r[j] = _b64[(s[i] & 0xfc) >> 2]; j += 4;
         }
     }
 
@@ -2680,7 +2678,7 @@ public m_string *string_deb64s(const char *s, size_t size)
             /* take four ASCII chars and convert them in three bytes */
             r[j ++] = _D64(s[i]) << 2 | _D64(s[i + 1]) >> 4;
             r[j ++] = _D64(s[i + 1]) << 4 | _D64(s[i + 2]) >> 2;
-            r[j ++] = ((_D64(s[i + 2]) << 6) & 0xC0) | _D64(s[i + 3]);
+            r[j ++] = ((_D64(s[i + 2]) << 6) & 0xc0) | _D64(s[i + 3]);
             i += 4;
         } else i ++; /* drop CRLF and other noise */
     }
@@ -2691,7 +2689,7 @@ public m_string *string_deb64s(const char *s, size_t size)
     /* process the remaining */
     switch (size - i) {
     case 3:
-    r[j + 2] = ((_D64(s[i + 2]) << 6) & 0xC0) | _D64(s[i + 3]);
+    r[j + 2] = ((_D64(s[i + 2]) << 6) & 0xc0) | _D64(s[i + 3]);
     case 2:
     r[j + 1] = _D64(s[i + 1]) << 4 | _D64(s[i + 2]) >> 2;
     case 1:
@@ -2836,10 +2834,10 @@ static void _sha1_transform(SHA1_CONTEXT *hd, unsigned char *data)
     }
     #endif
 
-    #define K1 0x5A827999L
-    #define K2 0x6ED9EBA1L
-    #define K3 0x8F1BBCDCL
-    #define K4 0xCA62C1D6L
+    #define K1 0x5a827999L
+    #define K2 0x6ed9eba1L
+    #define K3 0x8f1bbcdcL
+    #define K4 0xca62c1d6L
     #define F1(x, y, z) (z ^ (x & (y ^ z)))
     #define F2(x, y, z) (x ^ y ^ z)
     #define F3(x, y, z) ( (x & y) | (z & (x | y)) )
@@ -3252,11 +3250,12 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             state = -(IS_OBJECT(json) && ! IS_STRING(LAST_TOKEN(json))) & _KEY;
             state |= _VAL;
         } else string_free_token(json);
-    } else string_free_token(json);
-
-    /* skip UTF-8 BOM if present */
-    if (! memcmp(DATA(json) + pos, "\xEF\xBB\xBF", MIN(SIZE(json) - pos, 3)))
-        pos += 3;
+    } else {
+        /* skip UTF-8 BOM if present */
+        if (! memcmp(DATA(json), "\xef\xbb\xbf", MIN(SIZE(json), 3)))
+            pos += 3;
+        string_free_token(json);
+    }
 
     for ( ; pos < SIZE(json); pos ++) {
 
@@ -3274,11 +3273,19 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 /* check if the quotes are matching */
                 if (json->_data[-1] != json->_data[pos])
                     break;
+                json->_len = json->_alloc = pos;
                 goto _delim;
-            } else if (unlikely(IS_PRIMITIVE(json))) goto _error;
+            } else if (unlikely(IS_PRIMITIVE(json))) {
+                debug("string_parse_json(): unexpected quotation mark.\n");
+                goto _error;
+            }
 
             if (strict) {
-                if (unlikely(json->_data[pos] == '\'')) goto _error;
+                if (unlikely(json->_data[pos] == '\'')) {
+                    debug("string_parse_json(): strings must be enclosed "
+                          "in double-quotes.\n");
+                    goto _error;
+                }
 
                 if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
                     if ((state & _VAL) == 0) {
@@ -3299,16 +3306,18 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             {   /* optimize for long strings */
                 uint32_t prefetch;
-                memcpy(& prefetch, json->_data, sizeof(prefetch));
-                if (__zero(prefetch ^ (~0U / 255 * json->_data[(int) pos])))
-                    break; /* " or ' */
-                if (unlikely(__zero(prefetch ^ 0x5C5C5C5CU)))
-                    break; /* \ */
-                if (unlikely(__less(prefetch, ' ')))
-                    break; /* unescaped special char */
-                pos = sizeof(prefetch) - 1;
+                if (likely(pos + sizeof(prefetch) < SIZE(json))) {
+                    memcpy(& prefetch, json->_data, sizeof(prefetch));
+                    if (__zero(prefetch ^ (~0U / 255 * json->_data[-1])))
+                        break; /* " or ' */
+                    if (unlikely(__less(prefetch, ' ')))
+                        break; /* unescaped special char */
+                    if (likely(! (prefetch = __zero(prefetch ^ 0x5c5c5c5cU)))) {
+                        pos += sizeof(prefetch); break;
+                    } else pos += __zero_idx(prefetch); /* \ */
+                } else break;
             }
-        } break;
+        } /* FALLTHRU */
 
         /* \ */
         case ESCAPESEQ: { /* escape sequence */
@@ -3340,12 +3349,14 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             case  'u': { /* unicode escape sequence */
                 uint32_t prefetch;
-                memcpy(& prefetch, json->_data + pos + 1, sizeof(prefetch));
-                if (! __less(prefetch, '0') && ! __more(prefetch, 'f'))
-                if (likely(! __between(prefetch, '9', 'A')))
-                if (likely(! __between(prefetch, 'F', 'a'))) {
-                    pos += sizeof(prefetch); break;
-                }
+                if (likely(pos + 1 + sizeof(prefetch) < SIZE(json))) {
+                    memcpy(& prefetch, json->_data + pos + 1, sizeof(prefetch));
+                    if (! __less(prefetch, '0') && ! __more(prefetch, 'f'))
+                    if (likely(! __between(prefetch, '9', 'A')))
+                    if (likely(! __between(prefetch, 'F', 'a'))) {
+                        pos += sizeof(prefetch); break;
+                    }
+                } else break;
             }
 
             /* unexpected char */
@@ -3369,14 +3380,11 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                            (-(! (state & _BUG)) & JSON_PRIMITIVE);
             state = (state & ~_KEY) | (-(IS_STRING(json) > 0) & _KEY);
             state &= ~_BUG;
-            leading_digit = 0; goto _delim;
+            leading_digit = 0;
+            json->_len = json->_alloc = pos;
+            goto _delim;
             break;
-        } else {
-            uint32_t prefetch;
-            memcpy(& prefetch, json->_data + pos + 1, sizeof(prefetch));
-            pos += (prefetch == 0x20202020U) * sizeof(prefetch);
-        }
-        break;
+        } break;
 
         /* f, n, t */
         case PRIMITIVE: if (likely(! IS_PRIMITIVE(json))) {
@@ -3471,9 +3479,12 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             {   /* optimize for large numbers */
                 uint32_t prefetch;
-                memcpy(& prefetch, p + 1, sizeof(prefetch));
-                if (! __more(prefetch, '9') && likely(! __less(prefetch, '0'))) {
-                    pos += sizeof(prefetch); break;
+                if (likely(pos + 1 + sizeof(prefetch) < SIZE(json))) {
+                    memcpy(& prefetch, p + 1, sizeof(prefetch));
+                    prefetch = __more(prefetch, '9') | __less(prefetch, '0');
+                    if ( (prefetch = __zero_idx(prefetch)) ) {
+                        pos += prefetch; break;
+                    }
                 }
             }
 
@@ -3520,8 +3531,11 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
         /* 0-9 */
         case DIGIT: if (likely(leading_digit)) {
             if (leading_digit == '0') {
-                if ((state & (_RAD | _EXP)) == 0)
+                if ((state & (_RAD | _EXP)) == 0) {
+                    debug("string_parse_json(): octal integers "
+                          "are not supported.\n");
                     goto _error;
+                }
                 leading_digit = 1;
             }
 
@@ -3529,9 +3543,11 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             {   /* optimize for large numbers */
                 uint32_t prefetch;
-                memcpy(& prefetch, p + 1, sizeof(prefetch));
-                if (! __more(prefetch, '9') && likely(! __less(prefetch, '0')))
-                    pos += sizeof(prefetch);
+                if (likely(pos + 1 + sizeof(prefetch) < SIZE(json))) {
+                    memcpy(& prefetch, p + 1, sizeof(prefetch));
+                    prefetch = __more(prefetch, '9') | __less(prefetch, '0');
+                    pos += __zero_idx(prefetch);
+                }
             }
         } else {
             leading_digit = *p;
@@ -3585,7 +3601,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 state |= _VAL;
 
                 /* skip space */
-                pos += (p[1] == ' ');
+                pos += likely(p[1] == ' ');
 
                 break;
             }
@@ -3626,7 +3642,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             state &= ~_KEY; state |= _VAL;
 
             /* skip space */
-            pos += (p[1] == ' ');
+            pos += likely(p[1] == ' ');
 
             /* parser callback */
             if (ctx) {
@@ -3664,7 +3680,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             state = (state & ~_KEY) | (-(pos) & _KEY) | _VAL;
 
-            pos = 0;
+            /* skip space */
+            pos = (p[1] == ' ');
 
             /* parser callback */
             if (ctx && ctx->init) {
@@ -3741,7 +3758,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 do {
                     uint32_t prefetch;
                     memcpy(& prefetch, p, sizeof(prefetch));
-                    if (__zero(prefetch ^ 0x0A0A0A0AU)) {
+                    if (__zero(prefetch ^ 0x0a0a0a0aU)) {
                         while (*p ++ != '\n');
                         p --; break;
                     }
@@ -3751,7 +3768,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 do {
                     uint32_t prefetch;
                     memcpy(& prefetch, p, sizeof(prefetch));
-                    if (__zero(prefetch ^ 0x2A2A2A2AU)) {
+                    if (__zero(prefetch ^ 0x2a2a2a2aU)) {
                         while (*p ++ != '*');
                         if (*p == '/') break;
                     } else p += sizeof(prefetch);
@@ -3812,17 +3829,16 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
         continue;
 
-_delim: json->_len = json->_alloc = pos;
 _token: if (likely(json->_len != pos))
         json->_len = json->_alloc = pos + 1;
-        json->_flags &= ~_STRING_FLAG_ERRORS;
+_delim: json->_flags &= ~_STRING_FLAG_ERRORS;
         parent = json->parent;
 
         /* parser callback */
         if (ctx) {
             int type = json->_flags & JSON_TYPE;
 
-            if (parent)
+            if (likely(parent))
                 ctx->parent = parent->_flags & JSON_TYPE;
             else ctx->parent = 0;
 

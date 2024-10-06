@@ -59,10 +59,10 @@ int test_trie(void)
     printf("%.3f", (double)( stop - start ) / CLOCKS_PER_SEC);
     printf(" s\n");
 
-    /*printf("(-) Size of the hashtable: %i items/%i buckets\n",
-            h->_bucket_count, h->_bucket_size);
-    printf("(-) Memory footprint: %i bytes.\n", cache_footprint(h, & len));
-    printf("(-) Overhead: %i bytes (%i KiB).\n", len, len / 1024);*/
+    if (trie_insert(t, key, len, (void *) (uintptr_t) i) != -1) {
+        printf("(!) Inserting duplicate key: FAILURE\n");
+        return -1;
+    } else printf("(*) Inserting duplicate key: SUCCESS\n");
 
     printf("(*) Getting back values from keys.\n");
     start = clock();

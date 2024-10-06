@@ -47,10 +47,12 @@
 #include "m_core_def.h"
 #include "m_random.h"
 
+#define FAST_TABLE
+
 #ifdef FAST_TABLE
-#define CACHE_HASHFNCOUNT         5     /* number of hash functions to use */
-#define CACHE_CUCKOORETRY         8     /* retries if the bucket is full */
-#define CACHE_GROWTHRATIO       1.6     /* threshold to grow the table */
+#define CACHE_HASHFNCOUNT         6    /* number of hash functions to use */
+#define CACHE_CUCKOORETRY        12    /* retries if the bucket is full */
+#define CACHE_GROWTHRATIO      1.66    /* threshold to grow the table */
 #else
 #define CACHE_HASHFNCOUNT         8    /* number of hash functions to use */
 #define CACHE_CUCKOORETRY         8    /* retries if the bucket is full */

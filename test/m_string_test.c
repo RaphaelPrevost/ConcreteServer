@@ -60,11 +60,14 @@ int test_string(void)
     const char *json5 = "{ // single-line comment\nunquoted_key: 'single quoted string w/ nested \"double quoted string\"',\n'single quoted key'/* multi-line\ncomment */: \"stray CRLF\\\n\tunescaped tab\",\"hex\": [0xA, 0xBAD, 0xc0ffee, 0x00000000064B175]/* max 64 bits */,\n\"no fractional part\": 123.,\n, \"trailing commas in object\":\n[\"and\",,\"in array\", ],\n}";
     const char *incomplete_string1 = "\"incomplete, ";
     const char *incomplete_string2 = "string\"";
-    unsigned int bad_json = 23;
+    unsigned int bad_json = 27;
     const char *bad[] = { 
         "{\"a\":}",
         "{\"a\"}",
+        "{\"a\":01}",
+        "{\"a\": 0. }",
         "{\"a\" \"b\"}",
+        "{\"a\":'b'}",
         "{\"a\" ::::: \"b\"}",
         "{\"a\": [1 \"b\"] }",
         "{\"a\"\"\"}",
@@ -76,6 +79,7 @@ int test_string(void)
         "{,}",
         "{ : }",
         "[1,,3]",
+        "\"bad\":",
         "\"unescaped\tstring\"",
         "\"bad escaped unicode \\u1?34\"",
         "{ : 1}",

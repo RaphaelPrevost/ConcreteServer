@@ -1,6 +1,6 @@
 ################################################################################
 #  Concrete Server                                                             #
-#  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                       #
+#  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                       #
 #                                                                              #
 #  This software is a computer program whose purpose is to provide a           #
 #  framework for developing and prototyping network services.                  #
@@ -398,6 +398,14 @@ install: plugin
 json_checker:
 	@echo "JSON_CHECKER"
 	@$(CC) -D_ENABLE_JSON -D_ENABLE_TRIE $(FINAL) -lpthread \
+	lib/util/m_util_vfscanf.c lib/util/m_util_vfprintf.c \
+	lib/util/m_util_float.c lib/util/m_util_dtoa.c \
+	lib/ports/m_ports.c lib/m_string.c lib/m_trie.c \
+	test/json/json_checker.c -o json_checker
+
+json_debug:
+	@echo "JSON_CHECKER (DEBUG)"
+	@$(CC) -D_ENABLE_JSON -D_ENABLE_TRIE $(DEBUG) -lpthread \
 	lib/util/m_util_vfscanf.c lib/util/m_util_vfprintf.c \
 	lib/util/m_util_float.c lib/util/m_util_dtoa.c \
 	lib/ports/m_ports.c lib/m_string.c lib/m_trie.c \

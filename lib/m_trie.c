@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -53,6 +53,12 @@ typedef struct _m_leaf {
 } _m_leaf;
 
 /* -------------------------------------------------------------------------- */
+/* BITWISE OPERATIONS */
+/* -------------------------------------------------------------------------- */
+
+#include "ports/m_port_bitops.c"
+
+/* -------------------------------------------------------------------------- */
 
 public m_trie *trie_alloc(void (*freeval)(void *))
 {
@@ -85,40 +91,6 @@ _err_lock:
     free(t);
 
     return NULL;
-}
-
-/* -------------------------------------------------------------------------- */
-
-static uint32_t CALLBACK __msb(uint32_t i)
-{
-    /* hardware implementation */
-    #if (defined(__GNUC__) && \
-         ((__GNUC__ >= 4) || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))) && \
-        (defined(__i386__) || defined(__x86_64__) || defined(__arm__))
-
-    return 1 << (__builtin_clz(i) ^ 31);
-
-    #elif (defined(_MSC_VER) && (_MSC_VER >= 1400)) && \
-          (defined(_M_IX86) || defined(_M_AMD64) || defined(_M_ARM))
-
-    #pragma intrinsic(_BitScanReverse)
-
-    unsigned long idx;
-
-    _BitScanReverse(& idx, (unsigned long) i);
-
-    return 1 << (idx ^ 31);
-
-    #else
-
-    /* portable software implementation (de Bruijn sequence) */
-    static const uint8_t seq[] = { 0, 5, 1, 6, 4, 3, 2, 7 };
-
-    i |= i >> 1; i |= i >> 2; i |= i >> 4;
-
-    return 1 << seq[(uint8_t) (i * 0x1D) >> 5];
-
-    #endif
 }
 
 /* -------------------------------------------------------------------------- */
@@ -188,9 +160,9 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
         if (likely(node->byte < ulen)) {
             c = ubytes[node->byte];
             direction = (1 + (node->otherbits | c)) >> 8;
-            if (likely(node->val ^ c)) {
+            if (node->val ^ c) {
                 newotherbits = node->val ^ c;
-                newotherbits = __msb(newotherbits) ^ 0xFF;
+                newotherbits = __msb(newotherbits) ^ 0xff;
                 if (node->otherbits > newotherbits) {
                     newbyte = node->byte;
                     c = node->val;
@@ -200,16 +172,33 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
         } else direction = (1 + node->otherbits) >> 8;
     }
 
-    for (newbyte = 0; newbyte < ulen; newbyte ++) {
-        if (p[newbyte] ^ ubytes[newbyte]) {
-            newotherbits = p[newbyte] ^ ubytes[newbyte];
-            newotherbits = __msb(newotherbits) ^ 0xFF;
-            c = p[newbyte];
-            goto different_byte_found;
+    /* found a leaf, compute the divergence */
+    if (ulen > sizeof(uint32_t)) {
+        size_t ulen32 = ulen & ~0x3;
+
+        for (newbyte = 0; newbyte < ulen32; newbyte += sizeof(uint32_t)) {
+            uint32_t index = __zero_idx(
+                *(uint32_t *)(p + newbyte) ^ *(uint32_t *)(ubytes + newbyte)
+            );
+            if (index < sizeof(uint32_t)) {
+                newbyte += index;
+                newotherbits = p[newbyte] ^ ubytes[newbyte];
+                newotherbits = __msb(newotherbits) ^ 0xff;
+                c = p[newbyte];
+                goto different_byte_found;
+            }
         }
     }
 
-    return 0;
+    for ( ; newbyte < ulen; newbyte ++) {
+        if ( (newotherbits = p[newbyte] ^ ubytes[newbyte]) ) {
+            newotherbits = __msb(newotherbits) ^ 0xff;
+            c = p[newbyte];
+            break;
+        }
+    }
+
+    if (unlikely(! newotherbits)) return -1;
 
 different_byte_found:
 
