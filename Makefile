@@ -167,6 +167,9 @@ ifeq ($(shell test $(GCC_MAJ) -ge 6; echo $$?),0)
 FLAGS += -Wno-misleading-indentation
 ifeq ($(shell test $(GCC_MAJ) -ge 7; echo $$?),0)
 FLAGS += -Wno-implicit-fallthrough
+ifeq ($(shell test $(GCC_MAJ) -ge 8; echo $$?),0)
+FLAGS += -Wno-cast-function-type
+endif
 endif
 endif
 endif
@@ -207,9 +210,9 @@ endif
 
 # check for libxml2
 ifneq ($(HAS_LIBXML), )
-LIBS += $(shell xml2-config --libs)
-FLAGS += $(shell xml2-config --cflags)
 CONFIG += -DHAS_LIBXML
+FLAGS += $(shell xml2-config --cflags)
+LIBS += $(shell xml2-config --libs)
 endif
 
 # check for iconv
@@ -222,8 +225,8 @@ PCRE_ENABLED=$(shell echo $(CONFIG) | grep -c D_ENABLE_PCRE)
 # check for PCRE
 ifeq ($(PCRE_ENABLED),1)
 ifeq ($(HAS_PCRE),0)
-LIBS += -lpcre
 CONFIG += -DHAS_PCRE
+LIBS += -lpcre
 endif
 endif
 
@@ -256,6 +259,7 @@ MYSQL_ENABLED=$(shell echo $(CONFIG) | grep -c D_ENABLE_MYSQL)
 ifeq ($(MYSQL_ENABLED),1)
 ifneq ($(HAS_MYSQL), )
 CONFIG += -DHAS_MYSQL
+FLAGS += $(shell mysql_config --cflags)
 LIBS += $(shell mysql_config --libs_r)
 endif
 endif

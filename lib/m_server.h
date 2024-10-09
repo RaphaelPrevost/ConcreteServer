@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -70,15 +70,15 @@
 #define SERVER_CONCURRENCY  48          /* threads */
 #define SERVER_STACKSIZE    524288      /* bytes */
 
-/** TRANSmission ENDing: this flag instruct the server to close the connection
-                         after the flagged message has been sent. */
-#define SERVER_TRANS_END     0x0001
-/** TRANSmission ACKnowledgment: this flag instructs the server to notify the
-                                 plugin when the flagged message is sent. */
-#define SERVER_TRANS_ACK     0x0002
-/** TRANSmission Out Of Band: this flag instructs the server to send the message
-                              out of band. */
-#define SERVER_TRANS_OOB     0x0004
+/** End: this flag instructs the server to close the connection
+         after the flagged message has been sent. */
+#define SERVER_MSG_END     0x0001
+/** Acknowledgment: this flag instructs the server to notify the
+                    plugin when the flagged message is sent. */
+#define SERVER_MSG_ACK     0x0002
+/** Out Of Band: this flag instructs the server to send the message
+                 out of band. */
+#define SERVER_MSG_OOB     0x0004
 
 /* in server context, the reserved bits of the socket id hold the plugin id */
 #define PLUGIN_ID(s) _RESERVED(s)
@@ -118,9 +118,9 @@ public int server_init(void);
  * to be handled by workers thread, and outbound connections to be managed the
  * same way.
  *
- * When you want to stop the server, you must call server_fini().
+ * When you want to stop the server, you must call server_exit().
  *
- * @see server_fini()
+ * @see server_exit()
  *
  */
 
@@ -141,7 +141,7 @@ public void __server_set_privileged_channel(int channel);
  * indications.
  *
  * @warning This function is public only to allow bootstrapping from
- *          an host binary.
+ *          a host binary.
  *
  * @see main()
  *
@@ -162,7 +162,7 @@ public void __server_privileged_process(int channel);
  * Please see the source code for further indications.
  *
  * @warning This function is public only to allow bootstrapping from
- *          an host binary.
+ *          a host binary.
  *
  */
 
@@ -293,8 +293,8 @@ public int server_send_response(uint32_t token, uint16_t sockid, uint16_t flags,
  * This function will build the payload out of the payload elements, according
  * to the given format, then send it over the socket identified by @ref sockid.
  *
- * Additionaly, if the @ref SERVER_TASK_FIN flag is given, the connection will
- * be closed after sending the payload. The @ref SERVER_TASK_ACK flag will
+ * Additionaly, if the @ref SERVER_MSG_END flag is given, the connection will
+ * be closed after sending the payload. The @ref SERVER_MSG_ACK flag will
  * cause the plugin to receive a notification after the packet is sent.
  *
  */
@@ -394,11 +394,11 @@ public int server_send_http(uint32_t token, uint16_t sockid, uint16_t flags,
 #endif
 /* -------------------------------------------------------------------------- */
 
-public void server_fini(void);
+public void server_exit(void);
 
 /**
  * @ingroup server
- * @fn void server_fini(void)
+ * @fn void server_exit(void)
  *
  * This function stops the server and clean all of its internal state, including
  * connections and data created while it was running.

@@ -3848,7 +3848,7 @@ _delim: json->_flags &= ~_STRING_FLAG_ERRORS;
                 ctx->key.current = NULL;
                 ctx->key.len = 0;
             } else if (ctx->data && (state & _KEY) == 0) {
-                callback = ctx->data(type, DATA(json), SIZE(json), ctx);
+                callback = ctx->data(type, json, ctx);
                 if (callback == 1) return 0;
             }
         }

@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -277,10 +277,10 @@ public int socket_ip(int id, char *host, size_t hostlen, uint16_t *port);
  * @param port an optional pointer to an integer where to write the socket port
  * @return -1 if an error occurs, 0 otherwise
  *
- * This function retrieves the IP address of a socket and write it to the
+ * This function retrieves the IP address of a socket and writes it to the
  * given buffer. It is recommended the buffer is NI_MAXHOST long. If the
  * optional @ref port parameter is not NULL, the port corresponding to the
- * socket will be written in it too.
+ * socket will be written too.
  *
  * @note This function does not lock the socket and can therefore be
  * safely called within a plugin.
@@ -343,8 +343,9 @@ public m_socket *socket_acquire(int id);
  *
  * The returned socket MUST be unlocked after use with socket_release().
  *
- * @warning calling @ref socket_acquire() within plugin_main or a socket
- * callback using the current socket id will result in a deadlock.
+ * @warning calling @ref socket_acquire() within the plugin_input_handler
+ * function or a socket callback using the current socket id will result
+ * in a deadlock.
  *
  * @see socket_release()
  *
@@ -380,7 +381,7 @@ private int socket_lock(m_socket *s);
  * Locking the socket is a blocking operation, so it should be avoided
  * whenever possible.
  *
- * @Warning
+ * @warning
  * Do not assume that you own the socket when this function returns; you
  * MUST check the return value to ensure the lock is effective.
  *
@@ -405,9 +406,9 @@ private void socket_unlock(m_socket *s);
  * @param s the socket to unlock
  * @return void
  *
- * This function unconditionnaly unlock the socket, silently handling broken
+ * This function unconditionnaly unlocks the socket, silently handling broken
  * locks. Once the socket has been unlocked, it will be accessible to other
- * threads back again.
+ * threads.
  *
  * If you call this function more than once, as much socket_lock() calls
  * will succeed. This may be useful to implement complex locking schemes.
@@ -430,10 +431,10 @@ public int socket_connect(m_socket *s);
  * been initialized.
  *
  * If the socket is non blocking (default), it is not sufficient to call
- * this function for the connection to be established; the Mammouth server
+ * this function for the connection to be established; the Concrete Server
  * monitors connections in progress and notify their master plugins.
  * So, if you call this function from a plugin, using non blocking i/o,
- * you should wait for it.
+ * you should wait for the PLUGIN_EVENT_OUTGOING_CONNECTION event.
  *
  * If you use blocking i/o, the connection will be useable immediately
  * after the function returns 0.
@@ -516,7 +517,7 @@ public ssize_t socket_oob_write(m_socket *s, const char *data, size_t len);
  * @note This is a private function, it should not be called from a plugin.
  *
  * This function sends data out-of-band using the TCP "urgent data" feature.
- * Please note that this mechanism only allow to portably send one byte of
+ * Please note that this mechanism only allows to portably send one byte of
  * data (if you write more, only the last byte may be read on the other side).
  *
  */
@@ -544,7 +545,7 @@ public ssize_t socket_read(m_socket *s, char *out, size_t len);
  * @note This is a private function, it should not be called from a plugin.
  *
  * This function reads the incoming data from the socket and copy them
- * to the given buffer, up to its length.
+ * to the given buffer, up to the given length.
  *
  * Like @ref socket_write(), this function returns various error codes:
  * > 0: the returned number of bytes were successfully read and copied to the
@@ -606,8 +607,8 @@ private int socket_persist(m_socket *s);
  * @param s the socket to destroy
  * @return 0 if all went fine, -1 otherwise
  *
- * This function gracefully shutdowns the connection but keep the associated
- * structure and prepare it for a reconnection attempt.
+ * This function gracefully shutdowns the connection but keeps the associated
+ * structure and prepares it for a reconnection attempt.
  *
  */
 

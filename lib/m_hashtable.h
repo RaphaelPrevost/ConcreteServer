@@ -71,7 +71,7 @@ typedef struct m_cache {
     struct _m_bucket *_index;
     struct _m_item **_bucket;
     struct _m_item *_basket;
-    void (*_freeval)(void *);
+    void *(*_freeval)(void *);
     unsigned int _seed[CACHE_HASHFNCOUNT];
 } m_cache;
 
@@ -97,7 +97,7 @@ typedef struct m_hashtable {
 
 /* -------------------------------------------------------------------------- */
 
-public m_cache *cache_alloc(void (*freeval)(void *));
+public m_cache *cache_alloc(void *(*freeval)(void *));
 
 /* -------------------------------------------------------------------------- */
 
@@ -148,7 +148,7 @@ public m_cache *cache_free(m_cache *h);
 /* Segmented hash table */
 /* -------------------------------------------------------------------------- */
 
-public m_hashtable *hashtable_alloc(void (*freeval)(void *));
+public m_hashtable *hashtable_alloc(void *(*freeval)(void *));
 
 /* -------------------------------------------------------------------------- */
 

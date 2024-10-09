@@ -93,7 +93,7 @@ typedef struct m_random {
  * @b private @ref _a, @ref _b, @ref _c are working variables
  *
  * A new structure is obtained using @ref random_init(), and must be destroyed
- * using @ref random_fini().
+ * using @ref random_free().
  *
  */
 
@@ -230,11 +230,11 @@ public double random_res53(m_random *ctx);
 
 /* -------------------------------------------------------------------------- */
 
-public m_random *random_fini(m_random *ctx);
+public m_random *random_free(m_random *ctx);
 
 /**
  * @ingroup random
- * @fn m_random *random_fini(m_random *ctx)
+ * @fn m_random *random_free(m_random *ctx)
  * @param the random number generator state obtained from random*_init()
  * @return NULL
  *

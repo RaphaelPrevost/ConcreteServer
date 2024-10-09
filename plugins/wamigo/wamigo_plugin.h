@@ -103,37 +103,40 @@ private uint32_t plugin_get_token(void);
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_main(uint16_t id, uint16_t ingress_id, m_string *buffer);
+public void plugin_input_handler(uint16_t socket_id, uint16_t ingress_id,
+                                 m_string *data);
 
 /**
  * @ingroup plugin
- * @fn struct m_task *plugin_main(uint16_t id, const char *buffer, size_t l)
- * @param id connection identifier
- * @param buffer incoming data
+ * @fn void plugin_input_handler(uint16_t socket_id, uint16_t ingress_id,
+ *                               m_string *data)
+ * @param socket_id connection identifier
+ * @param ingress_id a channel identifier
+ * @param data incoming data
  *
- * This function is called by the server everytime some data are available
- * on a connection.
+ * This function is called by the server when data become available on a
+ * connection.
  *
- * The incoming data are encapsulated in a @ref m_iobuf structure, so the
+ * The incoming data are encapsulated in a @ref m_string structure, so the
  * plugin can fetch the data it needs and the server can handle request
  * fragmentation. If the plugin leaves data in the buffer, they will be kept
- * by the server which will append subsequent incoming data to it.
+ * by the server and subsequent incoming data will be automatically appended.
  *
- * If you don't want the server to keep remaining data from the buffer, you
- * should discard them using @ref server_iobuf_discard().
+ * If you don't want the server to keep these remaining data, you can discard
+ * them by calling @ref string_flush() on the @ref m_string.
  *
  * This method can use the server functions @ref server_send_string() or
- * @ref server_send_response() to answer the received request.
+ * @ref server_send_response() to send a reply.
  *
  */
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_fini(void);
+public void plugin_exit(void);
 
 /**
  * @ingroup plugin
- * @fn void plugin_fini(void)
+ * @fn void plugin_exit(void)
  *
  * This function is called by the server when unloading the plugin. It gives
  * the opportunity to clean up all the resources allocated by the plugin, like
@@ -145,18 +148,20 @@ public void plugin_fini(void);
 /* OPTIONAL PLUGIN CALLBACKS */
 /* -------------------------------------------------------------------------- */
 
-public void plugin_intr(uint16_t id, uint16_t ingress_id, unsigned int event,
-                        void *event_data);
+public void plugin_event_handler(uint16_t id, uint16_t ingress_id,
+                                 unsigned int event, void *event_data);
 
 /**
  * @ingroup plugin
- * @fn struct m_task *plugin_intr(unused uint16_t id, unsigned int event)
+ * @fn void plugin_event_handler(uint16_t id, uint16_t ingress_id, int event)
  * @param id connection identifier
+ * @param ingress_id ingress identifier
  * @param event event code
+ * @param event_data pointer to event-specific data
  *
- * This function is called by the server everytime a new event occurs on
- * a connection; this can be that the connection has just been established,
- * broken, or an answer has been sent on it.
+ * This function is called by the server whenever an event occurs on
+ * a connection; e.g. the connection has just been established, broken,
+ * or a response has been successfully sent.
  *
  * This method can use the server functions @ref server_send_string() or
  * @ref server_send_response() to respond to the received event.

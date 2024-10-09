@@ -206,8 +206,7 @@ int CALLBACK json_exit(int type, struct m_json_parser *ctx)
 
 /* -------------------------------------------------------------------------- */
 
-int CALLBACK json_data(UNUSED int type, const char *data,
-                       size_t len, struct m_json_parser *ctx)
+int CALLBACK json_data(UNUSED int type, m_string *data, struct m_json_parser *ctx)
 {
     struct jsonpath_context *context = ctx->context;
 

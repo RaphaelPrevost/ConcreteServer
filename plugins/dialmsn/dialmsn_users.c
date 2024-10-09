@@ -130,7 +130,7 @@ private dialmsn_user *dialmsn_user_add(uint16_t session, dialmsn_user *user,
 
     if (! r || ! r->rows || db_integer(r, "ret") != 1) {
         err = DIALMSN_AUTH | DIALMSN_AUTH_SERVER_ERR | DIALMSN_AUTH_ERR_EINVAL;
-        server_send_response(plugin_get_token(), session, SERVER_TRANS_END,
+        server_send_response(plugin_get_token(), session, SERVER_MSG_END,
                              "%bB4i%bB4i", err, DIALMSN_TERM);
         r = db_free(r);
         return user;
@@ -666,51 +666,47 @@ private void dialmsn_userlist_refresh(void)
 {
     m_string *list = NULL, *data = NULL, *buffer = NULL;
     unsigned int i = 0, records = 0;
-    size_t size = 0;
-    int ret = 0;
 
     if (! (list = string_alloc(NULL, (online + 1) * 256)) ) {
         debug("DialMessenger::LISTCACHE: out of memory (0).\n");
         return;
     }
 
-    buffer = string_select(list, 0, 256);
-
     for (i = 1; i < DIALMSN_USER_MAX && records < online; i ++) {
 
         if (! users[i]) continue;
 
         /* build the datagram line */
-        ret = string_printf(buffer,
-                            "%i%.*s%i%.*s%s%.*s%i%.*s%i%.*s%i"
-                            "%.*s%i%.*s%s%.*s%s%.*s%i%.*s%i%.*s",
-                            i,                    /* session id */
-                            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                            users[i]->uid,        /* user id */
-                            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                            users[i]->nick,       /* nickname */
-                            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                            users[i]->status,     /* status */
-                            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                            users[i]->sex,        /* sex */
-                            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                            users[i]->age,        /* age */
-                            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                            users[i]->dpt,        /* postal code */
-                            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                            users[i]->city,       /* city */
-                            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                            users[i]->avatar,     /* avatar */
-                            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                            users[i]->subscriber, /* subscriber ? */
-                            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
-                            users[i]->visible,
-                            DIALMSN_LINESEPLENGTH,
-                            DIALMSN_LINESEPARATOR);
+        buffer = string_catfmt(
+            list,
+            "%i%.*s%i%.*s%s%.*s%i%.*s%i%.*s%i"
+            "%.*s%i%.*s%s%.*s%s%.*s%i%.*s%i%.*s",
+            i,                    /* session id */
+            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
+            users[i]->uid,        /* user id */
+            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
+            users[i]->nick,       /* nickname */
+            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
+            users[i]->status,     /* status */
+            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
+            users[i]->sex,        /* sex */
+            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
+            users[i]->age,        /* age */
+            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
+            users[i]->dpt,        /* postal code */
+            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
+            users[i]->city,       /* city */
+            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
+            users[i]->avatar,     /* avatar */
+            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
+            users[i]->subscriber, /* subscriber ? */
+            DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
+            users[i]->visible,
+            DIALMSN_LINESEPLENGTH,
+            DIALMSN_LINESEPARATOR
+        );
 
-        if (ret == -1) continue; size += ret;
-
-        if (! (buffer = string_select(list, size, 256)) ) {
+        if (! buffer) {
             debug("DialMessenger::LISTCACHE: out of memory (1).\n");
             list = string_free(list);
             return;
@@ -720,8 +716,6 @@ private void dialmsn_userlist_refresh(void)
     }
 
     if (! records) { string_free(list); return; }
-
-    list->_len = size;
 
     /* compress the list */
     data = string_compress(list);
@@ -758,7 +752,7 @@ private void dialmsn_userlist_getconnected(uint16_t session)
         if (! (list = fs_openfile(cache, "list", strlen("list"), NULL)) )
             goto _err_enomem;
 
-        if (! (reply = server_reply_init(SERVER_TRANS_ACK, plugin_get_token())) )
+        if (! (reply = server_reply_init(SERVER_MSG_ACK, plugin_get_token())) )
             goto _err_reply;
 
         if (server_reply_setfile(reply, list, 0, 0) == -1)

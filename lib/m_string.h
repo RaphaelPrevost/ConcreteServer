@@ -111,7 +111,7 @@ typedef struct m_json_parser {
     } key;
     int parent;
     int (CALLBACK *init)(int, struct m_json_parser *);
-    int (CALLBACK *data)(int, const char *, size_t, struct m_json_parser *);
+    int (CALLBACK *data)(int, m_string *, struct m_json_parser *);
     int (CALLBACK *exit)(int, struct m_json_parser *);
 } m_json_parser;
 

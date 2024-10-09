@@ -69,7 +69,7 @@ private m_db *dialmsn_db_return(m_db *con)
 
 /* -------------------------------------------------------------------------- */
 
-private void dialmsn_db_fini(void)
+private void dialmsn_db_exit(void)
 {
     return;
 }

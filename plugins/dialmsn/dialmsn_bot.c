@@ -88,7 +88,7 @@ private int dialmsn_bot_init(void)
     for (i = 0; i < DIALMSN_BOTS_MAX; i ++) {
         if (pthread_create(& bot[i], & attr, _dialmsn_bot, (void *) i) == -1) {
             perror(ERR(dialmsn_bot_init, pthread_create));
-            rnd = random_fini(rnd);
+            rnd = random_free(rnd);
             bot_stop = 1;
             while (i --) pthread_join(bot[i], NULL);
             bot_stop = 0;
@@ -250,7 +250,7 @@ static void *_dialmsn_bot(UNUSED void *dummy)
                 continue;
             }
 
-            debug("DialMessenger::BOT: \"%.*s\".\n", SIZE(line), DATA(line));
+            debug("DialMessenger::BOT: \"%.*s\".\n", (int) SIZE(line), DATA(line));
 
             server_send_response(plugin_get_token(), spammee, 0x0,
                                  "%bB4i%i%.*s%.*s\r\n%bB4i",
@@ -329,7 +329,7 @@ static void *_dialmsn_bot(UNUSED void *dummy)
 
             /* the socket is managed by the server from now on */
             debug("DialMessenger::BOT: sending an email notification.\n");
-            server_send_response(plugin_get_token(), sockid, SERVER_TRANS_END,
+            server_send_response(plugin_get_token(), sockid, SERVER_MSG_END,
                                  http, uid, spammee_uid,
                                  plugin_get_host());
 
@@ -363,7 +363,7 @@ _bot_panic:
 
 /* -------------------------------------------------------------------------- */
 
-private void dialmsn_bot_fini(void)
+private void dialmsn_bot_exit(void)
 {
     unsigned int i = 0;
 
@@ -374,7 +374,7 @@ private void dialmsn_bot_fini(void)
         pthread_join(bot[i], NULL);
     }
 
-    rnd = random_fini(rnd);
+    rnd = random_free(rnd);
 
     return;
 }
