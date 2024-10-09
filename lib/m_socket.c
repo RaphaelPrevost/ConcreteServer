@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -73,7 +73,7 @@ static int _sc = 1;
 static void _socket_ssl_init(void);
 static int password_cb(char *buf, int len, int rwflag,void *userdata);
 #endif
-static void _socket_ssl_fini(void);
+static void _socket_ssl_exit(void);
 static m_socket *_socket_ssl_open(m_socket *s);
 static ssize_t _socket_ssl_write(m_socket *s, const char *data, size_t len);
 static ssize_t _socket_ssl_read(m_socket *s, char *out, size_t len);
@@ -93,7 +93,7 @@ public int socket_api_setup(void)
     SSL_library_init();
     SSL_load_error_strings();
     OpenSSL_add_all_algorithms();
-    atexit(_socket_ssl_fini);
+    atexit(_socket_ssl_exit);
     #endif
 
     if (! (_free_ids = socket_queue_alloc()) ) {
@@ -214,7 +214,7 @@ static void _socket_ssl_init(void)
 
 /* -------------------------------------------------------------------------- */
 
-static void _socket_ssl_fini(void)
+static void _socket_ssl_exit(void)
 {
     #ifndef _ENABLE_CONFIG
     SSL_CTX_free(_ssl_ctx);
@@ -551,11 +551,15 @@ private int socket_rhost(m_socket *s, char *h, size_t hl, char *srv, size_t sl)
 
     if (! s || ! h || ! hl || ! srv || ! sl) return -1;
 
-    if ( (err = getnameinfo(s->info->ai_addr,
-                            s->info->ai_addrlen,
-                            h, hl, srv, sl,
-                            NI_NUMERICHOST | NI_NUMERICSERV)) != 0)
-        _gai_perror(ERR(socket_getip, getnameinfo), err);
+    if ( (err = getnameinfo(
+        s->info->ai_addr,
+        s->info->ai_addrlen,
+        h,
+        hl,
+        srv,
+        sl,
+        NI_NUMERICHOST | NI_NUMERICSERV)) != 0
+    ) _gai_perror(ERR(socket_getip, getnameinfo), err);
 
     if (err) return SOCKET_EFATAL;
 
@@ -693,12 +697,13 @@ public m_socket *socket_open(const char *ip, const char *port, int type)
     #ifdef _ENABLE_UDP
     if (~type & SOCKET_UDP) {
     #endif
-        if (setsockopt(sockfd,
-                       SOL_SOCKET,
-                       SO_KEEPALIVE,
-                       (char *) & enabled,
-                       sizeof(enabled)) == -1)
-            serror(ERR(socket_open, setsockopt));
+        if (setsockopt(
+            sockfd,
+            SOL_SOCKET,
+            SO_KEEPALIVE,
+            (char *) & enabled,
+            sizeof(enabled)) == -1
+        ) serror(ERR(socket_open, setsockopt));
     #ifdef _ENABLE_UDP
     }
     #endif
@@ -786,8 +791,11 @@ public int socket_connect(m_socket *s)
     /* handle automatic reconnection */
     if (s->_flags & SOCKET_CLIENT && s->_fd == INVALID_SOCKET) {
         /* get a new socket descriptor */
-        s->_fd = socket(s->info->ai_family, s->info->ai_socktype,
-                        s->info->ai_protocol);
+        s->_fd = socket(
+            s->info->ai_family,
+            s->info->ai_socktype,
+            s->info->ai_protocol
+        );
         if (s->_fd == INVALID_SOCKET) {
             serror(ERR(socket_open, socket));
             goto _err_connect;
@@ -801,12 +809,13 @@ public int socket_connect(m_socket *s)
         #ifdef _ENABLE_UDP
         if (~s->_flags & SOCKET_UDP) {
         #endif
-            if (setsockopt(s->_fd,
-                           SOL_SOCKET,
-                           SO_KEEPALIVE,
-                           (char *) & enabled,
-                           sizeof(enabled)) == -1)
-                serror(ERR(socket_open, setsockopt));
+            if (setsockopt(
+                s->_fd,
+                SOL_SOCKET,
+                SO_KEEPALIVE,
+                (char *) & enabled,
+                sizeof(enabled)) == -1
+            ) serror(ERR(socket_open, setsockopt));
         #ifdef _ENABLE_UDP
         }
         #endif
@@ -872,11 +881,13 @@ public int socket_listen(m_socket *s)
     /* bind the socket if necessary */
     if (~s->_state & _SOCKET_B) {
         /* use SO_REUSEADDR to avoid binding problems */
-        r = setsockopt(s->_fd,
-                       SOL_SOCKET,
-                       SO_REUSEADDR,
-                       (char *) & r,
-                       sizeof(r));
+        r = setsockopt(
+            s->_fd,
+            SOL_SOCKET,
+            SO_REUSEADDR,
+            (char *) & r,
+            sizeof(r)
+        );
         if (r == -1) {
             serror(ERR(socket_listen, setsockopt));
             return SOCKET_EFATAL;
@@ -1034,12 +1045,14 @@ static ssize_t _socket_write(m_socket *s, const char *data, size_t len, int flag
     } else /* FALLTHRU */
     #endif
 
-    ret = sendto(s->_fd,
-                 data,
-                 len,
-                 flags,
-                 s->info->ai_addr,
-                 s->info->ai_addrlen);
+    ret = sendto(
+        s->_fd,
+        data,
+        len,
+        flags,
+        s->info->ai_addr,
+        s->info->ai_addrlen
+    );
 
     if (ret == -1) {
         if (ERRNO == EINTR || ERRNO == EAGAIN) {

@@ -1,6 +1,6 @@
 /*******************************************************************************
- *  Dialflirt Messenger                                                        *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Concrete Server                                                            *
+ *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -33,45 +33,28 @@
  *                                                                             *
  ******************************************************************************/
 
-#include "dialmsn_plugin.h"
+#ifndef M_PARSER_H
 
-/* database connections */
-static m_dbpool *pool = NULL;
+#define M_PARSER_H
 
-/* -------------------------------------------------------------------------- */
+#if defined(_ENABLE_PARSER) && defined(_ENABLE_JSON) && defined(_ENABLE_TRIE)
 
-private int dialmsn_db_init(void)
-{
-    if (! (pool = config_get_db("dialflirt")) ) {
-        fprintf(stderr,
-                "DialMessenger: could not open database connection pool !\n");
-        return -1;
-    }
-
-    return 0;
-}
+#include "m_core_def.h"
+#include "m_trie.h"
+#include "m_string.h"
 
 /* -------------------------------------------------------------------------- */
 
-private m_db *dialmsn_db_borrow(void)
-{
-    return dbpool_borrow(pool);
-}
+public int jsonpath_init(m_json_parser *ctx);
 
 /* -------------------------------------------------------------------------- */
 
-private m_db *dialmsn_db_return(m_db *con)
-{
-    dbpool_return(pool, con);
-
-    return NULL;
-}
+public int jsonpath_free(m_json_parser *ctx);
 
 /* -------------------------------------------------------------------------- */
 
-private void dialmsn_db_exit(void)
-{
-    return;
-}
+/* _ENABLE_JSON && _ENABLE_TRIE */
+#endif
 
-/* -------------------------------------------------------------------------- */
+#endif
+

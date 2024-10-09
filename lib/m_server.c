@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -186,7 +186,7 @@ public int server_reply_setfile(m_reply *reply, m_file *f, off_t o, size_t len)
         return -1;
     }
 
-    if (reply->op & SERVER_TRANS_OOB) {
+    if (reply->op & SERVER_MSG_OOB) {
         debug("server_reply_setfile(): cannot send file out of band.\n");
         return -1;
     }
@@ -280,7 +280,7 @@ static int server_reply_process(m_reply *r, m_socket *s)
 
     /* header */
     if (r->header) {
-        if (r->op & SERVER_TRANS_OOB)
+        if (r->op & SERVER_MSG_OOB)
             w = socket_oob_write(s, DATA(r->header), SIZE(r->header));
         else w = socket_write(s, DATA(r->header), SIZE(r->header));
         if (w < (ssize_t) SIZE(r->header)) {
@@ -432,8 +432,10 @@ static m_socket *_server_receive(m_string *buffer)
     if (_frag[SOCKET_ID(s)] && IS_LARGE(_frag[SOCKET_ID(s)])) {
         /* prepare for streaming */
         if (STRING_AVL(_frag[SOCKET_ID(s)]) < SOCKET_BUFFER) {
-            string_dim(_frag[SOCKET_ID(s)],
-                        SIZE(_frag[SOCKET_ID(s)]) + SOCKET_BUFFER);
+            string_dim(
+                _frag[SOCKET_ID(s)],
+                SIZE(_frag[SOCKET_ID(s)]) + SOCKET_BUFFER
+            );
         }
         sockbuf = (char *) STRING_END(_frag[SOCKET_ID(s)]);
     } else
@@ -483,8 +485,11 @@ static m_socket *_server_receive(m_string *buffer)
         unsigned int udp = 0;
         m_socket *z = NULL;
 
-        udp = (long) hashtable_find(_UDP, (char *) s->info->ai_addr,
-                                    s->info->ai_addrlen);
+        udp = (long) hashtable_find(
+            _UDP,
+            (char *) s->info->ai_addr,
+            s->info->ai_addrlen
+        );
 
         if (! udp) {
             SOCKET fd = 0;
@@ -509,9 +514,12 @@ static m_socket *_server_receive(m_string *buffer)
             socket_lock(z);
 
             /* store the client socket for later retrieval */
-            hashtable_insert(_UDP, (char *) z->info->ai_addr,
-                             z->info->ai_addrlen,
-                             (void *) (uintptr_t) SOCKET_ID(z));
+            hashtable_insert(
+                _UDP,
+                (char *) z->info->ai_addr,
+                z->info->ai_addrlen,
+                (void *) (uintptr_t) SOCKET_ID(z)
+            );
 
         } else {
             /* get the virtual socket */
@@ -552,7 +560,7 @@ static m_socket *_server_receive(m_string *buffer)
 
         /* call the plugin or the socket callback */
         if (s->callback) s->callback(SOCKET_ID(s), INGRESS_ID(s), request);
-        else p->plugin_main(SOCKET_ID(s), INGRESS_ID(s), request);
+        else p->plugin_input_handler(SOCKET_ID(s), INGRESS_ID(s), request);
 
         /* release the plugin */
         p = plugin_release(p);
@@ -627,16 +635,21 @@ static int _server_respond(m_socket *s)
         }
 
         /* the task was completed, notify the plugin if necessary */
-        if ( (r->op & SERVER_TRANS_ACK) && (p = plugin_acquire(PLUGIN_ID(s))) ) {
+        if ( (r->op & SERVER_MSG_ACK) && (p = plugin_acquire(PLUGIN_ID(s))) ) {
             /* TODO allow request tagging ? */
-            if (p->plugin_intr)
-                p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                               PLUGIN_EVENT_REQUEST_TRANSMITTED, NULL);
+            if (p->plugin_event_handler) {
+                p->plugin_event_handler(
+                    SOCKET_ID(s),
+                    INGRESS_ID(s),
+                    PLUGIN_EVENT_REQUEST_TRANSMITTED,
+                    NULL
+                );
+            }
             plugin_release(p);
         }
 
         /* Connection: close */
-        if (r->op & SERVER_TRANS_END) {
+        if (r->op & SERVER_MSG_END) {
             socket_release(s); s = socket_close(s);
             server_reply_free(r);
             goto _continue;
@@ -648,10 +661,14 @@ static int _server_respond(m_socket *s)
 
 _release:
     #ifdef _ENABLE_UDP
-    if (s->_flags & SOCKET_UDP)
-        hashtable_insert(_UDP, (char *) s->info->ai_addr,
-                         s->info->ai_addrlen,
-                         (void *) (uintptr_t) SOCKET_ID(s));
+    if (s->_flags & SOCKET_UDP) {
+        hashtable_insert(
+            _UDP,
+            (char *) s->info->ai_addr,
+            s->info->ai_addrlen,
+            (void *) (uintptr_t) SOCKET_ID(s)
+        );
+    }
     else
     #endif
         server_enqueue_blocking(s);
@@ -725,9 +742,14 @@ static int _server_accept_cb(m_socket *s)
 
     /* notify the plugin that a new client has been accepted */
     if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
-        if (p->plugin_intr)
-            p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                           PLUGIN_EVENT_INCOMING_CONNECTION, NULL);
+        if (p->plugin_event_handler) {
+            p->plugin_event_handler(
+                SOCKET_ID(s),
+                INGRESS_ID(s),
+                PLUGIN_EVENT_INCOMING_CONNECTION,
+                NULL
+            );
+        }
         plugin_release(p);
     }
 
@@ -742,9 +764,14 @@ static int _server_opened_cb(m_socket *s)
 
     /* connection successfully opened */
     if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
-        if (p->plugin_intr)
-            p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                           PLUGIN_EVENT_OUTGOING_CONNECTION, NULL);
+        if (p->plugin_event_handler) {
+            p->plugin_event_handler(
+                SOCKET_ID(s),
+                INGRESS_ID(s),
+                PLUGIN_EVENT_OUTGOING_CONNECTION,
+                NULL
+            );
+        }
         plugin_release(p);
     }
 
@@ -761,7 +788,7 @@ static int _server_reinit_cb(m_socket *s)
     /* flush the work queue */
     if (_work[SOCKET_ID(s)]) {
         while ( (r = queue_get(_work[SOCKET_ID(s)])) ) {
-            if (r->op & SERVER_TRANS_ACK && ! retransmit) {
+            if (r->op & SERVER_MSG_ACK && ! retransmit) {
                 retransmit = r; r = NULL;
             }
             r = server_reply_free(r);
@@ -773,15 +800,24 @@ static int _server_reinit_cb(m_socket *s)
     _frag[SOCKET_ID(s)] = string_free(_frag[SOCKET_ID(s)]);
 
     if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
-        if (p->plugin_intr) {
+        if (p->plugin_event_handler) {
             /* notify the plugin that the socket needs to be reinitialized */
-            p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                           PLUGIN_EVENT_SOCKET_RECONNECTION, NULL);
+            p->plugin_event_handler(
+                SOCKET_ID(s),
+                INGRESS_ID(s),
+                PLUGIN_EVENT_SOCKET_RECONNECTION,
+                NULL
+            );
             /* return the first failed response to the plugin for examination
                or retransmission */
-            if (retransmit)
-                p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                               PLUGIN_EVENT_REQUEST_NOTSENDABLE, retransmit);
+            if (retransmit) {
+                p->plugin_event_handler(
+                    SOCKET_ID(s),
+                    INGRESS_ID(s),
+                    PLUGIN_EVENT_REQUEST_NOTSENDABLE,
+                    retransmit
+                );
+            }
         }
         plugin_release(p);
     }
@@ -806,9 +842,14 @@ static int _server_urgent_cb(m_socket *s)
 
     /* notify the plugin */
     if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
-        if (p->plugin_intr)
-            p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                           PLUGIN_EVENT_OUT_OF_BAND_MESSAGE, m);
+        if (p->plugin_event_handler) {
+            p->plugin_event_handler(
+                SOCKET_ID(s),
+                INGRESS_ID(s),
+                PLUGIN_EVENT_OUT_OF_BAND_MESSAGE,
+                m
+            );
+        }
         plugin_release(p);
     }
 
@@ -826,9 +867,14 @@ static int _server_closed_cb(m_socket *s)
 
     if ( (p = plugin_acquire(PLUGIN_ID(s))) ) {
         /* notify the plugin that the socket is about to be closed */
-        if (p->plugin_intr)
-            p->plugin_intr(SOCKET_ID(s), INGRESS_ID(s),
-                           PLUGIN_EVENT_SOCKET_DISCONNECTED, NULL);
+        if (p->plugin_event_handler) {
+            p->plugin_event_handler(
+                SOCKET_ID(s),
+                INGRESS_ID(s),
+                PLUGIN_EVENT_SOCKET_DISCONNECTED,
+                NULL
+            );
+        }
         plugin_release(p);
     }
 
@@ -1266,13 +1312,15 @@ public int server_privileged_call(int opcode, const void *cmd, size_t len)
             s = (m_socket *) cmd;
 
             /* get the textual bind address */
-            ret = getnameinfo(s->info->ai_addr,
-                              s->info->ai_addrlen,
-                              host,
-                              sizeof(host),
-                              serv,
-                              sizeof(serv),
-                              NI_NUMERICHOST | NI_NUMERICSERV);
+            ret = getnameinfo(
+                s->info->ai_addr,
+                s->info->ai_addrlen,
+                host,
+                sizeof(host),
+                serv,
+                sizeof(serv),
+                NI_NUMERICHOST | NI_NUMERICSERV
+            );
 
             if (ret != 0) {
                 _gai_perror(ERR(privileged, getnameinfo), ret);
@@ -1442,11 +1490,14 @@ public int server_privileged_call(UNUSED int o, UNUSED const void *c,
                                   UNUSED size_t l)
 {
     /* notify the user that the privileges separation is disabled */
-    fprintf(stderr, "server_privileged_call(): not implemented.\n"
-                    "==== WARNING ====\n"
-                    "This copy of Concrete Server is built "
-                    "without privileges separation.\n"
-                    "Running this build with system level access is unsafe.\n");
+    fprintf(
+        stderr,
+        "server_privileged_call(): not implemented.\n"
+        "==== WARNING ====\n"
+        "This copy of Concrete Server is built "
+        "without privileges separation.\n"
+        "Running this build with system level access is unsafe.\n"
+    );
     return -1;
 }
 #endif
@@ -1508,7 +1559,7 @@ public void server_close_managed_socket(uint32_t token, uint16_t socket_id)
     m_reply *reply = NULL;
 
     /* generate the packet */
-    if (! (reply = server_reply_init(SERVER_TRANS_END, token)) ) {
+    if (! (reply = server_reply_init(SERVER_MSG_END, token)) ) {
         debug("server_close_managed_socket(): cannot allocate a reply.\n");
         return;
     }
@@ -1808,7 +1859,7 @@ public int server_send_http(uint32_t token, uint16_t sockid, uint16_t flags,
 #endif
 /* -------------------------------------------------------------------------- */
 
-public void server_fini(void)
+public void server_exit(void)
 {
     unsigned int i = 0;
 
@@ -1825,7 +1876,7 @@ public void server_fini(void)
         pthread_join(_thread[i], NULL);
     free(_thread);
 
-    /* close plugins and sockets left open */
+    /* close plugins and any socket left open */
     socket_api_cleanup();
     plugin_api_cleanup();
 

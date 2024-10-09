@@ -641,9 +641,9 @@ public int socket_recvfd(int sock)
                 /* This should really never happen */
                 if (h)
                   fprintf(stderr,
-                    "%s:%d: protocol failure: %d %d %d\n",
+                    "%s:%d: protocol failure: %u %d %d\n",
                     __FILE__, __LINE__,
-                    h->cmsg_len,
+                    (unsigned int) h->cmsg_len,
                     h->cmsg_level, h->cmsg_type);
                 else
                   fprintf(stderr,

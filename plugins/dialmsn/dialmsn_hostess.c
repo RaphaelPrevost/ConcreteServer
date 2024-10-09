@@ -137,7 +137,7 @@ static void _dialmsn_hostess_impersonate(struct _dialmsn_hostess *hostess)
 
             /* the socket is managed by the server from now on */
             debug("DialMessenger::HOSTESS: initializing a new profile.\n");
-            server_send_response(plugin_get_token(), sockid, SERVER_TRANS_END,
+            server_send_response(plugin_get_token(), sockid, SERVER_MSG_END,
                                  http, hostess->id, hostess->name,
                                  hostess->age, hostess->hair,
                                  hostess->eyes,
@@ -335,7 +335,7 @@ _hostess_continue:
 
 /* -------------------------------------------------------------------------- */
 
-private void dialmsn_hostess_fini(void)
+private void dialmsn_hostess_exit(void)
 {
     hostess_stop = 1;
 

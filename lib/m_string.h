@@ -109,9 +109,18 @@ typedef struct m_json_parser {
         const char *current;
         size_t len;
     } key;
+    union {
+        struct {
+            uint8_t type;
+            uint8_t neg;
+            uint8_t rad;
+            uint8_t exp;
+        };
+        uint32_t number;
+    } primitive;
     int parent;
     int (CALLBACK *init)(int, struct m_json_parser *);
-    int (CALLBACK *data)(int, const char *, size_t, struct m_json_parser *);
+    int (CALLBACK *data)(m_string *, struct m_json_parser *);
     int (CALLBACK *exit)(int, struct m_json_parser *);
 } m_json_parser;
 
@@ -120,6 +129,10 @@ typedef struct m_json_parser {
 #define JSON_STRING         0x4000
 #define JSON_PRIMITIVE      0x8000
 #define JSON_TYPE           0xF000
+
+#define JSON_PRIMITIVE_NUMBER 0x1
+#define JSON_PRIMITIVE_BOOL   0x2
+#define JSON_PRIMITIVE_NULL   0x4
 
 #define IS_OBJECT(x) ((x)->_flags & JSON_OBJECT)
 #define IS_ARRAY(x) ((x)->_flags & JSON_ARRAY)

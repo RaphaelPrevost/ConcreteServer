@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -128,11 +128,13 @@ private uint32_t plugin_get_token(void);
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_main(uint16_t socket_id, uint16_t ingress_id, m_string *data);
+public void plugin_input_handler(uint16_t socket_id, uint16_t ingress_id,
+                                 m_string *data);
 
 /**
  * @ingroup plugin
- * @fn void plugin_main(uint16_t socket_id, uint16_t ingress_id, m_string *data)
+ * @fn void plugin_input_handler(uint16_t socket_id, uint16_t ingress_id,
+ *                               m_string *data)
  * @param socket_id connection identifier
  * @param ingress_id a channel identifier
  * @param data incoming data
@@ -155,11 +157,11 @@ public void plugin_main(uint16_t socket_id, uint16_t ingress_id, m_string *data)
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_fini(void);
+public void plugin_exit(void);
 
 /**
  * @ingroup plugin
- * @fn void plugin_fini(void)
+ * @fn void plugin_exit(void)
  *
  * This function is called by the server when unloading the plugin. It gives
  * the opportunity to clean up all the resources allocated by the plugin, like
@@ -171,12 +173,12 @@ public void plugin_fini(void);
 /* OPTIONAL PLUGIN CALLBACKS */
 /* -------------------------------------------------------------------------- */
 
-public void plugin_intr(uint16_t id, uint16_t ingress_id, int event,
-                        void *event_data);
+public void plugin_event_handler(uint16_t id, uint16_t ingress_id, int event,
+                                 void *event_data);
 
 /**
  * @ingroup plugin
- * @fn void plugin_intr(uint16_t id, uint16_t ingress_id, int event)
+ * @fn void plugin_event_handler(uint16_t id, uint16_t ingress_id, int event)
  * @param id connection identifier
  * @param ingress_id ingress identifier
  * @param event event code
@@ -203,7 +205,7 @@ private const char *stream_config_host(int stream, int target);
 private const char *stream_config_port(int stream, int target);
 private int stream_config_destination(int stream);
 private const char *stream_config_plugin_name(int stream);
-private void stream_config_fini(void);
+private void stream_config_exit(void);
 
 /* -------------------------------------------------------------------------- */
 /* Router */
@@ -217,7 +219,7 @@ private int stream_get_route(int ingress);
 private int stream_open_ingress(int stream_id, int type);
 private int stream_get_ingress(int stream_id, int type);
 private uint16_t stream_get_egress(uint16_t socket_id, uint16_t ingress_id);
-private void stream_router_fini(void);
+private void stream_router_exit(void);
 
 /* -------------------------------------------------------------------------- */
 /* Sockets */
@@ -239,7 +241,7 @@ private void stream_drop_packets(uint16_t socket_id);
 private int stream_get_connection(int stream_id);
 private int stream_get_pipe(int stream_id, uint16_t socket_id);
 private void stream_open_pipe(int stream_id);
-private void stream_socket_fini(void);
+private void stream_socket_exit(void);
 
 /* -------------------------------------------------------------------------- */
 

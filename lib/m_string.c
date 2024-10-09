@@ -3466,6 +3466,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             state &= ~_SIG;
             state |= (_EXP | _VAL);
+            if (ctx) ctx->primitive.exp = pos;
         } break;
 
         /* . */
@@ -3476,6 +3477,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             }
 
             state &= ~_SIG; state |= _RAD;
+
+            if (ctx) ctx->primitive.rad = pos;
 
             {   /* optimize for large numbers */
                 uint32_t prefetch;
@@ -3520,6 +3523,10 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
                 pos = 0; state &= ~(_RAD | _EXP); leading_digit = 0;
+                if (ctx) {
+                    ctx->primitive.type = JSON_PRIMITIVE_NUMBER;
+                    ctx->primitive.neg = 1;
+                }
             } else if ((state & (_SIG | _EXP | _VAL)) != (_EXP | _VAL)) {
                 debug("string_parse_json(): unexpected minus sign.\n");
                 goto _error;
@@ -3584,6 +3591,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 if (unlikely(! json)) goto _nomem;
 
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
+                if (ctx) ctx->primitive.type = JSON_PRIMITIVE_NUMBER;
 
                 pos = 0;
             } else state &= ~_VAL;
@@ -3848,8 +3856,9 @@ _delim: json->_flags &= ~_STRING_FLAG_ERRORS;
                 ctx->key.current = NULL;
                 ctx->key.len = 0;
             } else if (ctx->data && (state & _KEY) == 0) {
-                callback = ctx->data(type, DATA(json), SIZE(json), ctx);
+                callback = ctx->data(json, ctx);
                 if (callback == 1) return 0;
+                ctx->primitive.number = 0;
             }
         }
 
