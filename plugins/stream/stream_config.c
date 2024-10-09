@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -83,7 +83,10 @@ private int stream_config_init(int argc, char **argv)
     else if (! strcmp(opt_personality, "hybrid"))
         personality = PERSONALITY_HYBRID;
     else {
-        fprintf(stderr, "Stream: incorrect value for option: \"personality\".\n");
+        fprintf(
+            stderr,
+            "Stream: incorrect value for option: \"personality\".\n"
+        );
         return -1;
     }
 
@@ -95,10 +98,15 @@ private int stream_config_init(int argc, char **argv)
         } else master_streams = atoi(_master_streams);
 
         if (master_streams > _STREAMS_MAX) {
-            fprintf(stderr, "Stream: too many streams defined "
-                    "in the master configuration.\n");
-            fprintf(stderr, "Stream: a maximum of %i streams per instance "
-                    "can be defined.\n", _STREAMS_MAX);
+            fprintf(
+                stderr,
+                "Stream: too many streams defined in the master configuration.\n"
+            );
+            fprintf(
+                stderr,
+                "Stream: a maximum of %i streams per instance can be defined.\n",
+                _STREAMS_MAX
+            );
             return -1;
         }
 
@@ -137,10 +145,15 @@ private int stream_config_init(int argc, char **argv)
 
         /* the limit is shared for hybrid instances */
         if (worker_streams > _STREAMS_MAX - master_streams) {
-            fprintf(stderr, "Stream: too many streams defined "
-                    "in the worker configuration.\n");
-            fprintf(stderr, "Stream: a maximum of %i streams per instance "
-                    "can be defined.\n", _STREAMS_MAX);
+            fprintf(
+                stderr,
+                "Stream: too many streams defined in the worker configuration.\n"
+            );
+            fprintf(
+                stderr,
+                "Stream: a maximum of %i streams per instance can be defined.\n",
+                _STREAMS_MAX
+            );
             if (master_streams)
                 fprintf(stderr, "Stream: %i master streams already configured.\n",
                         master_streams);
@@ -182,8 +195,10 @@ private int stream_config_init(int argc, char **argv)
                     return -1;
                 }
 
-                server_host[i] = string_dups(opt_server_host,
-                                             strlen(opt_server_host));
+                server_host[i] = string_dups(
+                    opt_server_host,
+                    strlen(opt_server_host)
+                );
 
                 opt_server_port = plugin_getarrayopt("server_port", i, argc, argv);
                 if (! opt_server_port) {
@@ -191,8 +206,10 @@ private int stream_config_init(int argc, char **argv)
                     return -1;
                 }
 
-                server_port[i] = string_dups(opt_server_port,
-                                             strlen(opt_server_port));
+                server_port[i] = string_dups(
+                    opt_server_port,
+                    strlen(opt_server_port)
+                );
             } else if (! strcmp(opt_destination, "plugin")) {
                 destination[i] = DESTINATION_PLUGIN;
 
@@ -203,11 +220,15 @@ private int stream_config_init(int argc, char **argv)
                     return -1;
                 }
 
-                plugin_name[i] = string_dups(opt_plugin_name,
-                                             strlen(opt_plugin_name));
+                plugin_name[i] = string_dups(
+                    opt_plugin_name,
+                    strlen(opt_plugin_name)
+                );
             } else {
-                fprintf(stderr, "Stream: incorrect value for option: "
-                        "\"destination\".\n");
+                fprintf(
+                    stderr,
+                    "Stream: incorrect value for option: \"destination\".\n"
+                );
                 return -1;
             }
         }
@@ -297,7 +318,7 @@ private const char *stream_config_plugin_name(int stream)
 
 /* -------------------------------------------------------------------------- */
 
-private void stream_config_fini(void)
+private void stream_config_exit(void)
 {
     unsigned int i = 0;
 

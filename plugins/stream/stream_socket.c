@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2019 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -304,7 +304,7 @@ private void stream_drop_packets(uint16_t socket_id)
 
     pthread_mutex_lock(& _packets_lock);
 
-        queue_free_nodes(_packets[socket_id], (void (*)(void *)) string_free);
+        queue_free_nodes(_packets[socket_id], (void *(*)(void *)) string_free);
         _packets[socket_id] = queue_free(_packets[socket_id]);
 
     pthread_mutex_unlock(& _packets_lock);
@@ -323,8 +323,13 @@ private int stream_get_connection(int stream_id)
     }
 
     /* ask the worker to connect */
-    server_send_response(plugin_get_token(), worker, 0x0,
-                         "%bB4u", MASTER_OP_HIRED);
+    server_send_response(
+        plugin_get_token(),
+        worker,
+        0x0,
+        "%bB4u",
+        MASTER_OP_HIRED
+    );
 
     stream_release_worker(stream_id, worker);
 
@@ -377,17 +382,31 @@ private void stream_open_pipe(int stream_id)
     port = stream_config_port(stream_id, MASTER_ADDRESS);
     ingress_id = stream_get_ingress(stream_id, ROUTE_MASTER);
 
-    master_id = server_open_managed_socket(plugin_get_token(), host, port,
-                                           INGRESS(ingress_id));
-    server_send_response(plugin_get_token(), master_id, 0x0,
-                         "%bB4u", WORKER_OP_READY);
+    master_id = server_open_managed_socket(
+        plugin_get_token(),
+        host,
+        port,
+        INGRESS(ingress_id)
+    );
+
+    server_send_response(
+        plugin_get_token(),
+        master_id,
+        0x0,
+        "%bB4u",
+        WORKER_OP_READY
+    );
 
     host = stream_config_host(stream_id, SERVER_ADDRESS);
     port = stream_config_port(stream_id, SERVER_ADDRESS);
     ingress_id = stream_get_ingress(stream_id, ROUTE_SERVER);
 
-    server_id = server_open_managed_socket(plugin_get_token(), host, port,
-                                           INGRESS(ingress_id));
+    server_id = server_open_managed_socket(
+        plugin_get_token(),
+        host,
+        port,
+        INGRESS(ingress_id)
+    );
 
     /* record the pipe */
     stream_set_route(ROUTE_SERVER, master_id, server_id);
@@ -401,7 +420,7 @@ private void stream_open_pipe(int stream_id)
 
 /* -------------------------------------------------------------------------- */
 
-private void stream_socket_fini(void)
+private void stream_socket_exit(void)
 {
     int i = 0;
 
@@ -427,7 +446,7 @@ private void stream_socket_fini(void)
         }
 
         for (i = 0; i < SOCKET_MAX; i ++) {
-            queue_free_nodes(_packets[i], (void (*)(void *)) string_free);
+            queue_free_nodes(_packets[i], (void *(*)(void *)) string_free);
             queue_free(_packets[i]);
         }
     }

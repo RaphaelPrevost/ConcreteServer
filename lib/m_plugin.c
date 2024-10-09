@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -162,8 +162,10 @@ private int plugin_open(const char *path, const char *name)
     pthread_rwlock_wrlock(p->_lock);
 
     if (_plugin_reg(p) == -1) {
-        fprintf(stderr, ERR(plugin_open, _plugin_reg)
-                        ": plugin registration failed.\n");
+        fprintf(
+            stderr,
+            ERR(plugin_open, _plugin_reg)": plugin registration failed.\n"
+        );
         goto _err_reg;
     }
 
@@ -183,38 +185,55 @@ private int plugin_open(const char *path, const char *name)
         #else
         if (! (p->_handle = GetModuleHandle(NULL)) ) {
         #endif
-            fprintf(stderr,
-                    ERR(plugin_open, GetModuleHandle)": %s\n", dlerror());
+            fprintf(
+                stderr,
+                ERR(plugin_open, GetModuleHandle)": %s\n",
+                dlerror()
+            );
             goto _err_dlopen;
         }
     }
 
     /* load mandatory symbols */
-    if (! (plugin_api = (unsigned int (*)(void))
-           dlfunc(p->_handle, "plugin_api"))
-       ) goto _err_dlget;
+    if (! (plugin_api = (
+            (unsigned int (*)(void))
+            dlsym(p->_handle, "plugin_api")
+        ))
+    ) goto _err_dlget;
 
     /* check the required API revision */
     if (plugin_api() > __CONCRETE__) {
-        fprintf(stderr, "plugin_open(): %s uses a newer API revision.\n", path);
+        fprintf(
+            stderr,
+            "plugin_open(): %s requires a newer API revision.\n",
+            path
+        );
         goto _err_dlsym;
     }
 
-    if (! (p->plugin_init = (int (*)(uint32_t, int, char **))
-                             dlfunc(p->_handle, "plugin_init"))
-       ) goto _err_dlget;
+    if (! (p->plugin_init = (
+            (int (*)(uint32_t, int, char **))
+            dlsym(p->_handle, "plugin_init")
+       ))
+    ) goto _err_dlget;
 
-    if (! (p->plugin_fini = (void (*)(void))
-                             dlfunc(p->_handle, "plugin_fini"))
-       ) goto _err_dlget;
+    if (! (p->plugin_exit = (
+            (void (*)(void))
+            dlsym(p->_handle, "plugin_exit")
+        ))
+    ) goto _err_dlget;
 
-    if (! (p->plugin_main = (void (*)(uint16_t, uint16_t, m_string *))
-                             dlfunc(p->_handle, "plugin_main"))
-       ) goto _err_dlget;
+    if (! (p->plugin_input_handler = (
+            (void (*)(uint16_t, uint16_t, m_string *))
+            dlsym(p->_handle, "plugin_input_handler")
+        ))
+    ) goto _err_dlget;
 
     /* optional symbol, plugin interrupt handler */
-    p->plugin_intr = (void (*)(uint16_t, uint16_t, int, void *))
-                      dlfunc(p->_handle, "plugin_intr");
+    p->plugin_event_handler = (
+        (void (*)(uint16_t, uint16_t, int, void *))
+        dlsym(p->_handle, "plugin_event_handler")
+    );
 
     #ifdef WIN32
     /* if we opened the calling process, we need to invalidate the handle
@@ -324,21 +343,21 @@ private void plugin_call(const char* name, int call, ...)
 
     switch (call) {
 
-    case PLUGIN_MAIN: {
+    case PLUGIN_INPUT: {
         socket_id = va_arg(ap, int);
         ingress_id = va_arg(ap, int);
         buffer = va_arg(ap, m_string *);
-        p->plugin_main(socket_id, ingress_id, buffer);
+        p->plugin_input_handler(socket_id, ingress_id, buffer);
     } break;
 
-    case PLUGIN_INTR: {
+    case PLUGIN_EVENT: {
         socket_id = va_arg(ap, int);
         ingress_id = va_arg(ap, int);
         event = va_arg(ap, int);
         event_data = va_arg(ap, void *);
-        /* plugin_intr is optional */
-        if (p->plugin_intr)
-            p->plugin_intr(socket_id, ingress_id, event, event_data);
+        /* plugin_event_handler is optional */
+        if (p->plugin_event_handler)
+            p->plugin_event_handler(socket_id, ingress_id, event, event_data);
     } break;
 
     }
@@ -541,7 +560,7 @@ private m_plugin *plugin_close(m_plugin *p)
     if (! _plugin_dereg(p)) return NULL;
 
     /* call the plugin destructor */
-    if (p->_status != -1) p->plugin_fini();
+    if (p->_status != -1) p->plugin_exit();
 
     /* unmap the shared object */
     dlclose(p->_handle);
@@ -563,9 +582,13 @@ private void plugin_api_shutdown(void)
     pthread_rwlock_wrlock(& _plugin_lock);
 
         for (i = 0; i < PLUGIN_MAX; i ++) {
-            if (_plugin[i] && _plugin[i]->plugin_intr) {
-                _plugin[i]->plugin_intr(0, 0,
-                                        PLUGIN_EVENT_SERVER_SHUTTINGDOWN, NULL);
+            if (_plugin[i] && _plugin[i]->plugin_event_handler) {
+                _plugin[i]->plugin_event_handler(
+                    0,
+                    0,
+                    PLUGIN_EVENT_SERVER_SHUTTINGDOWN,
+                    NULL
+                );
             }
         }
 

@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2020 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -89,8 +89,12 @@ private int stream_router_init(void)
             fprintf(stderr, "Stream[%i]: ingress port set to %s\n", i, port);
 
             iid = stream_open_ingress(i, ROUTE_PUBLIC);
-            ret = server_open_managed_socket(plugin_get_token(), NULL,
-                                             port, SOCKET_LISTEN(iid));
+            ret = server_open_managed_socket(
+                plugin_get_token(),
+                NULL,
+                port,
+                SOCKET_LISTEN(iid)
+            );
 
             if (ret == -1) {
                 fprintf(stderr, "Stream: cannot listen to port %s.\n", port);
@@ -102,8 +106,12 @@ private int stream_router_init(void)
             fprintf(stderr, "Stream[%i]: workers port set to %s\n", i, port);
 
             iid = stream_open_ingress(i, ROUTE_WORKER);
-            ret = server_open_managed_socket(plugin_get_token(), NULL,
-                                             port, SOCKET_LISTEN(iid));
+            ret = server_open_managed_socket(
+                plugin_get_token(),
+                NULL,
+                port,
+                SOCKET_LISTEN(iid)
+            );
 
             if (ret == -1) {
                 fprintf(stderr, "Stream: cannot listen to port %s.\n", port);
@@ -121,12 +129,19 @@ private int stream_router_init(void)
             host = stream_config_host(i, MASTER_ADDRESS);
             port = stream_config_port(i, MASTER_ADDRESS);
 
-            master = server_open_managed_socket(plugin_get_token(),
-                                                host, port, SOCKET_CLIENT);
+            master = server_open_managed_socket(
+                plugin_get_token(),
+                host,
+                port,
+                SOCKET_CLIENT
+            );
 
             if (master == -1) {
-                fprintf(stderr, "Stream[%i]: connection to Master "
-                        "(%s:%s) failed.\n", i, host, port);
+                fprintf(
+                    stderr,
+                    "Stream[%i]: connection to Master (%s:%s) failed.\n",
+                    i, host, port
+                );
                 goto _err_init;
             }
 
@@ -158,8 +173,11 @@ private int stream_heartbeat(int socket_id)
     m_reply *reply = NULL;
     m_string *data = NULL;
 
-    reply = server_reply_init(SERVER_TRANS_ACK | SERVER_TRANS_OOB,
-                              plugin_get_token());
+    reply = server_reply_init(
+        SERVER_MSG_ACK | SERVER_MSG_OOB,
+        plugin_get_token()
+    );
+
     if (! reply) goto _err_rep;
 
     if (! (data = string_fmt(NULL, "%bB4u", WORKER_OP_ALIVE)) ) goto _err_fmt;
@@ -325,7 +343,7 @@ private uint16_t stream_get_egress(uint16_t socket_id, uint16_t ingress_id)
 
 /* -------------------------------------------------------------------------- */
 
-private void stream_router_fini(void)
+private void stream_router_exit(void)
 {
     pthread_rwlock_destroy(& _worker_lock);
     pthread_rwlock_destroy(& _master_lock);

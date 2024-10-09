@@ -42,7 +42,7 @@ static uint32_t plugin_token = 0;
 
 public unsigned int plugin_api(void)
 {
-    unsigned int required_api_revision = 1360;
+    unsigned int required_api_revision = 1390;
     return required_api_revision;
 }
 
@@ -96,16 +96,23 @@ private uint32_t plugin_get_token(void)
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_main(uint16_t id, UNUSED uint16_t ingress_id, m_string *buf)
+public void plugin_input_handler(uint16_t id, UNUSED uint16_t ingress_id,
+                                 m_string *buf)
 {
     /* this task will send back the incoming data and close the connection */
-    server_send_buffer(plugin_token, id, SERVER_TRANS_END, DATA(buf), SIZE(buf));
+    server_send_buffer(
+        plugin_token,
+        id,
+        SERVER_MSG_END,
+        DATA(buf),
+        SIZE(buf)
+    );
 }
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_intr(UNUSED uint16_t id, UNUSED uint16_t ingress_id,
-                        unsigned int event, UNUSED void *event_data)
+public void plugin_event_handler(UNUSED uint16_t id, UNUSED uint16_t ingress_id,
+                                 unsigned int event, UNUSED void *event_data)
 {
     switch (event) {
 
@@ -133,7 +140,7 @@ public void plugin_intr(UNUSED uint16_t id, UNUSED uint16_t ingress_id,
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_fini(void)
+public void plugin_exit(void)
 {
     wamigo_api_cleanup();
     fprintf(stderr, "Wamigo: successfully unloaded.\n");

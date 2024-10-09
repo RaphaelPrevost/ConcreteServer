@@ -146,7 +146,7 @@ private int configure(const char *path, const char *configfile)
             fprintf(stderr, "configure(): wrong path to configuration file.\n");
             return -1;
         } else {
-            strncpy(fullpath, path, sizeof(fullpath));
+            strncpy(fullpath, path, sizeof(fullpath) - 1);
             pathlen = strlen(fullpath) + 1;
             strncat(fullpath, DIR_SEP_STR, sizeof(fullpath) - pathlen);
         }
@@ -798,11 +798,11 @@ private int config_process(const char *config, size_t len)
     }
 
     #ifdef _ENABLE_DB
-    if (! db_pool) db_pool = cache_alloc((void (*)(void *)) dbpool_close);
+    if (! db_pool) db_pool = cache_alloc((void *(*)(void *)) dbpool_close);
     #endif
 
     #ifdef _ENABLE_SSL
-    if (! ssl_ctx) ssl_ctx = cache_alloc((void (*)(void *)) SSL_CTX_free);
+    if (! ssl_ctx) ssl_ctx = cache_alloc((void *(*)(void *)) SSL_CTX_free);
     #endif
 
     /* the configuration file is valid, process it */

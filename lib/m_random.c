@@ -233,7 +233,7 @@ public double random_res53(m_random *ctx)
 
 /* -------------------------------------------------------------------------- */
 
-public m_random *random_fini(m_random *ctx)
+public m_random *random_free(m_random *ctx)
 {
     free(ctx);
 

@@ -122,6 +122,7 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
     unsigned int direction = 0, newdirection = 0;
     _m_node *node = NULL, *n = NULL;
     _m_leaf *leaf = NULL;
+    size_t ulen32 = 0;
     uint32_t newbyte = 0, newotherbits = 0;
     int32_t allocsize = 0;
     void **wherep = NULL;
@@ -160,8 +161,7 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
         if (likely(node->byte < ulen)) {
             c = ubytes[node->byte];
             direction = (1 + (node->otherbits | c)) >> 8;
-            if (node->val ^ c) {
-                newotherbits = node->val ^ c;
+            if ( (newotherbits = node->val ^ c) ) {
                 newotherbits = __msb(newotherbits) ^ 0xff;
                 if (node->otherbits > newotherbits) {
                     newbyte = node->byte;
@@ -173,9 +173,10 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
     }
 
     /* found a leaf, compute the divergence */
-    if (ulen > sizeof(uint32_t)) {
-        size_t ulen32 = ulen & ~0x3;
+    leaf = (_m_leaf *) (p - offsetof(_m_leaf, key));
+    ulen32 = ((leaf->len < ulen) ? leaf->len : ulen) & ~0x3;
 
+    if (ulen32 > sizeof(uint32_t)) {
         for (newbyte = 0; newbyte < ulen32; newbyte += sizeof(uint32_t)) {
             uint32_t index = __zero_idx(
                 *(uint32_t *)(p + newbyte) ^ *(uint32_t *)(ubytes + newbyte)
@@ -198,6 +199,7 @@ public int trie_insert(m_trie *t, const char *key, size_t ulen, void *value)
         }
     }
 
+    /* key already exists */
     if (unlikely(! newotherbits)) return -1;
 
 different_byte_found:

@@ -50,10 +50,13 @@ DBG     = gdb
 # -D_ENABLE_SSL                   : allow use of SSL/TLS secure sockets
 # -D_ENABLE_SERVER                : enable the Mammouth Server
 # -D_ENABLE_RANDOM                : enable builtin PRNG
+# -D_ENABLE_TRIE                  : enable builtin crit-bit trie implementation
 # -D_ENABLE_HASHTABLE             : enable builtin hashtable implementation
 # -D_ENABLE_PRIVILEGE_SEPARATION  : drop privileges in the server process
 # -D_ENABLE_BUILTIN_PLUGIN        : embed a default plugin
 # -D_ENABLE_CONFIG                : XML configuration file
+# -D_ENABLE_JSON                  : enable builtin JSON tokenizer
+# -D_ENABLE_PARSER                : enable builtin JSON parser
 # -D_USE_BIG_FDS=<int>            : enable the use of more than FD_SETSIZE fds
 
 CONFIG  = -D_ENABLE_SERVER \
@@ -66,6 +69,7 @@ CONFIG  = -D_ENABLE_SERVER \
           -D_ENABLE_FILE \
           -D_ENABLE_PCRE \
           -D_ENABLE_JSON \
+		  -D_ENABLE_PARSER \
           -D_ENABLE_CONFIG \
           -D_BUILTIN_PLUGIN \
           -D_USE_BIG_FDS=4095
@@ -167,6 +171,9 @@ ifeq ($(shell test $(GCC_MAJ) -ge 6; echo $$?),0)
 FLAGS += -Wno-misleading-indentation
 ifeq ($(shell test $(GCC_MAJ) -ge 7; echo $$?),0)
 FLAGS += -Wno-implicit-fallthrough
+ifeq ($(shell test $(GCC_MAJ) -ge 8; echo $$?),0)
+FLAGS += -Wno-cast-function-type
+endif
 endif
 endif
 endif
@@ -207,9 +214,9 @@ endif
 
 # check for libxml2
 ifneq ($(HAS_LIBXML), )
-LIBS += $(shell xml2-config --libs)
-FLAGS += $(shell xml2-config --cflags)
 CONFIG += -DHAS_LIBXML
+FLAGS += $(shell xml2-config --cflags)
+LIBS += $(shell xml2-config --libs)
 endif
 
 # check for iconv
@@ -222,8 +229,8 @@ PCRE_ENABLED=$(shell echo $(CONFIG) | grep -c D_ENABLE_PCRE)
 # check for PCRE
 ifeq ($(PCRE_ENABLED),1)
 ifeq ($(HAS_PCRE),0)
-LIBS += -lpcre
 CONFIG += -DHAS_PCRE
+LIBS += -lpcre
 endif
 endif
 
@@ -256,6 +263,7 @@ MYSQL_ENABLED=$(shell echo $(CONFIG) | grep -c D_ENABLE_MYSQL)
 ifeq ($(MYSQL_ENABLED),1)
 ifneq ($(HAS_MYSQL), )
 CONFIG += -DHAS_MYSQL
+FLAGS += $(shell mysql_config --cflags)
 LIBS += $(shell mysql_config --libs_r)
 endif
 endif
@@ -397,18 +405,24 @@ install: plugin
 
 json_checker:
 	@echo "JSON_CHECKER"
-	@$(CC) -D_ENABLE_JSON -D_ENABLE_TRIE $(FINAL) -lpthread \
+	@$(CC) \
+	-D_ENABLE_JSON -D_ENABLE_TRIE -D_ENABLE_PARSER \
+	$(FINAL) -lpthread \
 	lib/util/m_util_vfscanf.c lib/util/m_util_vfprintf.c \
 	lib/util/m_util_float.c lib/util/m_util_dtoa.c \
 	lib/ports/m_ports.c lib/m_string.c lib/m_trie.c \
+	lib/m_parser.c \
 	test/json/json_checker.c -o json_checker
 
 json_debug:
 	@echo "JSON_CHECKER (DEBUG)"
-	@$(CC) -D_ENABLE_JSON -D_ENABLE_TRIE $(DEBUG) -lpthread \
+	@$(CC) \
+	-D_ENABLE_JSON -D_ENABLE_TRIE -D_ENABLE_PARSER \
+	$(DEBUG) -lpthread \
 	lib/util/m_util_vfscanf.c lib/util/m_util_vfprintf.c \
 	lib/util/m_util_float.c lib/util/m_util_dtoa.c \
 	lib/ports/m_ports.c lib/m_string.c lib/m_trie.c \
+	lib/m_parser.c \
 	test/json/json_checker.c -o json_checker
 
 clean:

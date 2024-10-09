@@ -138,7 +138,7 @@ int test_string(void)
     printf("(*) Base58 encoded random token:\n(-) %.*s [%zu]\n",
            (int) SIZE(z), DATA(z), SIZE(z));
     z = string_free(z);
-    r = random_fini(r);
+    r = random_free(r);
     #endif
 
     #ifdef HAS_ICONV

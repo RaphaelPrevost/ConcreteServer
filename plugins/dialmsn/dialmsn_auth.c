@@ -63,7 +63,12 @@ private void dialmsn_auth(uint16_t id, m_string *s)
 
     con = dialmsn_db_borrow();
 
-    r = db_query(con, DIALMSN_SQL_LOGININFOS, TLEN(s, 1), TSTR(s, 1));
+    r = db_query(
+        con,
+        DIALMSN_SQL_LOGININFOS,
+        TOKEN_SIZE(s, 1),
+        TOKEN_DATA(s, 1)
+    );
 
     if (! r) {
         debug("DialMessenger::dialmsn_auth(): SQL error (0).\n");
@@ -81,7 +86,7 @@ private void dialmsn_auth(uint16_t id, m_string *s)
     pwd = db_field(r, "password", & size);
 
     /* drop connection if password do not match */
-    if ( (TLEN(s, 2) != size) || strncmp(pwd, TSTR(s, 2), TLEN(s, 2)) != 0) {
+    if ( (TOKEN_SIZE(s, 2) != size) || strncmp(pwd, TOKEN_DATA(s, 2), TOKEN_SIZE(s, 2)) != 0) {
         debug("DialMessenger::dialmsn_auth(): wrong password.\n");
         r = db_free(r); error |= DIALMSN_AUTH_ERR_EPASSW;
         goto _err_abort;
@@ -169,7 +174,7 @@ private void dialmsn_auth(uint16_t id, m_string *s)
                          DIALMSN_SEPLENGTH, DIALMSN_SEPARATOR,
                          db_integer(r, "profile"), DIALMSN_TERM);
 
-    user = dialmsn_user_add(id, user, TSTR(s, 4));
+    user = dialmsn_user_add(id, user, TOKEN_DATA(s, 4));
 
     r = db_free(r);
 
@@ -182,7 +187,7 @@ private void dialmsn_auth(uint16_t id, m_string *s)
 _err_abort:
     con = dialmsn_db_return(con);
 
-    server_send_response(plugin_get_token(), id, SERVER_TRANS_END,
+    server_send_response(plugin_get_token(), id, SERVER_MSG_END,
                          "%bB4i%bB4i", error, DIALMSN_TERM);
 }
 

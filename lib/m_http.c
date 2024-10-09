@@ -294,7 +294,7 @@ public m_string *http_compile(m_http *h, int method, const char *action,
             /* generate a random 320 bits boundary token */
             ctx = random_arrayinit((uint32_t *) h, sizeof(*h));
             for (i = 0; i < 10; i ++) random[i] = random_uint32(ctx);
-            ctx = random_fini(ctx);
+            ctx = random_free(ctx);
 
             token = string_b58s((char *) random, sizeof(random));
 

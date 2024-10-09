@@ -197,14 +197,14 @@ public int plugin_init(uint32_t id, int argc, char **argv)
     return 0;
 
 _error_socket:
-    if (option_bot) dialmsn_bot_fini();
+    if (option_bot) dialmsn_bot_exit();
 _error_bot:
     if (option_hostess) {
-        dialmsn_hostess_fini();
+        dialmsn_hostess_exit();
         free(eurolive_feed);
     }
 _error_hostess:
-    dialmsn_db_fini();
+    dialmsn_db_exit();
     free(http_host);
 _error_db:
     dialmsn_userlist_freecache();
@@ -214,7 +214,8 @@ _error_db:
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_main(uint16_t id, UNUSED uint16_t ingress, m_string *buffer)
+public void plugin_input_handler(uint16_t id, UNUSED uint16_t ingress,
+                                 m_string *buffer)
 {
     uint32_t request = 0;
     uint32_t error = 0;
@@ -643,7 +644,7 @@ public void plugin_main(uint16_t id, UNUSED uint16_t ingress, m_string *buffer)
                 /* success */
                 r = db_free(r);
 
-                server_send_response(plugin_token, id, SERVER_TRANS_END,
+                server_send_response(plugin_token, id, SERVER_MSG_END,
                                      "%bB4i%bB4i",
                                      DIALMSN_EXEC | DIALMSN_EXEC_ADDACCOUNT,
                                      DIALMSN_TERM);
@@ -735,7 +736,7 @@ _err_abort:
 
     string_flush(buffer);
 
-    server_send_response(plugin_token, id, SERVER_TRANS_END, "%bB4i%bB4i",
+    server_send_response(plugin_token, id, SERVER_MSG_END, "%bB4i%bB4i",
                          error, DIALMSN_TERM);
 
     return;
@@ -751,8 +752,8 @@ _err_nonfatal:
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_intr(uint16_t id, UNUSED uint16_t ingress, unsigned int event,
-                        UNUSED void *event_data)
+public void plugin_event_handler(uint16_t id, UNUSED uint16_t ingress,
+                                 unsigned int event, UNUSED void *event_data)
 {
     switch (event) {
 
@@ -781,24 +782,24 @@ public void plugin_intr(uint16_t id, UNUSED uint16_t ingress, unsigned int event
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_fini(void)
+public void plugin_exit(void)
 {
     fprintf(stderr, "DialMessenger: unloading...\n");
 
     if (option_hostess) {
         fprintf(stderr, "DialMessenger: stopping the Eurolive "
                 "hostess service...\n");
-        dialmsn_hostess_fini();
+        dialmsn_hostess_exit();
         free(eurolive_feed);
     }
 
     if (option_bot) {
         fprintf(stderr, "DialMessenger: stopping the bot...\n");
-        dialmsn_bot_fini();
+        dialmsn_bot_exit();
     }
 
     dialmsn_userlist_clear();
-    dialmsn_db_fini();
+    dialmsn_db_exit();
 
     free(http_host);
 

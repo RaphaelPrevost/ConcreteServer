@@ -111,7 +111,7 @@ public m_queue *queue_free(m_queue *queue)
 
 /* -------------------------------------------------------------------------- */
 
-public void queue_free_nodes(m_queue *queue, void (*free_data)(void *))
+public void queue_free_nodes(m_queue *queue, void *(*free_data)(void *))
 {
     void *ptr = NULL;
 

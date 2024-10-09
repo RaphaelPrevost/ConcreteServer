@@ -510,7 +510,7 @@ static int _cache_resize(m_cache *h, size_t size)
 
 /* -------------------------------------------------------------------------- */
 
-public m_cache *cache_alloc(void (*freeval)(void *))
+public m_cache *cache_alloc(void *(*freeval)(void *))
 {
     unsigned int i = 0;
     m_random *r = NULL;
@@ -546,7 +546,7 @@ public m_cache *cache_alloc(void (*freeval)(void *))
         goto _err_size;
     }
 
-    r = random_fini(r);
+    r = random_free(r);
 
     return h;
 
@@ -557,7 +557,7 @@ _err_size:
 _err_init:
     free(h->_lock);
 _err_lock:
-    r = random_fini(r);
+    r = random_free(r);
 _err_rand:
     free(h);
 
@@ -892,7 +892,7 @@ public m_cache *cache_free(m_cache *h)
 
 /* -------------------------------------------------------------------------- */
 
-public m_hashtable *hashtable_alloc(void (*freeval)(void *))
+public m_hashtable *hashtable_alloc(void *(*freeval)(void *))
 {
     unsigned int i = 0;
 

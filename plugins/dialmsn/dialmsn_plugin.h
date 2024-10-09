@@ -56,7 +56,7 @@
 
 /* versioning informations */
 #define DIALMSN_VERSION            "0.3"
-#define DIALMSN_REQUIRED_API_REV   1360
+#define DIALMSN_REQUIRED_API_REV   1390
 
 /* max simultaneous database connections */
 #define DIALMSN_DBMAX              15
@@ -240,7 +240,7 @@ private const char *plugin_get_host(void);
 private int dialmsn_db_init(void);
 private m_db *dialmsn_db_borrow(void);
 private m_db *dialmsn_db_return(m_db *con);
-private void dialmsn_db_fini(void);
+private void dialmsn_db_exit(void);
 
 /* -------------------------------------------------------------------------- */
 /* Users management functions */
@@ -292,10 +292,10 @@ private void dialmsn_userlist_freecache(void);
 private void dialmsn_auth(uint16_t id, m_string *s);
 
 private int dialmsn_bot_init(void);
-private void dialmsn_bot_fini(void);
+private void dialmsn_bot_exit(void);
 
 private int dialmsn_hostess_init(const char *url);
 private void dialmsn_hostess_connect(unsigned int id_eurolive);
-private void dialmsn_hostess_fini(void);
+private void dialmsn_hostess_exit(void);
 
 #endif

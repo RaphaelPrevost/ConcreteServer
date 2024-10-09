@@ -62,9 +62,6 @@
     #define dlsym(h, f)  GetProcAddress((h), (f))
     #define dlclose(h)   (! FreeLibrary((h)))
 
-    /* WIN32 does not suffer from dlsym(3) shortcoming */
-    #define dlfunc dlsym
-
     /* dlerror is implemented using GetLastError() */
     private const char *dlerror(void);
 
@@ -156,28 +153,6 @@
     /* it is assumed that other operating systems provide the dlopen api */
     #define handle_t void *
     #include <dlfcn.h>
-
-#endif
-
-#ifndef WIN32
-/* FreeBSD workaround for dlsym(3) return type */
-
-/*
- * The actual type declared by this typedef is immaterial, provided that
- * it is a function pointer.  Its purpose is to provide a return type for
- * dlfunc() which can be cast to a function pointer type without depending
- * on behavior undefined by the C standard, which might trigger a compiler
- * diagnostic.  We intentionally declare a unique type signature to force
- * a diagnostic should the application not cast the return value of dlfunc()
- * appropriately.
- */
-struct __dlfunc_arg {
-        int     __dlfunc_dummy;
-};
-
-typedef void (*dlfunc_t)(struct __dlfunc_arg);
-
-private dlfunc_t dlfunc(void *handle, const char *symbol);
 
 #endif
 

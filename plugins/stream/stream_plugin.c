@@ -1,6 +1,6 @@
 /*******************************************************************************
  *  Concrete Server                                                            *
- *  Copyright (c) 2005-2023 Raphael Prevost <raph@el.bzh>                      *
+ *  Copyright (c) 2005-2024 Raphael Prevost <raph@el.bzh>                      *
  *                                                                             *
  *  This software is a computer program whose purpose is to provide a          *
  *  framework for developing and prototyping network services.                 *
@@ -42,7 +42,7 @@ static uint32_t plugin_token = 0;
 
 public unsigned int plugin_api(void)
 {
-    unsigned int required_api_revision = 1380;
+    unsigned int required_api_revision = 1390;
     return required_api_revision;
 }
 
@@ -65,7 +65,7 @@ public int plugin_init(uint32_t id, int argc, char **argv)
     plugin_token = id;
 
     fprintf(stderr, "Stream: loading Stream plugin...\n");
-    fprintf(stderr, "Stream: Copyright (c) 2008-2019 ");
+    fprintf(stderr, "Stream: Copyright (c) 2008-2024 ");
     fprintf(stderr, "Raphael Prevost, all rights reserved.\n");
     fprintf(stderr, "Stream: version "STREAM_VERSION" ["__DATE__"]\n");
 
@@ -87,15 +87,16 @@ public int plugin_init(uint32_t id, int argc, char **argv)
     return 0;
 
 _init_sock_failure:
-    stream_socket_fini();
+    stream_socket_exit();
 _init_conf_failure:
-    stream_config_fini();
+    stream_config_exit();
     return -1;
 }
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_main(uint16_t socket_id, uint16_t ingress_id, m_string *data)
+public void plugin_data_handler(uint16_t socket_id, uint16_t ingress_id,
+                                m_string *data)
 {
     uint16_t egress = 0;
     int stream_id = 0;
@@ -152,8 +153,11 @@ public void plugin_main(uint16_t socket_id, uint16_t ingress_id, m_string *data)
         if ( (egress = stream_get_egress(socket_id, ingress_id)) ) {
             /* forward the data between the two ends of the pipe */
             server_send_buffer(
-                plugin_get_token(), egress,
-                0x0, DATA(data), SIZE(data)
+                plugin_get_token(),
+                egress,
+                0x0,
+                DATA(data),
+                SIZE(data)
             );
         } else server_close_managed_socket(plugin_get_token(), socket_id);
         string_flush(data);
@@ -164,8 +168,8 @@ public void plugin_main(uint16_t socket_id, uint16_t ingress_id, m_string *data)
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event,
-                        void *event_data)
+public void plugin_event_handler(uint16_t socket_id, uint16_t ingress_id,
+                                 int event, void *event_data)
 {
     uint16_t egress = 0;
 
@@ -179,9 +183,15 @@ public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event,
     case PLUGIN_EVENT_OUTGOING_CONNECTION: {
         stream_set_status(socket_id, STREAM_STATUS_CONN);
         if (stream_personality() & PERSONALITY_WORKER) {
-            if (stream_get_id(socket_id, PERSONALITY_WORKER) != -1)
-                server_send_response(plugin_get_token(), socket_id,
-                                     0x0, "%bB4u", WORKER_OP_HELLO);
+            if (stream_get_id(socket_id, PERSONALITY_WORKER) != -1) {
+                server_send_response(
+                    plugin_get_token(),
+                    socket_id,
+                    0x0,
+                    "%bB4u",
+                    WORKER_OP_HELLO
+                );
+            }
         }
     } break;
 
@@ -208,9 +218,11 @@ public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event,
     } break;
 
     case PLUGIN_EVENT_OUT_OF_BAND_MESSAGE: {
+        #ifdef DEBUG
         m_string *message = event_data;
         uint8_t packet = string_fetch_uint8(message);
         debug("Stream: received OOB message: 0x%x\n", packet);
+        #endif
     } break;
 
     case PLUGIN_EVENT_SERVER_SHUTTINGDOWN:
@@ -223,10 +235,10 @@ public void plugin_intr(uint16_t socket_id, uint16_t ingress_id, int event,
 
 /* -------------------------------------------------------------------------- */
 
-public void plugin_fini(void)
+public void plugin_exit(void)
 {
-    stream_socket_fini();
-    stream_config_fini();
+    stream_socket_exit();
+    stream_config_exit();
     fprintf(stderr, "Stream: successfully unloaded.\n");
 }
 

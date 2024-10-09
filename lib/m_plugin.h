@@ -55,11 +55,11 @@ typedef struct m_plugin {
 
     /* public */
     int (*plugin_init)(uint32_t, int, char **);
-    void (*plugin_main)(uint16_t, uint16_t, m_string *);
-    void (*plugin_intr)(uint16_t, uint16_t, int, void *);
+    void (*plugin_input_handler)(uint16_t, uint16_t, m_string *);
+    void (*plugin_event_handler)(uint16_t, uint16_t, int, void *);
     void *(*plugin_suspend)(unsigned int *);
     int (*plugin_restore)(unsigned int, void *);
-    void (*plugin_fini)(void);
+    void (*plugin_exit)(void);
 
     char name[];
 } m_plugin;
@@ -68,8 +68,8 @@ typedef struct m_plugin {
 
 #define __PLUGIN_BUILTIN__ NULL
 
-#define PLUGIN_MAIN 0x01
-#define PLUGIN_INTR 0x02
+#define PLUGIN_INPUT 0x01
+#define PLUGIN_EVENT 0x02
 
 #define PLUGIN_EVENT_INCOMING_CONNECTION 0x01
 #define PLUGIN_EVENT_OUTGOING_CONNECTION 0x02
@@ -112,12 +112,12 @@ private int plugin_open(const char *path, const char *name);
  * path, which is set using @ref plugin_setpath().
  *
  * If the DSO is successfully loaded, this function tries to find the mandatory
- * symbols which must be present in every Mammouth plugin:
+ * symbols which must be present in every Concrete Server plugin:
  * - plugin_init
- * - plugin_main
- * - plugin_fini
+ * - plugin_input_handler
+ * - plugin_exit
  * If one of these symbols is missing, the function will fail.
- * Additionally, the plugin_intr symbol will be loaded if it is found.
+ * Additionally, the plugin_event_handler symbol will be loaded if it is found.
  *
  * After this function is called, the plugin is loaded and publicly
  * accessible using the ID returned. To initialize the plugin,
@@ -176,8 +176,8 @@ private void plugin_call(const char* name, int call, ...);
  * @return void
  *
  * This function allows the server or another plugin to call either the data
- * handler (PLUGIN_MAIN) or event handler (PLUGIN_INTR) of a plugin, identified
- * by its name.
+ * handler (PLUGIN_INPUT) or event handler (PLUGIN_EVENT) of a plugin,
+ * identified by its name.
  *
  */
 

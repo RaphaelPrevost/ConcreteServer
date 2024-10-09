@@ -38,10 +38,10 @@
 #define M_CORE_DEF_H
 
 /** Concrete Server version string */
-#define CONCRETE_VERSION "0.3.8"
+#define CONCRETE_VERSION "0.3.9"
 
 /** Concrete Server API revision */
-#define __CONCRETE__ 1380
+#define __CONCRETE__ 1390
 
 /* check the compiler settings */
 #ifdef __GNUC__

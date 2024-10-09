@@ -3282,8 +3282,10 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             if (strict) {
                 if (unlikely(json->_data[pos] == '\'')) {
-                    debug("string_parse_json(): strings must be enclosed "
-                          "in double-quotes.\n");
+                    debug(
+                        "string_parse_json(): strings must be enclosed "
+                        "in double-quotes.\n"
+                    );
                     goto _error;
                 }
 
@@ -3324,8 +3326,10 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             int z = 0;
 
             if (! IS_STRING(json)) {
-                debug("string_parse_json(): escape sequences are only "
-                      "allowed in strings.\n");
+                debug(
+                    "string_parse_json(): escape sequences are only "
+                    "allowed in strings.\n"
+                );
                 goto _error;
             }
 
@@ -3356,7 +3360,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                     if (likely(! __between(prefetch, 'F', 'a'))) {
                         pos += sizeof(prefetch); break;
                     }
-                } else break;
+                }
+                debug("string_parse_json(): incomplete escape sequence.\n");
             }
 
             /* unexpected char */
@@ -3401,8 +3406,10 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                         break;
                     }
 
-                    debug("string_parse_json(): a key must be "
-                          "enclosed in quotation marks.\n");
+                    debug(
+                        "string_parse_json(): a key must be "
+                        "enclosed in quotation marks.\n"
+                    );
                     goto _error;
                 }
 
@@ -3466,6 +3473,7 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
             state &= ~_SIG;
             state |= (_EXP | _VAL);
+            if (ctx) ctx->primitive.exp = pos;
         } break;
 
         /* . */
@@ -3476,6 +3484,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             }
 
             state &= ~_SIG; state |= _RAD;
+
+            if (ctx) ctx->primitive.rad = pos;
 
             {   /* optimize for large numbers */
                 uint32_t prefetch;
@@ -3503,14 +3513,18 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             if (likely(! IS_PRIMITIVE(json))) {
                 if (IS_TYPE(json, JSON_ARRAY | JSON_OBJECT)) {
                     if (state & _KEY) {
-                        debug("string_parse_json(): a key must be "
-                              "enclosed in quotation marks.\n");
+                        debug(
+                            "string_parse_json(): a key must be "
+                            "enclosed in quotation marks.\n"
+                        );
                         goto _error;
                     }
 
                     if ((state & _VAL) == 0) {
-                        debug("string_parse_json(): unexpected "
-                              "negative primitive.\n");
+                        debug(
+                            "string_parse_json(): unexpected "
+                            "negative primitive.\n"
+                        );
                         goto _error;
                     }
                 }
@@ -3520,6 +3534,12 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
 
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
                 pos = 0; state &= ~(_RAD | _EXP); leading_digit = 0;
+                if (ctx) {
+                    ctx->primitive.type = JSON_PRIMITIVE_NUMBER;
+                    ctx->primitive.neg = 1;
+                    ctx->primitive.rad = 0;
+                    ctx->primitive.exp = 0;
+                }
             } else if ((state & (_SIG | _EXP | _VAL)) != (_EXP | _VAL)) {
                 debug("string_parse_json(): unexpected minus sign.\n");
                 goto _error;
@@ -3532,8 +3552,10 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
         case DIGIT: if (likely(leading_digit)) {
             if (leading_digit == '0') {
                 if ((state & (_RAD | _EXP)) == 0) {
-                    debug("string_parse_json(): octal integers "
-                          "are not supported.\n");
+                    debug(
+                        "string_parse_json(): octal integers "
+                        "are not supported.\n"
+                    );
                     goto _error;
                 }
                 leading_digit = 1;
@@ -3566,14 +3588,18 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                             break;
                         }
 
-                        debug("string_parse_json(): a key must be a "
-                              "string enclosed in quotation marks.\n");
+                        debug(
+                            "string_parse_json(): a key must be a "
+                            "string enclosed in quotation marks.\n"
+                        );
                         goto _error;
                     }
 
                     if ((state & _VAL) == 0) {
-                        debug("string_parse_json(): unexpected "
-                              "numeric primitive.\n");
+                        debug(
+                            "string_parse_json(): unexpected "
+                            "numeric primitive.\n"
+                        );
                         goto _error;
                     }
                 }
@@ -3584,6 +3610,10 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 if (unlikely(! json)) goto _nomem;
 
                 json->_flags &= ~JSON_TYPE; json->_flags |= JSON_PRIMITIVE;
+                if (ctx) {
+                    ctx->primitive.number = 0;
+                    ctx->primitive.type = JSON_PRIMITIVE_NUMBER;
+                }
 
                 pos = 0;
             } else state &= ~_VAL;
@@ -3612,8 +3642,10 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
             }
 
             if (strict) {
-                debug("string_parse_json(): comma-separated lists "
-                      "must be enclosed in brackets.\n");
+                debug(
+                    "string_parse_json(): comma-separated lists "
+                    "must be enclosed in brackets.\n"
+                );
                 goto _error;
             }
         } break;
@@ -3632,8 +3664,10 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                 }
 
                 if (! IS_OBJECT(json))
-                    debug("string_parse_json(): key/value pairs are only "
-                          "allowed in objects.\n");
+                    debug(
+                        "string_parse_json(): key/value pairs are only "
+                        "allowed in objects.\n"
+                    );
                 else debug("string_parse_json(): missing or malformed key.\n");
 
                 goto _error;
@@ -3654,14 +3688,15 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
         /* {, [ */
         case OBJ_START: {
             if (unlikely(state & _KEY)) {
-                debug("string_parse_json(): opening bracket where "
-                      "a key was expected.\n");
+                debug(
+                    "string_parse_json(): opening bracket where "
+                    "a key was expected.\n"
+                );
                 goto _error;
             }
 
             if ((state & _VAL) == 0 && json->parent) {
-                debug("string_parse_json(): unexpected opening "
-                      "bracket.\n");
+                debug("string_parse_json(): unexpected opening bracket.\n");
                 goto _error;
             }
 
@@ -3689,8 +3724,8 @@ public int string_parse_json(m_string *s, char strict, m_json_parser *ctx)
                     ctx->parent = json->parent->_flags & JSON_TYPE;
                 else ctx->parent = 0;
 
-                if (ctx->init(json->_flags & JSON_TYPE, ctx) == 1)
-                    return 0;
+                if ( (callback = ctx->init(json->_flags & JSON_TYPE, ctx)) )
+                    return (callback == 1) ? 0 : -1;
 
                 ctx->key.current = NULL; ctx->key.len = 0;
             }
@@ -3843,13 +3878,14 @@ _delim: json->_flags &= ~_STRING_FLAG_ERRORS;
             else ctx->parent = 0;
 
             if (ctx->exit && (type & (JSON_ARRAY | JSON_OBJECT))) {
-                callback = ctx->exit(type, ctx);
-                if (callback == 1) return 0;
+                if ( (callback = ctx->exit(type, ctx)) )
+                    return (callback == 1) ? 0 : -1;
                 ctx->key.current = NULL;
                 ctx->key.len = 0;
             } else if (ctx->data && (state & _KEY) == 0) {
-                callback = ctx->data(type, DATA(json), SIZE(json), ctx);
-                if (callback == 1) return 0;
+                if ( (callback = ctx->data(json, ctx)) )
+                    return (callback == 1) ? 0 : -1;
+                ctx->primitive.number = 0;
             }
         }
 
